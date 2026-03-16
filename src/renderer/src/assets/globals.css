@@ -1,0 +1,314 @@
+/* ============================================================
+   Mycel — Global Styles
+   ============================================================ */
+
+/* --- Font Faces ------------------------------------------- */
+
+@font-face {
+  font-family: 'Lora';
+  src: url('/fonts/Lora-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Lora';
+  src: url('/fonts/Lora-Italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Lora';
+  src: url('/fonts/Lora-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: block;
+}
+
+/* --- Tailwind v4 ------------------------------------------ */
+
+@import "tailwindcss";
+
+/* --- Custom Properties: Light Mode ------------------------ */
+
+:root {
+  --bg: #FFFFFF;
+  --surface: #F7F5F2;
+  --text: #1C1916;
+  --text-muted: #9A9189;
+  --accent: #3D5A3E;
+  --border: rgba(0, 0, 0, 0.07);
+}
+
+/* --- Custom Properties: Dark Mode ------------------------- */
+
+[data-theme="dark"] {
+  --bg: #1A1816;
+  --surface: #242220;
+  --text: #EDE9E3;
+  --text-muted: #6B6560;
+  --accent: #6B9E6E;
+  --border: rgba(255, 255, 255, 0.07);
+}
+
+/* --- Base Styles ------------------------------------------ */
+
+html,
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: var(--accent);
+  color: var(--surface);
+}
+
+/* --- Scrollbar -------------------------------------------- */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* --- Utility Classes -------------------------------------- */
+
+.font-heading {
+  font-family: 'Lora', serif;
+}
+
+.font-ui {
+  font-family: 'Inter', sans-serif;
+}
+
+/* --- Squishy Buttons -------------------------------------- */
+
+button {
+  transition: transform 80ms ease, color 150ms ease, background 150ms ease, border-color 150ms ease, opacity 150ms ease;
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* --- TipTap / ProseMirror -------------------------------- */
+
+.tiptap {
+  outline: none;
+}
+
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--text-muted);
+  pointer-events: none;
+  height: 0;
+  font-style: italic;
+}
+
+.tiptap h1 {
+  font-family: 'Lora', serif;
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 1.2em 0 0.4em;
+}
+
+.tiptap h2 {
+  font-family: 'Lora', serif;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 1em 0 0.3em;
+}
+
+.tiptap h3 {
+  font-family: 'Lora', serif;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0.8em 0 0.3em;
+}
+
+.tiptap p {
+  margin: 0.4em 0;
+}
+
+.tiptap ul,
+.tiptap ol {
+  padding-left: 1.4em;
+  margin: 0.4em 0;
+}
+
+.tiptap li {
+  margin: 0.15em 0;
+}
+
+.tiptap blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 16px;
+  margin: 0.8em 0;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.tiptap pre {
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin: 0.6em 0;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-x: auto;
+}
+
+.tiptap code {
+  background: var(--surface);
+  border-radius: 3px;
+  padding: 2px 5px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.9em;
+}
+
+.tiptap pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.tiptap mark {
+  background-color: rgba(61, 90, 62, 0.2);
+  border-radius: 2px;
+  padding: 1px 2px;
+}
+
+.tiptap hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.5em 0;
+}
+
+.tiptap a {
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Task lists */
+.tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.tiptap ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.tiptap ul[data-type="taskList"] li > label {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.tiptap ul[data-type="taskList"] li > label input[type="checkbox"] {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--text-muted);
+  border-radius: 3px;
+  cursor: pointer;
+  position: relative;
+}
+
+.tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  top: -1px;
+  left: 2px;
+  color: #fff;
+  font-size: 11px;
+}
+
+.tiptap ul[data-type="taskList"] li[data-checked="true"] > div > p {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+/* Tables */
+.tiptap table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.8em 0;
+}
+
+.tiptap th,
+.tiptap td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+  min-width: 80px;
+}
+
+.tiptap th {
+  background: var(--surface);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* Image */
+.tiptap img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 0.6em 0;
+}
