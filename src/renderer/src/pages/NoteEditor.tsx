@@ -7,7 +7,6 @@ import Typography from '@tiptap/extension-typography'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import CharacterCount from '@tiptap/extension-character-count'
-import { fadeUp } from '../styles/animation'
 import { useUIStore } from '../store/ui'
 import { useNotesStore } from '../store/notes'
 import type { Note } from '@shared/types'
@@ -53,6 +52,9 @@ export function NoteEditor(): React.JSX.Element {
       CharacterCount
     ],
     content: note?.body ?? '',
+    editorProps: {
+      attributes: { spellcheck: 'true' }
+    },
     onUpdate: ({ editor: ed }) => {
       scheduleSave(titleRef.current, ed.getHTML(), tagsRef.current)
     }
@@ -198,6 +200,7 @@ export function NoteEditor(): React.JSX.Element {
           value={title}
           onChange={(e) => handleTitleChange(e.target.value)}
           placeholder="Untitled"
+          spellCheck
           style={{
             width: '100%',
             background: 'none',
@@ -207,8 +210,8 @@ export function NoteEditor(): React.JSX.Element {
             fontSize: 24,
             fontWeight: 600,
             color: 'var(--text)',
-            padding: '0 0 16px 0',
-            lineHeight: 1.3
+            padding: '4px 0 18px 0',
+            lineHeight: 1.4
           }}
         />
 

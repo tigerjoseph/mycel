@@ -86,6 +86,7 @@ declare global {
       // Theme
       getTheme(): Promise<'light' | 'dark'>
       setTheme(theme: 'light' | 'dark'): Promise<void>
+      onThemeChange(callback: (theme: 'light' | 'dark') => void): void
 
       // Events
       onOpenSettings(callback: () => void): void

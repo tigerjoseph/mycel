@@ -69,6 +69,13 @@ function App(): React.JSX.Element {
     return () => window.removeEventListener('focus', onFocus)
   }, [])
 
+  // Live theme updates from any window (settings broadcasts to all)
+  useEffect(() => {
+    window.mycel.onThemeChange((t) => {
+      document.documentElement.dataset.theme = t
+    })
+  }, [])
+
   // Auto-update banner
   const [updateReady, setUpdateReady] = useState(false)
   useEffect(() => {

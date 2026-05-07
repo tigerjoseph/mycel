@@ -1,4 +1,4 @@
-import { app, ipcMain } from 'electron'
+import { app, ipcMain, BrowserWindow } from 'electron'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let store: any = null
@@ -38,6 +38,9 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle('theme:set', async (_e, theme: string) => {
     const s = await getStore()
     s.set('theme', theme)
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send('theme:changed', theme)
+    }
   })
 
   ipcMain.handle('app:getVersion', () => app.getVersion())

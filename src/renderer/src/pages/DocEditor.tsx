@@ -151,6 +151,7 @@ export function DocEditor(): React.JSX.Element {
       },
       editorProps: {
         attributes: {
+          spellcheck: 'true',
           style: [
             'outline: none',
             'font-family: Inter, sans-serif',
@@ -535,6 +536,7 @@ export function DocEditor(): React.JSX.Element {
           onChange={handleTitleChange}
           onBlur={handleTitleBlur}
           placeholder="Untitled"
+          spellCheck
           className="font-heading"
           style={{
             display: 'block',
@@ -545,9 +547,9 @@ export function DocEditor(): React.JSX.Element {
             background: 'transparent',
             border: 'none',
             outline: 'none',
-            padding: '0 40px',
-            marginBottom: 32,
-            lineHeight: 1.2
+            padding: '8px 40px 12px',
+            marginBottom: 24,
+            lineHeight: 1.35
           }}
         />
 

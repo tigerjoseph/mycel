@@ -95,10 +95,12 @@ body {
 }
 
 /* --- Scrollbar -------------------------------------------- */
+/* Always-visible slim rail. Thumb sits in a padded gutter so it
+   reads as a discoverable progress indicator, not a UI bar. */
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -106,12 +108,24 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 3px;
+  background-color: var(--text-muted);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 6px;
+  opacity: 0.45;
+  min-height: 32px;
+  transition: background-color 150ms ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+  background-color: var(--text);
+  background-clip: padding-box;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-muted) transparent;
 }
 
 /* --- Utility Classes -------------------------------------- */

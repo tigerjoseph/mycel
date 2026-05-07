@@ -84,6 +84,9 @@ const mycelAPI = {
   // Theme
   getTheme: (): Promise<string> => ipcRenderer.invoke('theme:get'),
   setTheme: (theme: string): Promise<void> => ipcRenderer.invoke('theme:set', theme),
+  onThemeChange: (callback: (theme: string) => void): void => {
+    ipcRenderer.on('theme:changed', (_e, theme: string) => callback(theme))
+  },
 
   // Listen for main process events
   onOpenSettings: (callback: () => void): void => {
