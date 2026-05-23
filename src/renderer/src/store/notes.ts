@@ -5,18 +5,21 @@ interface NotesStore {
   notes: Note[]
   loading: boolean
   selectedTags: string[]
+  selectedMonth: string | null
   fetch: (opts?: { limit?: number; before?: number; tags?: string[] }) => Promise<void>
   upsert: (n: Note) => Promise<void>
   remove: (id: string) => Promise<void>
   setSelectedTags: (tags: string[]) => void
   toggleTag: (tag: string) => void
   clearTags: () => void
+  setSelectedMonth: (month: string | null) => void
 }
 
 export const useNotesStore = create<NotesStore>((set, get) => ({
   notes: [],
   loading: false,
   selectedTags: [],
+  selectedMonth: null,
   fetch: async (opts) => {
     set({ loading: true })
     try {
@@ -50,4 +53,5 @@ export const useNotesStore = create<NotesStore>((set, get) => ({
     }
   },
   clearTags: () => set({ selectedTags: [] }),
+  setSelectedMonth: (month) => set({ selectedMonth: month }),
 }))

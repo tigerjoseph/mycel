@@ -14,6 +14,9 @@ export async function initDb(): Promise<void> {
   for (const stmt of statements) {
     await db.execute(stmt)
   }
+
+  // Delete any existing canvas docs
+  await db.execute("DELETE FROM docs WHERE type = 'canvas'")
 }
 
 export function getDb(): Client {

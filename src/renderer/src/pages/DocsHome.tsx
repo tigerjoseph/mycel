@@ -1,10 +1,12 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Plus, LayoutGrid, List, FolderClosed, FileText, Table, PenTool, Search, Trash2 } from 'lucide-react'
+import { Plus, LayoutGrid, List, FolderClosed, FileText, Table, Search, Trash2, Pencil } from 'lucide-react'
+import { ContextMenu } from '../components/ContextMenu'
+import { DocIcon } from '../components/DocIcon'
 import { nanoid } from 'nanoid'
 import { useUIStore } from '../store/ui'
 import { useDocsStore } from '../store/docs'
-import { fadeUp, spring } from '../styles/animation'
+import { fadeUp } from '../styles/animation'
 import { formatDistanceToNow } from 'date-fns'
 import type { Folder } from '@shared/types'
 
@@ -25,10 +27,16 @@ export function DocsHome(): React.JSX.Element {
   const [creatingFolder, setCreatingFolder] = useState(false)
   const [folderName, setFolderName] = useState('')
   const [folderLayout, setFolderLayout] = useState<'grid' | 'list'>('grid')
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; docId: string } | null>(null)
+  const [contextMenu, setContextMenu] = useState<{
+    x: number
+    y: number
+    target: { kind: 'doc'; docId: string } | { kind: 'folder'; folderId: string }
+  } | null>(null)
+  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
+  const [renameFolderName, setRenameFolderName] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
-  const contextMenuRef = useRef<HTMLDivElement>(null)
+  const renameFolderInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetchFolders()
@@ -62,15 +70,29 @@ export function DocsHome(): React.JSX.Element {
   }, [newDropdownOpen])
 
   useEffect(() => {
-    if (!contextMenu) return
-    const handleClick = (e: MouseEvent): void => {
-      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
-        setContextMenu(null)
-      }
+    if (renamingFolderId && renameFolderInputRef.current) {
+      renameFolderInputRef.current.focus()
+      renameFolderInputRef.current.select()
     }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [contextMenu])
+  }, [renamingFolderId])
+
+  const startFolderRename = useCallback((folder: Folder) => {
+    setRenamingFolderId(folder.id)
+    setRenameFolderName(folder.name)
+  }, [])
+
+  const handleRenameFolder = useCallback(async () => {
+    const name = renameFolderName.trim()
+    if (!renamingFolderId || !name) {
+      setRenamingFolderId(null)
+      setRenameFolderName('')
+      return
+    }
+    await window.mycel.renameFolder(renamingFolderId, name)
+    setRenamingFolderId(null)
+    setRenameFolderName('')
+    fetchFolders()
+  }, [renamingFolderId, renameFolderName, fetchFolders])
 
   const handleNewDoc = useCallback(async () => {
     setNewDropdownOpen(false)
@@ -113,28 +135,6 @@ export function DocsHome(): React.JSX.Element {
     })
     setActiveDocId(doc.id)
     setDocsView('grid')
-    pushBreadcrumb({ label: 'Docs', action: () => setDocsView('home') })
-  }, [setActiveDocId, setDocsView, pushBreadcrumb])
-
-  const handleNewCanvas = useCallback(async () => {
-    setNewDropdownOpen(false)
-    const doc = await window.mycel.upsertDoc({
-      id: nanoid(),
-      title: '',
-      body: '',
-      type: 'canvas',
-      folderId: null,
-      icon: null,
-      coverImage: null,
-      isTemplate: false,
-      isFavorite: false,
-      favoriteOrder: null,
-      tags: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    })
-    setActiveDocId(doc.id)
-    setDocsView('canvas')
     pushBreadcrumb({ label: 'Docs', action: () => setDocsView('home') })
   }, [setActiveDocId, setDocsView, pushBreadcrumb])
 
@@ -252,21 +252,6 @@ export function DocsHome(): React.JSX.Element {
                 </div>
               </button>
 
-              {/* Canvas option */}
-              <button
-                onClick={handleNewCanvas}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '10px 12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderRadius: 8, transition: 'background 100ms ease' }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--border)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
-              >
-                <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--bg)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <PenTool size={18} style={{ color: 'var(--text-muted)' }} />
-                </div>
-                <div>
-                  <div className="font-ui" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 500 }}>Canvas</div>
-                  <div className="font-ui" style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>Infinite canvas whiteboard</div>
-                </div>
-              </button>
             </motion.div>
           )}
         </div>
@@ -301,7 +286,7 @@ export function DocsHome(): React.JSX.Element {
                 key={doc.id}
                 onClick={() => {
                   setActiveDocId(doc.id)
-                  setDocsView(doc.type === 'grid' ? 'grid' : doc.type === 'canvas' ? 'canvas' : 'editor')
+                  setDocsView(doc.type === 'grid' ? 'grid' : 'editor')
                   pushBreadcrumb({ label: 'Docs', action: () => setDocsView('home') })
                 }}
                 whileHover={{ scale: 1.02 }}
@@ -324,11 +309,15 @@ export function DocsHome(): React.JSX.Element {
                 }}
               >
                 <div className="font-ui" style={{ fontSize: 13, color: 'var(--text)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {doc.icon && <span style={{ marginRight: 5 }}>{doc.icon}</span>}
+                  {doc.icon && (
+                    <span style={{ marginRight: 5, display: 'inline-flex', verticalAlign: 'middle' }}>
+                      <DocIcon icon={doc.icon} size={14} />
+                    </span>
+                  )}
                   {doc.title || 'Untitled'}
                 </div>
                 <div className="font-ui" style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                  {doc.type === 'grid' ? 'Table' : doc.type === 'canvas' ? 'Canvas' : 'Document'}
+                  {doc.type === 'grid' ? 'Table' : 'Document'}
                 </div>
               </motion.button>
             ))}
@@ -368,7 +357,7 @@ export function DocsHome(): React.JSX.Element {
                 key={doc.id}
                 onClick={() => {
                   setActiveDocId(doc.id)
-                  setDocsView(doc.type === 'grid' ? 'grid' : doc.type === 'canvas' ? 'canvas' : 'editor')
+                  setDocsView(doc.type === 'grid' ? 'grid' : 'editor')
                   pushBreadcrumb({ label: 'Docs', action: () => setDocsView('home') })
                 }}
                 style={{
@@ -388,16 +377,14 @@ export function DocsHome(): React.JSX.Element {
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
                 onContextMenu={(e) => {
                   e.preventDefault()
-                  setContextMenu({ x: e.clientX, y: e.clientY, docId: doc.id })
+                  setContextMenu({ x: e.clientX, y: e.clientY, target: { kind: 'doc', docId: doc.id } })
                 }}
               >
                 <span style={{ width: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   {doc.icon ? (
-                    <span style={{ fontSize: 16 }}>{doc.icon}</span>
+                    <DocIcon icon={doc.icon} size={16} />
                   ) : doc.type === 'grid' ? (
                     <Table size={15} style={{ color: 'var(--text-muted)' }} />
-                  ) : doc.type === 'canvas' ? (
-                    <PenTool size={15} style={{ color: 'var(--text-muted)' }} />
                   ) : (
                     <FileText size={15} style={{ color: 'var(--text-muted)' }} />
                   )}
@@ -445,7 +432,14 @@ export function DocsHome(): React.JSX.Element {
           {folders.map((folder) => (
             <button
               key={folder.id}
-              onClick={() => handleFolderClick(folder)}
+              onClick={() => {
+                if (renamingFolderId === folder.id) return
+                handleFolderClick(folder)
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                setContextMenu({ x: e.clientX, y: e.clientY, target: { kind: 'folder', folderId: folder.id } })
+              }}
               style={{
                 background: 'none',
                 border: 'none',
@@ -463,9 +457,28 @@ export function DocsHome(): React.JSX.Element {
               onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
             >
               <FolderClosed size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-              <span className="font-heading" style={{ fontSize: 14, color: 'var(--text)', fontWeight: 500 }}>
-                {folder.name}
-              </span>
+              {renamingFolderId === folder.id ? (
+                <input
+                  ref={renameFolderInputRef}
+                  value={renameFolderName}
+                  onChange={(e) => setRenameFolderName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleRenameFolder()
+                    if (e.key === 'Escape') {
+                      setRenamingFolderId(null)
+                      setRenameFolderName('')
+                    }
+                  }}
+                  onBlur={handleRenameFolder}
+                  onClick={(e) => e.stopPropagation()}
+                  className="font-heading"
+                  style={{ fontSize: 14, color: 'var(--text)', background: 'transparent', border: 'none', outline: 'none', flex: 1 }}
+                />
+              ) : (
+                <span className="font-heading" style={{ fontSize: 14, color: 'var(--text)', fontWeight: 500 }}>
+                  {folder.name}
+                </span>
+              )}
             </button>
           ))}
           {creatingFolder ? (
@@ -514,7 +527,14 @@ export function DocsHome(): React.JSX.Element {
           {folders.map((folder) => (
             <motion.button
               key={folder.id}
-              onClick={() => handleFolderClick(folder)}
+              onClick={() => {
+                if (renamingFolderId === folder.id) return
+                handleFolderClick(folder)
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                setContextMenu({ x: e.clientX, y: e.clientY, target: { kind: 'folder', folderId: folder.id } })
+              }}
               whileHover={{ filter: 'brightness(1.04)' }}
               whileTap={{ scale: 0.97 }}
               transition={{ type: 'spring', stiffness: 400, damping: 28 }}
@@ -532,12 +552,39 @@ export function DocsHome(): React.JSX.Element {
               }}
             >
               <FolderClosed size={16} style={{ color: 'var(--text-muted)', marginBottom: 8 }} />
-              <span
-                className="font-heading"
-                style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600 }}
-              >
-                {folder.name}
-              </span>
+              {renamingFolderId === folder.id ? (
+                <input
+                  ref={renameFolderInputRef}
+                  value={renameFolderName}
+                  onChange={(e) => setRenameFolderName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleRenameFolder()
+                    if (e.key === 'Escape') {
+                      setRenamingFolderId(null)
+                      setRenameFolderName('')
+                    }
+                  }}
+                  onBlur={handleRenameFolder}
+                  onClick={(e) => e.stopPropagation()}
+                  className="font-heading"
+                  style={{
+                    fontSize: 14,
+                    color: 'var(--text)',
+                    fontWeight: 600,
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    width: '100%'
+                  }}
+                />
+              ) : (
+                <span
+                  className="font-heading"
+                  style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600 }}
+                >
+                  {folder.name}
+                </span>
+              )}
             </motion.button>
           ))}
           {creatingFolder ? (
@@ -605,59 +652,52 @@ export function DocsHome(): React.JSX.Element {
           )}
         </div>
       )}
-      {/* Right-click context menu */}
       <AnimatePresence>
-        {contextMenu && (
-          <motion.div
-            ref={contextMenuRef}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={spring}
-            style={{
-              position: 'fixed',
-              top: contextMenu.y,
-              left: contextMenu.x,
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: 10,
-              padding: 6,
-              minWidth: 160,
-              zIndex: 100,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-            }}
-          >
-            <button
-              onClick={() => {
-                const docId = contextMenu.docId
-                setContextMenu(null)
-                window.mycel.deleteDoc(docId).then(() => {
-                  fetchRecentDocs()
-                })
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                width: '100%',
-                padding: '7px 10px',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: 12,
-                fontFamily: 'Inter, sans-serif',
-                color: '#D93025',
-                borderRadius: 6,
-                transition: 'background 100ms ease'
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--border)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
-            >
-              <Trash2 size={13} />
-              Delete
-            </button>
-          </motion.div>
-        )}
+        {contextMenu && (() => {
+          const { x, y, target } = contextMenu
+          const items =
+            target.kind === 'doc'
+              ? [
+                  {
+                    label: 'Delete',
+                    danger: true,
+                    icon: <Trash2 size={13} />,
+                    onClick: () => {
+                      window.mycel.deleteDoc(target.docId).then(() => fetchRecentDocs())
+                    }
+                  }
+                ]
+              : (() => {
+                  const folder = folders.find((f) => f.id === target.folderId)
+                  if (!folder) return []
+                  return [
+                    {
+                      label: 'Rename',
+                      icon: <Pencil size={13} />,
+                      onClick: () => startFolderRename(folder)
+                    },
+                    {
+                      label: 'Delete folder',
+                      danger: true,
+                      icon: <Trash2 size={13} />,
+                      onClick: () => {
+                        if (!confirm(`Delete "${folder.name}" and all documents inside?`)) return
+                        window.mycel.deleteFolder(folder.id).then(() => fetchFolders())
+                      }
+                    }
+                  ]
+                })()
+          if (items.length === 0) return null
+          return (
+            <ContextMenu
+              key="docs-home-menu"
+              x={x}
+              y={y}
+              onClose={() => setContextMenu(null)}
+              items={items}
+            />
+          )
+        })()}
       </AnimatePresence>
     </motion.div>
   )

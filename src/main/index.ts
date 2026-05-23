@@ -1,6 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { setApplicationMenu } from './menu'
+import { setupContextMenu } from './contextMenu'
 import { initDb } from './db'
 import { registerHandlers } from './handlers'
 import { setupAutoUpdater } from './updater'
@@ -23,9 +24,14 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      spellcheck: true
     }
   })
+
+  setupContextMenu(mainWindow.webContents)
+
+  setupContextMenu(mainWindow.webContents)
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
@@ -87,6 +93,8 @@ ipcMain.handle('settings:openWindow', () => {
   settingsWindow.on('closed', () => {
     settingsWindow = null
   })
+
+  setupContextMenu(settingsWindow.webContents)
 
   if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
     settingsWindow.loadURL(process.env['ELECTRON_RENDERER_URL'] + '#settings')

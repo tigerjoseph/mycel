@@ -25,6 +25,7 @@ export default function TopNav() {
     <header
       style={{
         height: 52,
+        paddingTop: 10,
         display: 'flex',
         alignItems: 'center',
         WebkitAppRegion: 'drag',

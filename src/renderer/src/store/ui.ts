@@ -15,7 +15,7 @@ interface UIStore {
   // Docs sub-views
   activeDocId: string | null
   activeFolderId: string | null
-  docsView: 'home' | 'favorites' | 'list' | 'editor' | 'grid' | 'canvas'
+  docsView: 'home' | 'favorites' | 'list' | 'editor' | 'grid'
 
   // Notes
   activeNoteId: string | null
@@ -34,7 +34,7 @@ interface UIStore {
   setActiveProjectId: (id: string | null) => void
   setActiveDocId: (id: string | null) => void
   setActiveFolderId: (id: string | null) => void
-  setDocsView: (view: 'home' | 'favorites' | 'list' | 'editor' | 'grid' | 'canvas') => void
+  setDocsView: (view: 'home' | 'favorites' | 'list' | 'editor' | 'grid') => void
   setActiveNoteId: (id: string | null) => void
   setNoteEditorOpen: (open: boolean) => void
   pushBreadcrumb: (entry: BreadcrumbEntry) => void

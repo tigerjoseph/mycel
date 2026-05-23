@@ -5,6 +5,7 @@ import { format } from 'date-fns'
 import { fadeUp, spring } from '../styles/animation'
 import { useNotesStore } from '../store/notes'
 import { TagFilter } from '../components/TagFilter'
+import { MonthFilter } from '../components/MonthFilter'
 import type { Note } from '@shared/types'
 
 // Muted, earthy tag colors
@@ -443,6 +444,8 @@ export function Notes(): React.JSX.Element {
   const selectedTags = useNotesStore((s) => s.selectedTags)
   const toggleTag = useNotesStore((s) => s.toggleTag)
   const clearTags = useNotesStore((s) => s.clearTags)
+  const selectedMonth = useNotesStore((s) => s.selectedMonth)
+  const setSelectedMonth = useNotesStore((s) => s.setSelectedMonth)
 
   useEffect(() => { fetchNotes() }, [fetchNotes])
 
@@ -454,17 +457,54 @@ export function Notes(): React.JSX.Element {
     return Array.from(tagSet).sort()
   }, [notes])
 
+  const availableMonths = useMemo(() => {
+    const monthSet = new Set<string>()
+    for (const note of notes) {
+      const d = new Date(note.createdAt)
+      monthSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+    }
+    return Array.from(monthSet).sort().reverse()
+  }, [notes])
+
   const filteredNotes = useMemo(() => {
-    if (selectedTags.length === 0) return notes
-    return notes.filter((note) => selectedTags.every((tag) => note.tags.includes(tag)))
-  }, [notes, selectedTags])
+    let filtered = notes
+    if (selectedTags.length > 0) {
+      filtered = filtered.filter((note) => selectedTags.every((tag) => note.tags.includes(tag)))
+    }
+    if (selectedMonth) {
+      filtered = filtered.filter((note) => {
+        const d = new Date(note.createdAt)
+        const m = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        return m === selectedMonth
+      })
+    }
+    return filtered
+  }, [notes, selectedTags, selectedMonth])
 
   const groupedNotes = useMemo(() => {
     const sorted = [...filteredNotes].sort((a, b) => b.createdAt - a.createdAt)
     const groups: { label: string; notes: Note[] }[] = []
     let currentLabel = ''
+    const now = new Date()
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+    const yesterdayStart = todayStart - 86400000
+    const thisYear = now.getFullYear()
+
     for (const note of sorted) {
-      const label = format(new Date(note.createdAt), 'MMMM yyyy')
+      const d = new Date(note.createdAt)
+      const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+
+      let label: string
+      if (dayStart === todayStart) {
+        label = 'Today'
+      } else if (dayStart === yesterdayStart) {
+        label = 'Yesterday'
+      } else if (d.getFullYear() === thisYear) {
+        label = format(d, 'MMMM d')
+      } else {
+        label = format(d, 'MMMM d, yyyy')
+      }
+
       if (label !== currentLabel) {
         currentLabel = label
         groups.push({ label, notes: [note] })
@@ -508,6 +548,12 @@ export function Notes(): React.JSX.Element {
             <div style={{ marginBottom: 24 }}>
               <NoteComposer onSave={fetchNotes} />
             </div>
+
+            {availableMonths.length > 1 && (
+              <div style={{ marginBottom: 12 }}>
+                <MonthFilter months={availableMonths} selectedMonth={selectedMonth} onSelect={setSelectedMonth} />
+              </div>
+            )}
 
             {hasTags && (
               <div style={{ marginBottom: 24 }}>

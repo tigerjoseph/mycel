@@ -18,7 +18,7 @@ export interface Doc {
   id: string
   title: string
   body: string
-  type: 'doc' | 'grid' | 'canvas'
+  type: 'doc' | 'grid'
   folderId: string | null
   icon: string | null
   coverImage: string | null

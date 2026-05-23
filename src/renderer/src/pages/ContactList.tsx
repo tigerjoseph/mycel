@@ -17,6 +17,7 @@ export function ContactList(): React.JSX.Element {
 
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<SortMode>('recent')
+  const [activeTag, setActiveTag] = useState<string | null>(null)
 
   useEffect(() => {
     fetchContacts()
@@ -31,16 +32,28 @@ export function ContactList(): React.JSX.Element {
     [contacts]
   )
 
+  const allTags = useMemo(() => {
+    const tagMap = new Map<string, number>()
+    for (const c of contacts) {
+      for (const t of c.tags) {
+        tagMap.set(t, (tagMap.get(t) || 0) + 1)
+      }
+    }
+    return [...tagMap.entries()].sort((a, b) => b[1] - a[1])
+  }, [contacts])
+
   const filtered = useMemo(() => {
     const base = query.trim()
       ? fuse.search(query).map((r) => r.item)
       : [...contacts]
 
+    const afterTag = activeTag ? base.filter((c) => c.tags.includes(activeTag)) : base
+
     if (sort === 'name') {
-      return base.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+      return afterTag.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
     }
     if (sort === 'company') {
-      return base.sort((a, b) => {
+      return afterTag.sort((a, b) => {
         const compA = a.metadata?.company || ''
         const compB = b.metadata?.company || ''
         // contacts without a company sort to the end
@@ -50,7 +63,7 @@ export function ContactList(): React.JSX.Element {
       })
     }
     if (sort === 'last contacted') {
-      return base.sort((a, b) => {
+      return afterTag.sort((a, b) => {
         // null lastContactedAt sorts to the end
         if (a.lastContactedAt == null && b.lastContactedAt == null) return 0
         if (a.lastContactedAt == null) return 1
@@ -59,8 +72,8 @@ export function ContactList(): React.JSX.Element {
       })
     }
     // recent: by updatedAt descending
-    return base.sort((a, b) => b.updatedAt - a.updatedAt)
-  }, [contacts, query, sort, fuse])
+    return afterTag.sort((a, b) => b.updatedAt - a.updatedAt)
+  }, [contacts, query, sort, fuse, activeTag])
 
   const handleContactClick = (contact: Contact): void => {
     setActiveContactId(contact.id)
@@ -141,6 +154,52 @@ export function ContactList(): React.JSX.Element {
           </button>
         ))}
       </div>
+
+      {/* Tag filter row */}
+      {allTags.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto', paddingBottom: 4 }}>
+          {activeTag && (
+            <button
+              onClick={() => setActiveTag(null)}
+              style={{
+                background: 'none',
+                border: '1px solid var(--border)',
+                borderRadius: 14,
+                padding: '3px 10px',
+                cursor: 'pointer',
+                fontSize: 11,
+                fontFamily: 'Inter, sans-serif',
+                color: 'var(--text-muted)',
+                whiteSpace: 'nowrap',
+                transition: 'color 150ms ease'
+              }}
+            >
+              all
+            </button>
+          )}
+          {allTags.map(([tag, count]) => (
+            <button
+              key={tag}
+              onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+              style={{
+                background: activeTag === tag ? 'var(--accent)' : 'none',
+                border: activeTag === tag ? '1px solid var(--accent)' : '1px solid var(--border)',
+                borderRadius: 14,
+                padding: '3px 10px',
+                cursor: 'pointer',
+                fontSize: 11,
+                fontFamily: 'Inter, sans-serif',
+                color: activeTag === tag ? '#fff' : 'var(--text-muted)',
+                whiteSpace: 'nowrap',
+                transition: 'all 150ms ease',
+                flexShrink: 0
+              }}
+            >
+              {tag} <span style={{ opacity: 0.6 }}>{count}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Contact rows */}
       <div style={{ display: 'flex', flexDirection: 'column' }}>

@@ -25,6 +25,7 @@ import { fadeUp } from '../styles/animation'
 import { FloatingToolbar } from '../components/FloatingToolbar'
 import { SlashCommands } from '../components/SlashMenu'
 import { EmojiPicker } from '../components/EmojiPicker'
+import { DocIcon } from '../components/DocIcon'
 import type { Doc } from '@shared/types'
 
 export function DocEditor(): React.JSX.Element {
@@ -507,11 +508,13 @@ export function DocEditor(): React.JSX.Element {
         {/* Icon picker — Notion style */}
         <div style={{ padding: '0 40px', marginBottom: 8 }}>
           <EmojiPicker
-            currentEmoji={doc?.icon ?? null}
-            onSelect={(emoji) => saveDoc({ icon: emoji })}
+            currentIcon={doc?.icon ?? null}
+            onSelect={(icon) => saveDoc({ icon })}
           >
             {doc?.icon ? (
-              <span style={{ fontSize: 48, lineHeight: 1, cursor: 'pointer' }}>{doc.icon}</span>
+              <span style={{ cursor: 'pointer', display: 'inline-flex' }}>
+                <DocIcon icon={doc.icon} size={48} color="var(--text)" />
+              </span>
             ) : (
               <span style={{
                 fontSize: 13,

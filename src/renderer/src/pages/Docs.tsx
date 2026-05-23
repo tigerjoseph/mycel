@@ -5,7 +5,6 @@ import { FavoritesList } from './FavoritesList'
 import { DocList } from './DocList'
 import { DocEditor } from './DocEditor'
 import { DataGrid } from './DataGrid'
-import { CanvasEditor } from './CanvasEditor'
 
 export function Docs(): React.JSX.Element {
   const docsView = useUIStore((s) => s.docsView)
@@ -18,7 +17,6 @@ export function Docs(): React.JSX.Element {
         {docsView === 'list' && <DocList key="docs-list" />}
         {docsView === 'editor' && <DocEditor key="docs-editor" />}
         {docsView === 'grid' && <DataGrid key="docs-grid" />}
-        {docsView === 'canvas' && <CanvasEditor key="docs-canvas" />}
       </AnimatePresence>
     </div>
   )
