@@ -191,14 +191,33 @@ button:active:not(:disabled) {
   margin: 0.4em 0;
 }
 
-.tiptap ul,
+/* Tailwind preflight strips list markers; restore them inside editors */
+.tiptap ul:not([data-type="taskList"]) {
+  list-style-type: disc;
+  padding-left: 1.4em;
+  margin: 0.4em 0;
+}
+
+.tiptap ul:not([data-type="taskList"]) ul {
+  list-style-type: circle;
+}
+
+.tiptap ul:not([data-type="taskList"]) ul ul {
+  list-style-type: square;
+}
+
 .tiptap ol {
+  list-style-type: decimal;
   padding-left: 1.4em;
   margin: 0.4em 0;
 }
 
 .tiptap li {
   margin: 0.15em 0;
+}
+
+.tiptap li p {
+  margin: 0;
 }
 
 .tiptap blockquote {
@@ -319,10 +338,58 @@ button:active:not(:disabled) {
   font-size: 13px;
 }
 
-/* Image */
-.tiptap img {
+/* Images (block + resizable node view) */
+.tiptap img.doc-editor-image,
+.tiptap [data-resize-wrapper] img {
   max-width: 100%;
   height: auto;
   border-radius: 6px;
-  margin: 0.6em 0;
+  display: block;
+}
+
+.tiptap [data-resize-container] {
+  display: block;
+  margin: 0.8em 0;
+  line-height: 0;
+}
+
+.tiptap [data-resize-wrapper] {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+}
+
+.tiptap [data-resize-handle] {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border: 2px solid var(--bg);
+  border-radius: 2px;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.tiptap [data-resize-wrapper]:hover [data-resize-handle],
+.tiptap [data-resize-state] [data-resize-handle] {
+  opacity: 1;
+}
+
+.tiptap [data-resize-handle='top-left'],
+.tiptap [data-resize-handle='bottom-right'] {
+  cursor: nwse-resize;
+}
+
+.tiptap [data-resize-handle='top-right'],
+.tiptap [data-resize-handle='bottom-left'] {
+  cursor: nesw-resize;
+}
+
+.tiptap.ProseMirror-selectednode [data-resize-wrapper],
+.tiptap .ProseMirror-selectednode [data-resize-wrapper] {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
 }

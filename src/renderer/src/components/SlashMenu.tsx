@@ -4,6 +4,7 @@ import { ReactRenderer } from '@tiptap/react'
 import Suggestion from '@tiptap/suggestion'
 import type { SuggestionOptions, SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion'
 import type { Editor, Range } from '@tiptap/core'
+import { fileToDataUrl, pickImageFiles } from '../extensions/docImages'
 import {
   Heading1,
   Heading2,
@@ -113,10 +114,23 @@ const slashItems: SlashItem[] = [
     group: 'Insert',
     icon: <Image size={ICON_SIZE} />,
     command: ({ editor, range }) => {
-      const url = window.prompt('Image URL')
-      if (url) {
-        editor.chain().focus().deleteRange(range).setImage({ src: url }).run()
-      }
+      void (async () => {
+        const files = await pickImageFiles()
+        if (files.length > 0) {
+          const nodes = await Promise.all(
+            files.map(async (file) => ({
+              type: 'image',
+              attrs: { src: await fileToDataUrl(file) }
+            }))
+          )
+          editor.chain().focus().deleteRange(range).insertContent(nodes).run()
+          return
+        }
+        const url = window.prompt('Image URL (or cancel)')
+        if (url) {
+          editor.chain().focus().deleteRange(range).setImage({ src: url }).run()
+        }
+      })()
     }
   },
   {
