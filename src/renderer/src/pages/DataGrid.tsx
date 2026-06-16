@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { motion } from 'motion/react'
 import { Plus, Trash2 } from 'lucide-react'
 import { useUIStore } from '../store/ui'
+import { useDocsStore } from '../store/docs'
 import { fadeUp } from '../styles/animation'
 import type { Doc } from '@shared/types'
 
@@ -28,6 +29,9 @@ function serializeGridData(data: GridData): string {
 
 export function DataGrid(): React.JSX.Element {
   const activeDocId = useUIStore((s) => s.activeDocId)
+  const setDocsView = useUIStore((s) => s.setDocsView)
+  const folders = useDocsStore((s) => s.folders)
+  const activeFolderId = useUIStore((s) => s.activeFolderId)
   const [doc, setDoc] = useState<Doc | null>(null)
   const [title, setTitle] = useState('')
   const [grid, setGrid] = useState<GridData>({ columns: [], rows: [] })
@@ -41,6 +45,8 @@ export function DataGrid(): React.JSX.Element {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const indicatorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isMountedRef = useRef(true)
+
+  const folder = folders.find((f) => f.id === (doc?.folderId ?? activeFolderId))
 
   // Load doc on mount
   useEffect(() => {
@@ -258,6 +264,43 @@ export function DataGrid(): React.JSX.Element {
       }}
       {...fadeUp}
     >
+      {/* Breadcrumb */}
+      <div
+        className="font-ui"
+        style={{
+          position: 'absolute',
+          top: 20,
+          left: 40,
+          fontSize: 12,
+          color: 'var(--text-muted)',
+          zIndex: 10
+        }}
+      >
+        <span
+          style={{ cursor: 'pointer' }}
+          onClick={() => setDocsView('home')}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
+        >
+          Docs
+        </span>
+        {folder && (
+          <>
+            <span style={{ margin: '0 6px' }}>&rsaquo;</span>
+            <span
+              style={{ cursor: 'pointer' }}
+              onClick={() => setDocsView('list')}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
+            >
+              {folder.name}
+            </span>
+          </>
+        )}
+        <span style={{ margin: '0 6px' }}>&rsaquo;</span>
+        <span style={{ color: 'var(--text)' }}>{title || 'Untitled table'}</span>
+      </div>
+
       {/* Saved indicator */}
       <motion.span
         initial={{ opacity: 0 }}

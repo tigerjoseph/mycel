@@ -6,6 +6,7 @@ import { fadeUp, spring } from '../styles/animation'
 import { useNotesStore } from '../store/notes'
 import { TagFilter } from '../components/TagFilter'
 import { MonthFilter } from '../components/MonthFilter'
+import { noteBodyHtmlToPlain, noteBodyPlainToHtml, noteBodyHasContent } from '../utils/noteBody'
 import type { Note } from '@shared/types'
 
 // Muted, earthy tag colors
@@ -97,7 +98,7 @@ function NoteComposer({ onSave }: { onSave: () => void }) {
     }
     await window.mycel.upsertNote({
       title: title.trim(),
-      body: body.trim() ? `<p>${body.replace(/\n/g, '</p><p>')}</p>` : '',
+      body: noteBodyHasContent(body) ? noteBodyPlainToHtml(body) : '',
       tags,
       createdAt: Date.now(),
       updatedAt: Date.now()
@@ -262,7 +263,7 @@ function NoteComposer({ onSave }: { onSave: () => void }) {
 // ── Inline Note Editor (expand in-place) ──────────────
 function InlineNoteEditor({ note, onClose }: { note: Note; onClose: () => void }) {
   const [title, setTitle] = useState(note.title)
-  const [body, setBody] = useState(note.body.replace(/<[^>]*>/g, ''))
+  const [body, setBody] = useState(() => noteBodyHtmlToPlain(note.body))
   const [tags, setTags] = useState<string[]>(note.tags)
   const [tagInput, setTagInput] = useState('')
   const [showTagInput, setShowTagInput] = useState(false)
@@ -275,7 +276,7 @@ function InlineNoteEditor({ note, onClose }: { note: Note; onClose: () => void }
     await window.mycel.upsertNote({
       ...note,
       title: title.trim(),
-      body: body.trim() ? `<p>${body.replace(/\n/g, '</p><p>')}</p>` : '',
+      body: noteBodyHasContent(body) ? noteBodyPlainToHtml(body) : '',
       tags,
       updatedAt: Date.now()
     })

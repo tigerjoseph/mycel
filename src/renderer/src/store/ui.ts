@@ -75,9 +75,9 @@ export const useUIStore = create<UIStore>((set) => ({
     breadcrumbs: [...state.breadcrumbs, entry]
   })),
   popBreadcrumb: () => set((state) => {
-    if (state.breadcrumbs.length <= 1) return { breadcrumbs: [] }
-    const prev = state.breadcrumbs[state.breadcrumbs.length - 2]
-    prev.action()
+    if (state.breadcrumbs.length === 0) return state
+    const top = state.breadcrumbs[state.breadcrumbs.length - 1]
+    top.action()
     return { breadcrumbs: state.breadcrumbs.slice(0, -1) }
   }),
   setBreadcrumbs: (entries) => set({ breadcrumbs: entries }),

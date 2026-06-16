@@ -148,7 +148,15 @@ button:active:not(:disabled) {
   transform: scale(0.97);
 }
 
-/* --- TipTap / ProseMirror -------------------------------- */
+/* Note previews */
+.note-body-preview p {
+  margin: 0.25em 0;
+  white-space: pre-wrap;
+}
+
+.note-body-preview p:empty {
+  min-height: 1.4em;
+}
 
 .tiptap {
   outline: none;
