@@ -15,7 +15,7 @@ const pillStyle = (isSelected: boolean) => ({
   borderRadius: 20,
   padding: '4px 12px',
   fontSize: 12,
-  fontFamily: 'Inter, sans-serif',
+  fontFamily: 'var(--font-ui)',
   fontWeight: 500,
   cursor: 'pointer' as const,
   whiteSpace: 'nowrap' as const,

@@ -215,7 +215,7 @@ export function SlashMenuList({ items, command }: SlashMenuListProps): React.JSX
           borderRadius: 8,
           padding: '8px 12px',
           color: 'rgba(255,255,255,0.5)',
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-ui)',
           fontSize: 13
         }}
       >
@@ -250,7 +250,7 @@ export function SlashMenuList({ items, command }: SlashMenuListProps): React.JSX
                 style={{
                   padding: '6px 10px 2px',
                   fontSize: 10,
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-ui)',
                   fontWeight: 600,
                   color: 'rgba(255,255,255,0.4)',
                   textTransform: 'uppercase',
@@ -274,7 +274,7 @@ export function SlashMenuList({ items, command }: SlashMenuListProps): React.JSX
                 borderRadius: 4,
                 cursor: 'pointer',
                 color: 'rgba(255,255,255,0.9)',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-ui)',
                 fontSize: 13,
                 textAlign: 'left'
               }}

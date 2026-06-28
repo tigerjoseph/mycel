@@ -11,7 +11,7 @@ export function Logo({ size = 24 }: { size?: number }) {
         style={{ objectFit: 'contain' }}
       />
       <span style={{
-        fontFamily: 'Lora, serif',
+        fontFamily: 'var(--font-heading)',
         fontSize: size * 0.67,
         fontWeight: 500,
         letterSpacing: '-0.02em',

@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import TopNav from './components/TopNav'
+import { Todo } from './pages/Todo'
 import { CRM } from './pages/CRM'
-import { Docs } from './pages/Docs'
-import { Notes } from './pages/Notes'
+import { Create } from './pages/Create'
+import { Corpus } from './pages/Corpus'
 import { Settings } from './pages/Settings'
 import { CommandPalette } from './components/CommandPalette'
 import { LogTouchpoint } from './components/LogTouchpoint'
@@ -11,15 +12,30 @@ import { ContactSwitcher } from './components/ContactSwitcher'
 import { useUIStore } from './store/ui'
 import { useKeyboard } from './hooks/useKeyboard'
 import type { PageId } from '@shared/types'
+import { applyAppearanceToDocument } from '@shared/appearance'
+
+const PAGE_ORDER: PageId[] = ['todo', 'people', 'create', 'corpus']
+const VALID_PAGES = new Set<PageId>(PAGE_ORDER)
+
+async function loadAppearance(): Promise<void> {
+  if (window.mycel.getAppearance) {
+    const id = await window.mycel.getAppearance()
+    if (id) applyAppearanceToDocument(id)
+    return
+  }
+  const theme = await window.mycel.getTheme()
+  if (theme) document.documentElement.dataset.theme = theme
+}
 
 function App(): React.JSX.Element {
   const activePage = useUIStore((s) => s.activePage)
+  const setPage = useUIStore((s) => s.setPage)
   const commandPaletteOpen = useUIStore((s) => s.commandPaletteOpen)
   const logTouchpointOpen = useUIStore((s) => s.logTouchpointOpen)
   const contactSwitcherOpen = useUIStore((s) => s.contactSwitcherOpen)
+  const copyFeedback = useUIStore((s) => s.copyFeedback)
   useKeyboard()
 
-  const PAGE_ORDER: PageId[] = ['crm', 'docs', 'notes']
   const directionRef = useRef(0)
   const prevPageRef = useRef(activePage)
 
@@ -51,28 +67,37 @@ function App(): React.JSX.Element {
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
 
-  // Apply saved theme on mount
+  // Restore last tab on mount
   useEffect(() => {
-    window.mycel.getTheme().then((t: string) => {
-      if (t) document.documentElement.dataset.theme = t
-    })
+    window.mycel.getSettings().then((s) => {
+      const lastPage = s.lastPage as PageId | undefined
+      if (lastPage && VALID_PAGES.has(lastPage)) {
+        setPage(lastPage)
+      }
+    }).catch(() => {})
+  }, [setPage])
+
+  // Apply saved appearance on mount
+  useEffect(() => {
+    loadAppearance().catch(() => {})
   }, [])
 
-  // Re-apply theme when window regains focus (picks up changes from settings window)
+  // Re-apply appearance when window regains focus
   useEffect(() => {
     const onFocus = (): void => {
-      window.mycel.getTheme().then((t: string) => {
-        if (t) document.documentElement.dataset.theme = t
-      })
+      loadAppearance().catch(() => {})
     }
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
   }, [])
 
-  // Live theme updates from any window (settings broadcasts to all)
+  // Live appearance updates from any window
   useEffect(() => {
-    window.mycel.onThemeChange((t) => {
-      document.documentElement.dataset.theme = t
+    window.mycel.onThemeChange((theme) => {
+      document.documentElement.dataset.theme = theme
+    })
+    window.mycel.onAppearanceChange((id) => {
+      applyAppearanceToDocument(id)
     })
   }, [])
 
@@ -106,9 +131,10 @@ function App(): React.JSX.Element {
             transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'auto', willChange: 'transform, opacity' }}
           >
-            {activePage === 'crm' && <CRM />}
-            {activePage === 'docs' && <Docs />}
-            {activePage === 'notes' && <Notes />}
+            {activePage === 'todo' && <Todo />}
+            {activePage === 'people' && <CRM />}
+            {activePage === 'create' && <Create />}
+            {activePage === 'corpus' && <Corpus />}
           </motion.div>
         </AnimatePresence>
       </main>
@@ -122,6 +148,36 @@ function App(): React.JSX.Element {
       </AnimatePresence>
       <AnimatePresence>
         {contactSwitcherOpen && <ContactSwitcher key="contact-switcher" />}
+      </AnimatePresence>
+
+      {/* Copy feedback toast */}
+      <AnimatePresence>
+        {copyFeedback && (
+          <motion.div
+            key="copy-feedback"
+            initial={{ y: 24, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 24, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            style={{
+              position: 'fixed',
+              bottom: updateReady ? 72 : 16,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              padding: '8px 16px',
+              background: 'var(--text)',
+              color: 'var(--bg)',
+              borderRadius: 8,
+              fontSize: 13,
+              fontFamily: 'var(--font-ui)',
+              fontWeight: 500,
+              zIndex: 201,
+              pointerEvents: 'none'
+            }}
+          >
+            {copyFeedback}
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* Auto-update banner */}

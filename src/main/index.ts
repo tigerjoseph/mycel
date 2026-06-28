@@ -10,8 +10,8 @@ let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 1480,
+    height: 940,
     minWidth: 900,
     minHeight: 600,
     show: false,
@@ -34,6 +34,7 @@ function createWindow(): void {
   setupContextMenu(mainWindow.webContents)
 
   mainWindow.on('ready-to-show', () => {
+    mainWindow?.webContents.setZoomFactor(1.18)
     mainWindow?.show()
   })
 

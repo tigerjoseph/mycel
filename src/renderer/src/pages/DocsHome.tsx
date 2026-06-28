@@ -183,7 +183,7 @@ export function DocsHome(): React.JSX.Element {
               padding: '6px 14px',
               cursor: 'pointer',
               fontSize: 13,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-ui)',
               color: 'var(--text-muted)',
               display: 'flex',
               alignItems: 'center',
@@ -511,7 +511,7 @@ export function DocsHome(): React.JSX.Element {
                 padding: '10px 0',
                 color: 'var(--text-muted)',
                 fontSize: 13,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-ui)',
                 transition: 'color 150ms ease'
               }}
               onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)' }}

@@ -50,7 +50,7 @@ export function EmojiPicker({ currentIcon, onSelect, children }: EmojiPickerProp
     background: 'none',
     border: 'none',
     cursor: 'pointer',
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'var(--font-ui)',
     fontSize: 11,
     fontWeight: active ? 600 : 400,
     color: active ? 'var(--text)' : 'var(--text-muted)',
@@ -104,7 +104,7 @@ export function EmojiPicker({ currentIcon, onSelect, children }: EmojiPickerProp
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-ui)',
                     fontSize: 11,
                     color: 'var(--text-muted)',
                     textAlign: 'left',
@@ -122,7 +122,7 @@ export function EmojiPicker({ currentIcon, onSelect, children }: EmojiPickerProp
                   <div key={category}>
                     <div
                       style={{
-                        fontFamily: 'Inter, sans-serif',
+                        fontFamily: 'var(--font-ui)',
                         fontSize: 10,
                         color: 'var(--text-muted)',
                         padding: '4px 4px 2px',

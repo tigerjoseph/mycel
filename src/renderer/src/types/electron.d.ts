@@ -37,7 +37,7 @@ declare global {
 
       // Tags
       getTags(): Promise<import('@shared/types').Tag[]>
-      getEntitiesByTag(tag: string): Promise<unknown[]>
+      getEntitiesByTag(tag: string): Promise<import('@shared/types').TagEntity[]>
 
       // Search
       search(q: string): Promise<import('@shared/types').SearchResult[]>
@@ -83,6 +83,11 @@ declare global {
       // Import
       importAppleContacts(): Promise<unknown[]>
 
+      // Appearance
+      getAppearance(): Promise<import('@shared/appearance').AppearanceId>
+      setAppearance(id: import('@shared/appearance').AppearanceId): Promise<void>
+      onAppearanceChange(callback: (id: import('@shared/appearance').AppearanceId) => void): void
+
       // Theme
       getTheme(): Promise<'light' | 'dark'>
       setTheme(theme: 'light' | 'dark'): Promise<void>
@@ -98,6 +103,28 @@ declare global {
 
       // App info
       getVersion(): Promise<string>
+
+      // Export
+      exportCursorBundle(payload: { title: string; draft: string; context: string }): Promise<string>
+
+      // Corpus
+      getMeetings(): Promise<import('@shared/types').Meeting[]>
+      getMeeting(id: string): Promise<import('@shared/types').Meeting | null>
+      getAtoms(meetingId?: string): Promise<import('@shared/types').Atom[]>
+      importTranscript(payload: { text: string; title?: string }): Promise<{
+        meeting: import('@shared/types').Meeting
+        atoms: import('@shared/types').Atom[]
+      }>
+      importPaths(paths: string[]): Promise<{
+        meeting: import('@shared/types').Meeting
+        atoms: import('@shared/types').Atom[]
+      }[]>
+      pickAndImport(): Promise<{
+        meeting: import('@shared/types').Meeting
+        atoms: import('@shared/types').Atom[]
+      }[]>
+      deleteMeeting(id: string): Promise<void>
+      createDocFromAtoms(input: import('@shared/types').CreateDocFromAtomsInput): Promise<import('@shared/types').Doc>
     }
   }
 }

@@ -46,7 +46,7 @@ export function ContactSwitcher(): React.JSX.Element {
 
   const selectContact = useCallback(
     (id: string, name: string) => {
-      setPage('crm')
+      setPage('people')
       setActiveContactId(id)
       pushBreadcrumb({
         label: name || 'Untitled',
@@ -155,7 +155,7 @@ export function ContactSwitcher(): React.JSX.Element {
                   border: 'none',
                   outline: 'none',
                   fontSize: 15,
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-ui)',
                   color: 'var(--text)',
                   lineHeight: 1.4
                 }}
@@ -187,7 +187,7 @@ export function ContactSwitcher(): React.JSX.Element {
                     >
                       <span
                         style={{
-                          fontFamily: 'Inter, sans-serif',
+                          fontFamily: 'var(--font-ui)',
                           fontSize: 14,
                           color: 'var(--text)',
                           fontWeight: 400
@@ -198,7 +198,7 @@ export function ContactSwitcher(): React.JSX.Element {
                       {contact.metadata?.company && (
                         <span
                           style={{
-                            fontFamily: 'Inter, sans-serif',
+                            fontFamily: 'var(--font-ui)',
                             fontSize: 12,
                             color: 'var(--text-muted)'
                           }}
@@ -216,7 +216,7 @@ export function ContactSwitcher(): React.JSX.Element {
               <div style={{ padding: '20px 16px', textAlign: 'center' }}>
                 <span
                   style={{
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-ui)',
                     fontSize: 13,
                     color: 'var(--text-muted)'
                   }}

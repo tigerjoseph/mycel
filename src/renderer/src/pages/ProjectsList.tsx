@@ -50,7 +50,7 @@ export function ProjectsList(): React.JSX.Element {
       >
         <span
           style={{
-            fontFamily: 'Lora, serif',
+            fontFamily: 'var(--font-heading)',
             fontSize: 18,
             color: 'var(--text-muted)'
           }}
@@ -59,7 +59,7 @@ export function ProjectsList(): React.JSX.Element {
         </span>
         <span
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-ui)',
             fontSize: 13,
             color: 'var(--text-muted)'
           }}
@@ -77,7 +77,7 @@ export function ProjectsList(): React.JSX.Element {
         <button
           onClick={() => setStageFilter(null)}
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-ui)',
             fontSize: 12,
             padding: '4px 12px',
             borderRadius: 12,
@@ -95,7 +95,7 @@ export function ProjectsList(): React.JSX.Element {
             key={stage}
             onClick={() => setStageFilter(stageFilter === stage ? null : stage)}
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-ui)',
               fontSize: 12,
               padding: '4px 12px',
               borderRadius: 12,
@@ -138,7 +138,7 @@ export function ProjectsList(): React.JSX.Element {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 0 }}>
               <span
                 style={{
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-ui)',
                   fontSize: 14,
                   color: 'var(--text)',
                   fontWeight: 400,
@@ -151,7 +151,7 @@ export function ProjectsList(): React.JSX.Element {
               </span>
               <span
                 style={{
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-ui)',
                   fontSize: 12,
                   color: 'var(--text-muted)'
                 }}
@@ -162,7 +162,7 @@ export function ProjectsList(): React.JSX.Element {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, marginLeft: 16 }}>
               <span
                 style={{
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-ui)',
                   fontSize: 11,
                   color: project.stage === 'Won' ? 'var(--accent)' : project.stage === 'Lost' ? 'var(--text-muted)' : 'var(--text)',
                   background: 'var(--surface)',
@@ -175,7 +175,7 @@ export function ProjectsList(): React.JSX.Element {
               </span>
               <span
                 style={{
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-ui)',
                   fontSize: 12,
                   color: 'var(--text-muted)',
                   whiteSpace: 'nowrap'

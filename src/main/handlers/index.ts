@@ -10,14 +10,12 @@ import { registerProjectHandlers } from './projects'
 import { registerMilestoneHandlers } from './milestones'
 import { registerTodoHandlers } from './todos'
 import { registerSettingsHandlers } from './settings'
+import { registerLinkHandlers } from './links'
+import { registerExportHandlers } from './export'
+import { registerCorpusHandlers } from './corpus'
 
 /** Register remaining IPC stubs for features not yet implemented */
 function registerRemainingStubs(): void {
-  // Links
-  ipcMain.handle('links:get', () => [])
-  ipcMain.handle('links:upsert', () => {})
-  ipcMain.handle('links:delete', () => {})
-
   // Google Calendar
   ipcMain.handle('gcal:connect', () => {})
   ipcMain.handle('gcal:fetchEvents', () => [])
@@ -46,5 +44,8 @@ export function registerHandlers(): void {
   registerMilestoneHandlers()
   registerTodoHandlers()
   registerSettingsHandlers()
+  registerLinkHandlers()
+  registerExportHandlers()
+  registerCorpusHandlers()
   registerRemainingStubs()
 }

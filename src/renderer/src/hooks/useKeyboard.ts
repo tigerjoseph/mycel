@@ -9,20 +9,25 @@ export function useKeyboard(): void {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent): void {
-      // Cmd+1 → CRM
+      // Cmd+1 → To-Do
       if (e.metaKey && e.key === '1') {
         e.preventDefault()
-        setPage('crm')
+        setPage('todo')
       }
-      // Cmd+2 → Docs
+      // Cmd+2 → People
       if (e.metaKey && e.key === '2') {
         e.preventDefault()
-        setPage('docs')
+        setPage('people')
       }
-      // Cmd+3 → Notes
+      // Cmd+3 → Create
       if (e.metaKey && e.key === '3') {
         e.preventDefault()
-        setPage('notes')
+        setPage('create')
+      }
+      // Cmd+4 → Corpus
+      if (e.metaKey && e.key === '4') {
+        e.preventDefault()
+        setPage('corpus')
       }
       // Cmd+[ → Navigate back
       if (e.metaKey && e.key === '[') {

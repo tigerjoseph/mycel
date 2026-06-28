@@ -84,7 +84,7 @@ export function CRMDashboard(): React.JSX.Element {
   }
 
   const cardTitleStyle: React.CSSProperties = {
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'var(--font-ui)',
     fontSize: 11,
     fontWeight: 500,
     color: 'var(--text-muted)',
@@ -94,7 +94,7 @@ export function CRMDashboard(): React.JSX.Element {
   }
 
   const heroStyle: React.CSSProperties = {
-    fontFamily: 'Lora, serif',
+    fontFamily: 'var(--font-heading)',
     fontSize: 36,
     fontWeight: 600,
     color: 'var(--text)',
@@ -102,13 +102,13 @@ export function CRMDashboard(): React.JSX.Element {
   }
 
   const secondaryTextStyle: React.CSSProperties = {
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'var(--font-ui)',
     fontSize: 12,
     color: 'var(--text-muted)'
   }
 
   const listItemStyle: React.CSSProperties = {
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'var(--font-ui)',
     fontSize: 12,
     color: 'var(--text-muted)',
     overflow: 'hidden',
@@ -118,7 +118,7 @@ export function CRMDashboard(): React.JSX.Element {
   }
 
   const stageBadgeStyle: React.CSSProperties = {
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'var(--font-ui)',
     fontSize: 10,
     color: 'var(--text-muted)',
     background: 'var(--surface)',
@@ -153,7 +153,7 @@ export function CRMDashboard(): React.JSX.Element {
 
       {/* Follow Up */}
       <motion.button
-        onClick={() => setCRMView('actions')}
+        onClick={() => setCRMView('followups')}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ ...spring, delay: 0.05 }}
@@ -234,13 +234,13 @@ export function CRMDashboard(): React.JSX.Element {
           <span style={{ ...heroStyle, color: 'var(--accent)' }}>{wonThisMonth.length}</span>
           <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-              <span style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+              <span style={{ fontFamily: 'var(--font-heading)', fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
                 {pipelineCount}
               </span>
               <span style={secondaryTextStyle}>pipeline</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-              <span style={{ fontFamily: 'Lora, serif', fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>
+              <span style={{ fontFamily: 'var(--font-heading)', fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>
                 {lostThisMonth}
               </span>
               <span style={secondaryTextStyle}>lost</span>

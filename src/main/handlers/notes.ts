@@ -1,12 +1,14 @@
 import { ipcMain } from 'electron'
 import { nanoid } from 'nanoid'
 import { getDb } from '../db'
+import { noteBodyPreview } from '../db/notePreview'
 
 function parseNoteRow(row: Record<string, unknown>): Record<string, unknown> {
   return {
     id: row.id,
     title: row.title,
-    body: row.body,
+    body: (row.body as string) || '',
+    bodyPreview: (row.body_preview as string) || '',
     tags: JSON.parse((row.tags as string) || '[]'),
     createdAt: row.created_at as number,
     updatedAt: row.updated_at as number
@@ -16,7 +18,9 @@ function parseNoteRow(row: Record<string, unknown>): Record<string, unknown> {
 export function registerNoteHandlers(): void {
   ipcMain.handle('notes:getAll', async (_e, filterTags?: string[]) => {
     const db = getDb()
-    const result = await db.execute('SELECT * FROM notes ORDER BY created_at DESC')
+    const result = await db.execute(
+      'SELECT id, title, body_preview, tags, created_at, updated_at FROM notes ORDER BY created_at DESC'
+    )
     let rows = result.rows.map((row) => parseNoteRow(row as unknown as Record<string, unknown>))
 
     // If filterTags provided, keep only notes that have ALL of the filter tags (AND logic)
@@ -46,15 +50,17 @@ export function registerNoteHandlers(): void {
     const tags = JSON.stringify(note.tags || [])
     const createdAt = (note.createdAt ?? note.created_at ?? now) as number
     const updatedAt = now
+    const preview = noteBodyPreview(body)
 
     await db.execute({
-      sql: `INSERT OR REPLACE INTO notes (id, title, body, tags, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?)`,
-      args: [id, title, body, tags, createdAt, updatedAt]
+      sql: `INSERT OR REPLACE INTO notes (id, title, body, body_preview, tags, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: [id, title, body, preview, tags, createdAt, updatedAt]
     })
 
     return {
       id, title, body,
+      bodyPreview: preview,
       tags: note.tags || [],
       createdAt, updatedAt
     }

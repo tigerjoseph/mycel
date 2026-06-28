@@ -5,9 +5,10 @@ import type { PageId } from '@shared/types'
 import { Logo } from './Logo'
 
 const tabs: { id: PageId; label: string }[] = [
-  { id: 'crm', label: 'CRM' },
-  { id: 'docs', label: 'Docs' },
-  { id: 'notes', label: 'Notes' }
+  { id: 'todo', label: 'To-Do' },
+  { id: 'people', label: 'People' },
+  { id: 'create', label: 'Create' },
+  { id: 'corpus', label: 'Corpus' }
 ]
 
 const springTransition = { type: 'spring' as const, stiffness: 400, damping: 28 }
@@ -24,10 +25,11 @@ export default function TopNav() {
   return (
     <header
       style={{
-        height: 52,
-        paddingTop: 10,
+        height: 68,
+        paddingTop: 18,
+        paddingBottom: 10,
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-end',
         WebkitAppRegion: 'drag',
         position: 'relative',
         userSelect: 'none'
@@ -73,10 +75,11 @@ export default function TopNav() {
         style={{
           position: 'absolute',
           left: '50%',
+          bottom: 10,
           transform: 'translateX(-50%)',
           display: 'flex',
           alignItems: 'center',
-          gap: 32
+          gap: 36
         }}
       >
         {tabs.map((tab) => {
@@ -92,11 +95,11 @@ export default function TopNav() {
                 WebkitAppRegion: 'no-drag',
                 background: 'none',
                 border: 'none',
-                padding: '0 0 6px 0',
+                padding: '0 0 8px 0',
                 cursor: 'pointer',
                 position: 'relative',
-                fontSize: 14,
-                fontFamily: 'Lora, serif',
+                fontSize: 17,
+                fontFamily: 'var(--font-heading)',
                 fontWeight: isActive ? 600 : 400,
                 color: isActive ? 'var(--accent)' : 'var(--text-muted)',
                 transition: 'color 150ms ease',

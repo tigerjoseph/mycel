@@ -34,6 +34,7 @@ export interface Note {
   id: string
   title: string
   body: string
+  bodyPreview?: string
   tags: string[]
   createdAt: number
   updatedAt: number
@@ -95,14 +96,52 @@ export interface Tag {
   count: number
 }
 
+export interface TagEntity {
+  id: string
+  type: 'contact' | 'doc' | 'note'
+  name: string
+}
+
 export interface SearchResult {
   id: string
-  type: 'contact' | 'doc' | 'note' | 'project'
+  type: 'contact' | 'doc' | 'note' | 'project' | 'todo'
   title: string
   snippet: string
 }
 
-export type PageId = 'crm' | 'docs' | 'notes'
+export type AtomKind = 'insight' | 'quote' | 'action' | 'frame'
+
+export interface Meeting {
+  id: string
+  title: string
+  transcript: string
+  source: 'import' | 'recording'
+  sourcePath: string | null
+  createdAt: number
+  updatedAt: number
+}
+
+export interface Atom {
+  id: string
+  meetingId: string
+  text: string
+  kind: AtomKind
+  position: number
+  createdAt: number
+}
+
+export type CorpusDocType = 'newsletter' | 'outline'
+
+export interface CreateDocFromAtomsInput {
+  atomIds: string[]
+  mode: 'new' | 'append'
+  docId?: string
+  docType: CorpusDocType
+  title?: string
+  generateWithGemini?: boolean
+}
+
+export type PageId = 'todo' | 'people' | 'create' | 'corpus'
 
 export interface BreadcrumbEntry {
   label: string

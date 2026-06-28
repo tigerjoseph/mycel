@@ -88,6 +88,13 @@ const mycelAPI = {
     ipcRenderer.on('theme:changed', (_e, theme: string) => callback(theme))
   },
 
+  // Appearance
+  getAppearance: (): Promise<string> => ipcRenderer.invoke('appearance:get'),
+  setAppearance: (id: string): Promise<void> => ipcRenderer.invoke('appearance:set', id),
+  onAppearanceChange: (callback: (id: string) => void): void => {
+    ipcRenderer.on('appearance:changed', (_e, id: string) => callback(id))
+  },
+
   // Listen for main process events
   onOpenSettings: (callback: () => void): void => {
     ipcRenderer.on('open-settings', () => callback())
@@ -104,6 +111,22 @@ const mycelAPI = {
 
   // App info
   getVersion: (): Promise<string> => ipcRenderer.invoke('app:getVersion'),
+
+  // Export
+  exportCursorBundle: (payload: { title: string; draft: string; context: string }): Promise<string> =>
+    ipcRenderer.invoke('export:cursorBundle', payload),
+
+  // Corpus
+  getMeetings: (): Promise<unknown[]> => ipcRenderer.invoke('corpus:getMeetings'),
+  getMeeting: (id: string): Promise<unknown> => ipcRenderer.invoke('corpus:getMeeting', id),
+  getAtoms: (meetingId?: string): Promise<unknown[]> => ipcRenderer.invoke('corpus:getAtoms', meetingId),
+  importTranscript: (payload: { text: string; title?: string }): Promise<unknown> =>
+    ipcRenderer.invoke('corpus:importTranscript', payload),
+  importPaths: (paths: string[]): Promise<unknown[]> => ipcRenderer.invoke('corpus:importPaths', paths),
+  pickAndImport: (): Promise<unknown[]> => ipcRenderer.invoke('corpus:pickAndImport'),
+  deleteMeeting: (id: string): Promise<void> => ipcRenderer.invoke('corpus:deleteMeeting', id),
+  createDocFromAtoms: (input: unknown): Promise<unknown> =>
+    ipcRenderer.invoke('corpus:createDocFromAtoms', input),
 }
 
 contextBridge.exposeInMainWorld('mycel', mycelAPI)

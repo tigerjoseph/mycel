@@ -48,7 +48,7 @@ export function registerTagHandlers(): void {
     for (const [tag, count] of tagMap) {
       result.push({ tag, count })
     }
-    return result.sort((a, b) => b.count - a.count)
+    return result.sort((a, b) => b.count - a.count).map((t) => ({ name: t.tag, count: t.count }))
   })
 
   ipcMain.handle('tags:getEntities', async (_e, tag: string) => {

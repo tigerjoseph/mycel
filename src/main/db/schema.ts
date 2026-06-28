@@ -82,4 +82,30 @@ CREATE TABLE IF NOT EXISTS todos (
   position INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS meetings (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL DEFAULT '',
+  transcript TEXT NOT NULL DEFAULT '',
+  source TEXT NOT NULL DEFAULT 'import',
+  source_path TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS atoms (
+  id TEXT PRIMARY KEY,
+  meeting_id TEXT NOT NULL,
+  text TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'insight',
+  position INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS doc_attachments (
+  id TEXT PRIMARY KEY,
+  doc_id TEXT NOT NULL,
+  atom_id TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
 `

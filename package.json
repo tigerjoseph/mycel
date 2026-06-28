@@ -1,6 +1,6 @@
 {
   "name": "mycel",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Personal CRM + Docs + Notes",
   "main": "./out/main/index.js",
   "author": "example.com",
@@ -33,6 +33,7 @@
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@floating-ui/dom": "^1.7.6",
+    "@google/genai": "^2.10.0",
     "@libsql/client": "^0.17.0",
     "@tanstack/react-table": "^8.21.3",
     "@tiptap/extension-character-count": "^3.20.0",

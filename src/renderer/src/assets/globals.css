@@ -65,6 +65,9 @@
   --text-muted: #9A9189;
   --accent: #3D5A3E;
   --border: rgba(0, 0, 0, 0.07);
+  --font-heading: 'Lora', serif;
+  --font-ui: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --ui-scale: 1.08;
 }
 
 /* --- Custom Properties: Dark Mode ------------------------- */
@@ -78,15 +81,46 @@
   --border: rgba(255, 255, 255, 0.07);
 }
 
+/* --- Bold palette ----------------------------------------- */
+
+[data-palette="bold"] {
+  --bg: #FFFFFF;
+  --surface: #F5F5F5;
+  --text: #000000;
+  --text-muted: #666666;
+  --accent: #000000;
+  --border: rgba(0, 0, 0, 0.1);
+  --font-heading: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-ui: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+[data-palette="bold"][data-theme="dark"] {
+  --bg: #000000;
+  --surface: #141414;
+  --text: #FFFFFF;
+  --text-muted: #999999;
+  --accent: #FFFFFF;
+  --border: rgba(255, 255, 255, 0.1);
+}
+
 /* --- Base Styles ------------------------------------------ */
 
 html,
 body {
   background-color: var(--bg);
   color: var(--text);
-  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+main {
+  zoom: var(--ui-scale);
+}
+
+/* Overlays (outside main) match content scale */
+[data-ui-overlay] {
+  zoom: var(--ui-scale);
 }
 
 ::selection {
@@ -131,11 +165,11 @@ body {
 /* --- Utility Classes -------------------------------------- */
 
 .font-heading {
-  font-family: 'Lora', serif;
+  font-family: var(--font-heading);
 }
 
 .font-ui {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-ui);
 }
 
 /* --- Squishy Buttons -------------------------------------- */
@@ -172,7 +206,7 @@ button:active:not(:disabled) {
 }
 
 .tiptap h1 {
-  font-family: 'Lora', serif;
+  font-family: var(--font-heading);
   font-size: 32px;
   font-weight: 600;
   line-height: 1.3;
@@ -180,7 +214,7 @@ button:active:not(:disabled) {
 }
 
 .tiptap h2 {
-  font-family: 'Lora', serif;
+  font-family: var(--font-heading);
   font-size: 24px;
   font-weight: 600;
   line-height: 1.3;
@@ -188,7 +222,7 @@ button:active:not(:disabled) {
 }
 
 .tiptap h3 {
-  font-family: 'Lora', serif;
+  font-family: var(--font-heading);
   font-size: 18px;
   font-weight: 600;
   line-height: 1.4;
@@ -197,6 +231,8 @@ button:active:not(:disabled) {
 
 .tiptap p {
   margin: 0.4em 0;
+  font-size: 15px;
+  line-height: 1.75;
 }
 
 /* Tailwind preflight strips list markers; restore them inside editors */

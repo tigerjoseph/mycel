@@ -1,33 +1,15 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Plus, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { format } from 'date-fns'
 import { fadeUp, spring } from '../styles/animation'
 import { useNotesStore } from '../store/notes'
 import { TagFilter } from '../components/TagFilter'
 import { MonthFilter } from '../components/MonthFilter'
+import { TagPicker, getTagColor } from '../components/TagPicker'
+import { useFlushOnLeave } from '../hooks/useFlushOnLeave'
 import { noteBodyHtmlToPlain, noteBodyPlainToHtml, noteBodyHasContent } from '../utils/noteBody'
 import type { Note } from '@shared/types'
-
-// Muted, earthy tag colors
-const TAG_COLORS = [
-  { bg: '#E8ECF4', text: '#4A5A8A' },
-  { bg: '#F4E8E4', text: '#8B5A4A' },
-  { bg: '#E4F0E8', text: '#4A7A5A' },
-  { bg: '#F4EDE4', text: '#9A7A4A' },
-  { bg: '#ECE4F4', text: '#6A4A8A' },
-  { bg: '#E4EEF0', text: '#4A7A8A' },
-  { bg: '#F4E4E8', text: '#8A4A5A' },
-  { bg: '#EEF4E4', text: '#5A8A4A' },
-]
-
-function getTagColor(tag: string): { bg: string; text: string } {
-  let hash = 0
-  for (let i = 0; i < tag.length; i++) {
-    hash = tag.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length]
-}
 
 // ── Tag Context Menu ─────────────────────────────────
 function TagContextMenu({ x, y, tag, onDelete, onClose }: {
@@ -62,7 +44,7 @@ function TagContextMenu({ x, y, tag, onDelete, onClose }: {
         style={{
           display: 'flex', alignItems: 'center', gap: 8, width: '100%',
           padding: '6px 10px', background: 'none', border: 'none', cursor: 'pointer',
-          fontSize: 12, fontFamily: 'Inter, sans-serif', color: '#D93025',
+          fontSize: 12, fontFamily: 'var(--font-ui)', color: '#D93025',
           borderRadius: 6, transition: 'background 100ms ease'
         }}
         onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--border)' }}
@@ -81,8 +63,6 @@ function NoteComposer({ onSave }: { onSave: () => void }) {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [tags, setTags] = useState<string[]>([])
-  const [tagInput, setTagInput] = useState('')
-  const [showTagInput, setShowTagInput] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
 
   const handleExpand = () => {
@@ -110,15 +90,6 @@ function NoteComposer({ onSave }: { onSave: () => void }) {
     onSave()
   }
 
-  const handleAddTag = () => {
-    const trimmed = tagInput.trim().toLowerCase()
-    if (trimmed && !tags.includes(trimmed)) {
-      setTags([...tags, trimmed])
-    }
-    setTagInput('')
-    setShowTagInput(false)
-  }
-
   if (!expanded) {
     return (
       <motion.div
@@ -131,7 +102,7 @@ function NoteComposer({ onSave }: { onSave: () => void }) {
           border: '1px solid var(--border)',
           borderRadius: 10,
           cursor: 'text',
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-ui)',
           fontSize: 14,
           color: 'var(--text-muted)'
         }}
@@ -162,7 +133,7 @@ function NoteComposer({ onSave }: { onSave: () => void }) {
         style={{
           width: '100%', padding: '16px 16px 0',
           border: 'none', background: 'none', outline: 'none',
-          fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600,
+          fontFamily: 'var(--font-heading)', fontSize: 17, fontWeight: 600,
           color: 'var(--text)', lineHeight: 1.3
         }}
       />
@@ -174,7 +145,7 @@ function NoteComposer({ onSave }: { onSave: () => void }) {
         style={{
           width: '100%', padding: '8px 16px',
           border: 'none', background: 'none', outline: 'none', resize: 'none',
-          fontFamily: 'Inter, sans-serif', fontSize: 14, lineHeight: 1.7,
+          fontFamily: 'var(--font-ui)', fontSize: 14, lineHeight: 1.7,
           color: 'var(--text)'
         }}
       />
@@ -182,64 +153,8 @@ function NoteComposer({ onSave }: { onSave: () => void }) {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '8px 16px 12px', gap: 8
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', flex: 1 }}>
-          {tags.map((tag) => {
-            const color = getTagColor(tag)
-            return (
-              <motion.span
-                key={tag}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 3,
-                  background: color.bg, color: color.text, borderRadius: 20,
-                  padding: '2px 8px', fontSize: 11, fontFamily: 'Inter, sans-serif', fontWeight: 500
-                }}
-              >
-                {tag}
-                <button
-                  onClick={() => setTags(tags.filter((t) => t !== tag))}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                    color: color.text, fontSize: 11, lineHeight: 1, display: 'flex' }}
-                >
-                  <X size={10} />
-                </button>
-              </motion.span>
-            )
-          })}
-          {showTagInput ? (
-            <input
-              autoFocus
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); handleAddTag() }
-                if (e.key === 'Escape') { setShowTagInput(false); setTagInput('') }
-              }}
-              onBlur={handleAddTag}
-              placeholder="tag"
-              style={{
-                background: 'none', border: '1px solid var(--border)', borderRadius: 20,
-                padding: '2px 8px', fontSize: 11, fontFamily: 'Inter, sans-serif',
-                color: 'var(--text)', outline: 'none', width: 70
-              }}
-            />
-          ) : (
-            <button
-              onClick={() => setShowTagInput(true)}
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                fontSize: 11, fontFamily: 'Inter, sans-serif', color: 'var(--text-muted)',
-                display: 'flex', alignItems: 'center', gap: 2, padding: '2px 0'
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
-            >
-              <Plus size={11} />
-              tag
-            </button>
-          )}
+        <div style={{ flex: 1 }}>
+          <TagPicker tags={tags} onChange={setTags} />
         </div>
         <motion.button
           onClick={handleSave}
@@ -249,7 +164,7 @@ function NoteComposer({ onSave }: { onSave: () => void }) {
           style={{
             background: 'var(--accent)', color: '#fff', border: 'none',
             borderRadius: 6, padding: '5px 14px', cursor: 'pointer',
-            fontSize: 12, fontFamily: 'Inter, sans-serif', fontWeight: 500,
+            fontSize: 12, fontFamily: 'var(--font-ui)', fontWeight: 500,
             flexShrink: 0
           }}
         >
@@ -265,14 +180,14 @@ function InlineNoteEditor({ note, onClose }: { note: Note; onClose: () => void }
   const [title, setTitle] = useState(note.title)
   const [body, setBody] = useState(() => noteBodyHtmlToPlain(note.body))
   const [tags, setTags] = useState<string[]>(note.tags)
-  const [tagInput, setTagInput] = useState('')
-  const [showTagInput, setShowTagInput] = useState(false)
   const fetchNotes = useNotesStore((s) => s.fetch)
   const titleRef = useRef<HTMLInputElement>(null)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => { titleRef.current?.focus() }, [])
 
-  const save = useCallback(async () => {
+  const persist = useCallback(async (closeAfter = false) => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     await window.mycel.upsertNote({
       ...note,
       title: title.trim(),
@@ -281,23 +196,29 @@ function InlineNoteEditor({ note, onClose }: { note: Note; onClose: () => void }
       updatedAt: Date.now()
     })
     fetchNotes()
-    onClose()
+    if (closeAfter) onClose()
   }, [note, title, body, tags, fetchNotes, onClose])
+
+  const debouncedPersist = useCallback(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => { void persist() }, 2000)
+  }, [persist])
+
+  const flushSave = useCallback(async () => {
+    await persist(false)
+  }, [persist])
+
+  useFlushOnLeave(flushSave, { watchCreateView: true })
+
+  const save = useCallback(async () => {
+    await persist(true)
+  }, [persist])
 
   const handleDelete = async () => {
     if (!confirm('Delete this note?')) return
     await window.mycel.deleteNote(note.id)
     fetchNotes()
     onClose()
-  }
-
-  const handleAddTag = () => {
-    const trimmed = tagInput.trim().toLowerCase()
-    if (trimmed && !tags.includes(trimmed)) {
-      setTags([...tags, trimmed])
-    }
-    setTagInput('')
-    setShowTagInput(false)
   }
 
   return (
@@ -315,26 +236,28 @@ function InlineNoteEditor({ note, onClose }: { note: Note; onClose: () => void }
       <input
         ref={titleRef}
         value={title}
-        onChange={(e) => setTitle(e.target.value)}
+        onChange={(e) => { setTitle(e.target.value); debouncedPersist() }}
         placeholder="Title"
         onKeyDown={(e) => { if (e.key === 'Escape') save() }}
+        onBlur={() => { void flushSave() }}
         style={{
           width: '100%', padding: '16px 16px 0',
           border: 'none', background: 'none', outline: 'none',
-          fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600,
+          fontFamily: 'var(--font-heading)', fontSize: 17, fontWeight: 600,
           color: 'var(--text)', lineHeight: 1.3
         }}
       />
       <textarea
         value={body}
-        onChange={(e) => setBody(e.target.value)}
+        onChange={(e) => { setBody(e.target.value); debouncedPersist() }}
         placeholder="Start writing..."
         rows={5}
         onKeyDown={(e) => { if (e.key === 'Escape') save() }}
+        onBlur={() => { void flushSave() }}
         style={{
           width: '100%', padding: '8px 16px',
           border: 'none', background: 'none', outline: 'none', resize: 'none',
-          fontFamily: 'Inter, sans-serif', fontSize: 14, lineHeight: 1.7,
+          fontFamily: 'var(--font-ui)', fontSize: 14, lineHeight: 1.7,
           color: 'var(--text)'
         }}
       />
@@ -342,64 +265,14 @@ function InlineNoteEditor({ note, onClose }: { note: Note; onClose: () => void }
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '8px 16px 12px', gap: 8
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', flex: 1 }}>
-          {tags.map((tag) => {
-            const color = getTagColor(tag)
-            return (
-              <motion.span
-                key={tag}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 3,
-                  background: color.bg, color: color.text, borderRadius: 20,
-                  padding: '2px 8px', fontSize: 11, fontFamily: 'Inter, sans-serif', fontWeight: 500
-                }}
-              >
-                {tag}
-                <button
-                  onClick={() => setTags(tags.filter((t) => t !== tag))}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                    color: color.text, fontSize: 11, lineHeight: 1, display: 'flex' }}
-                >
-                  <X size={10} />
-                </button>
-              </motion.span>
-            )
-          })}
-          {showTagInput ? (
-            <input
-              autoFocus
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); handleAddTag() }
-                if (e.key === 'Escape') { setShowTagInput(false); setTagInput('') }
-              }}
-              onBlur={handleAddTag}
-              placeholder="tag"
-              style={{
-                background: 'none', border: '1px solid var(--border)', borderRadius: 20,
-                padding: '2px 8px', fontSize: 11, fontFamily: 'Inter, sans-serif',
-                color: 'var(--text)', outline: 'none', width: 70
-              }}
-            />
-          ) : (
-            <button
-              onClick={() => setShowTagInput(true)}
-              style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                fontSize: 11, fontFamily: 'Inter, sans-serif', color: 'var(--text-muted)',
-                display: 'flex', alignItems: 'center', gap: 2, padding: '2px 0'
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
-            >
-              <Plus size={11} />
-              tag
-            </button>
-          )}
+        <div style={{ flex: 1 }}>
+          <TagPicker
+            tags={tags}
+            onChange={(next) => {
+              setTags(next)
+              debouncedPersist()
+            }}
+          />
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           <motion.button
@@ -408,7 +281,7 @@ function InlineNoteEditor({ note, onClose }: { note: Note; onClose: () => void }
             whileTap={{ scale: 0.96 }}
             style={{
               background: 'none', color: 'var(--text-muted)', border: 'none',
-              cursor: 'pointer', fontSize: 12, fontFamily: 'Inter, sans-serif',
+              cursor: 'pointer', fontSize: 12, fontFamily: 'var(--font-ui)',
               padding: '5px 8px', borderRadius: 6, transition: 'color 150ms ease'
             }}
             onMouseEnter={(e) => { e.currentTarget.style.color = '#D93025' }}
@@ -424,7 +297,7 @@ function InlineNoteEditor({ note, onClose }: { note: Note; onClose: () => void }
             style={{
               background: 'var(--accent)', color: '#fff', border: 'none',
               borderRadius: 6, padding: '5px 14px', cursor: 'pointer',
-              fontSize: 12, fontFamily: 'Inter, sans-serif', fontWeight: 500
+              fontSize: 12, fontFamily: 'var(--font-ui)', fontWeight: 500
             }}
           >
             Save
@@ -539,7 +412,7 @@ export function Notes(): React.JSX.Element {
             display: 'flex', flexDirection: 'column', alignItems: 'center',
             justifyContent: 'center', minHeight: 400, gap: 16
           }}>
-            <span style={{ fontFamily: 'Lora, serif', fontSize: 18, color: 'var(--text-muted)' }}>
+            <span style={{ fontFamily: 'var(--font-heading)', fontSize: 18, color: 'var(--text-muted)' }}>
               Nothing here yet
             </span>
             <NoteComposer onSave={fetchNotes} />
@@ -565,7 +438,7 @@ export function Notes(): React.JSX.Element {
             {groupedNotes.map((group) => (
               <div key={group.label} style={{ marginBottom: 32 }}>
                 <div style={{
-                  fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 500,
+                  fontFamily: 'var(--font-ui)', fontSize: 12, fontWeight: 500,
                   textTransform: 'uppercase', letterSpacing: '0.05em',
                   color: 'var(--text-muted)', marginBottom: 12
                 }}>
@@ -597,29 +470,39 @@ export function Notes(): React.JSX.Element {
                         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16 }}>
                           {note.title && (
                             <span style={{
-                              fontFamily: 'Lora, serif', fontSize: 17, fontWeight: 600,
+                              fontFamily: 'var(--font-heading)', fontSize: 17, fontWeight: 600,
                               color: 'var(--text)', lineHeight: 1.3, flex: 1, minWidth: 0
                             }}>
                               {note.title}
                             </span>
                           )}
                           <span style={{
-                            fontFamily: 'Inter, sans-serif', fontSize: 11,
+                            fontFamily: 'var(--font-ui)', fontSize: 11,
                             color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0
                           }}>
                             {format(new Date(note.createdAt), 'MMM d')}
                           </span>
                         </div>
 
-                        {note.body && note.body !== '<p></p>' && (
+                        {(note.bodyPreview || (note.body && note.body !== '<p></p>')) && (
+                          note.bodyPreview ? (
+                            <p style={{
+                              fontFamily: 'var(--font-ui)', fontSize: 14,
+                              lineHeight: 1.7, color: 'var(--text)', overflow: 'hidden',
+                              margin: 0
+                            }}>
+                              {note.bodyPreview}
+                            </p>
+                          ) : (
                           <div
                             className="note-body-preview"
                             dangerouslySetInnerHTML={{ __html: note.body }}
                             style={{
-                              fontFamily: 'Inter, sans-serif', fontSize: 14,
+                              fontFamily: 'var(--font-ui)', fontSize: 14,
                               lineHeight: 1.7, color: 'var(--text)', overflow: 'hidden'
                             }}
                           />
+                          )
                         )}
 
                         {note.tags.length > 0 && (
@@ -639,7 +522,7 @@ export function Notes(): React.JSX.Element {
                                   style={{
                                     display: 'inline-block', background: color.bg, color: color.text,
                                     borderRadius: 20, padding: '3px 10px', fontSize: 11,
-                                    fontFamily: 'Inter, sans-serif', fontWeight: 500, whiteSpace: 'nowrap'
+                                    fontFamily: 'var(--font-ui)', fontWeight: 500, whiteSpace: 'nowrap'
                                   }}
                                 >
                                   {tag}

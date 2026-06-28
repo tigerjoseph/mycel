@@ -131,7 +131,7 @@ export function ProjectDetail(): React.JSX.Element {
         }}
         {...fadeUp}
       >
-        <span style={{ fontFamily: 'Lora, serif', color: 'var(--text-muted)' }}>
+        <span style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-muted)' }}>
           Loading project...
         </span>
       </motion.div>
@@ -154,7 +154,7 @@ export function ProjectDetail(): React.JSX.Element {
             border: 'none',
             cursor: 'pointer',
             fontSize: 13,
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-ui)',
             color: 'var(--text-muted)',
             display: 'flex',
             alignItems: 'center',
@@ -203,7 +203,7 @@ export function ProjectDetail(): React.JSX.Element {
             }}
             placeholder="Project name"
             style={{
-              fontFamily: 'Lora, serif',
+              fontFamily: 'var(--font-heading)',
               fontSize: 28,
               fontWeight: 600,
               color: 'var(--text)',
@@ -223,7 +223,7 @@ export function ProjectDetail(): React.JSX.Element {
               setTimeout(() => nameInputRef.current?.focus(), 50)
             }}
             style={{
-              fontFamily: 'Lora, serif',
+              fontFamily: 'var(--font-heading)',
               fontSize: 28,
               fontWeight: 600,
               color: 'var(--text)',
@@ -241,7 +241,7 @@ export function ProjectDetail(): React.JSX.Element {
       <div style={{ marginBottom: 36 }}>
         <h2
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-ui)',
             fontSize: 12,
             fontWeight: 500,
             color: 'var(--text-muted)',
@@ -309,7 +309,7 @@ export function ProjectDetail(): React.JSX.Element {
                 </div>
                 <span
                   style={{
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-ui)',
                     fontSize: 11,
                     fontWeight: isActive ? 500 : 400,
                     color: isActive ? 'var(--text)' : 'var(--text-muted)',
@@ -328,7 +328,7 @@ export function ProjectDetail(): React.JSX.Element {
       <div>
         <h2
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-ui)',
             fontSize: 12,
             fontWeight: 500,
             color: 'var(--text-muted)',
@@ -376,7 +376,7 @@ export function ProjectDetail(): React.JSX.Element {
               </div>
               <span
                 style={{
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-ui)',
                   fontSize: 14,
                   color: ms.done ? 'var(--text-muted)' : 'var(--text)',
                   textDecoration: ms.done ? 'line-through' : 'none',
@@ -414,7 +414,7 @@ export function ProjectDetail(): React.JSX.Element {
               }}
               placeholder="Milestone..."
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-ui)',
                 fontSize: 14,
                 color: 'var(--text)',
                 background: 'none',
@@ -436,7 +436,7 @@ export function ProjectDetail(): React.JSX.Element {
               border: 'none',
               cursor: 'pointer',
               fontSize: 13,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-ui)',
               color: 'var(--text-muted)',
               padding: '12px 0 0 0',
               display: 'flex',

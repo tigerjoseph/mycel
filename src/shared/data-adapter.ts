@@ -1,3 +1,4 @@
+import type { AppearanceId } from './appearance'
 import type { Contact, Doc, Folder, Note, Link, Tag, SearchResult, Touchpoint, Project, Milestone } from './types'
 
 export interface DataAdapter {
@@ -44,4 +45,7 @@ export interface DataAdapter {
 
   getTheme(): Promise<'light' | 'dark'>
   setTheme(theme: 'light' | 'dark'): Promise<void>
+
+  getAppearance(): Promise<AppearanceId>
+  setAppearance(id: AppearanceId): Promise<void>
 }

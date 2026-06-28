@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { LayoutDashboard, Briefcase, Users, Send } from 'lucide-react'
+import { Briefcase, Users, UserRound } from 'lucide-react'
 import { spring } from '../styles/animation'
 import { useUIStore } from '../store/ui'
 import { useContactsStore } from '../store/contacts'
@@ -9,13 +9,11 @@ import { ContactDetail } from './ContactDetail'
 import { ProjectDetail } from './ProjectDetail'
 import { ProjectsList } from './ProjectsList'
 import { OutreachQueue } from './OutreachQueue'
-import { CRMDashboard } from './CRMDashboard'
 
 const CRM_TABS = [
-  { id: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard },
   { id: 'projects' as const, label: 'Projects', icon: Briefcase },
   { id: 'contacts' as const, label: 'Contacts', icon: Users },
-  { id: 'actions' as const, label: 'Actions', icon: Send }
+  { id: 'followups' as const, label: 'Follow-ups', icon: UserRound }
 ]
 
 export function CRM(): React.JSX.Element {
@@ -58,7 +56,7 @@ export function CRM(): React.JSX.Element {
                 cursor: 'pointer',
                 position: 'relative',
                 fontSize: 11,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-ui)',
                 fontWeight: isActive ? 500 : 400,
                 color: isActive ? 'var(--text)' : 'var(--text-muted)',
                 transition: 'color 150ms ease',
@@ -100,10 +98,9 @@ export function CRM(): React.JSX.Element {
           transition={{ duration: 0.15 }}
           style={{ flex: 1 }}
         >
-          {activeCRMView === 'dashboard' && <CRMDashboard />}
           {activeCRMView === 'projects' && <ProjectsList />}
           {activeCRMView === 'contacts' && <ContactList />}
-          {activeCRMView === 'actions' && <OutreachQueue />}
+          {activeCRMView === 'followups' && <OutreachQueue />}
         </motion.div>
       </AnimatePresence>
     </div>

@@ -1,22 +1,40 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { User, FileText, StickyNote, Search } from 'lucide-react'
+import { User, FileText, StickyNote, Search, CheckSquare, Hash } from 'lucide-react'
 import { useUIStore } from '../store/ui'
-import type { SearchResult } from '@shared/types'
+import type { SearchResult, Tag, TagEntity } from '@shared/types'
 
 const typeIcons = {
   contact: User,
   doc: FileText,
   note: StickyNote,
-  project: FileText
+  project: FileText,
+  todo: CheckSquare
 } as const
 
 const typeLabels = {
   contact: 'Contact',
   doc: 'Doc',
   note: 'Note',
-  project: 'Project'
+  project: 'Project',
+  todo: 'To-Do'
 } as const
+
+const entityIcons = {
+  contact: User,
+  doc: FileText,
+  note: StickyNote
+} as const
+
+type TagRow = Tag & { tag?: string }
+
+function tagName(t: TagRow): string {
+  return t.name ?? t.tag ?? ''
+}
+
+function normalizeTags(tags: TagRow[]): Tag[] {
+  return tags.map((t) => ({ name: tagName(t), count: t.count }))
+}
 
 export function CommandPalette(): React.JSX.Element | null {
   const open = useUIStore((s) => s.commandPaletteOpen)
@@ -26,28 +44,67 @@ export function CommandPalette(): React.JSX.Element | null {
   const setActiveDocId = useUIStore((s) => s.setActiveDocId)
   const setDocsView = useUIStore((s) => s.setDocsView)
   const setActiveNoteId = useUIStore((s) => s.setActiveNoteId)
-  const setNoteEditorOpen = useUIStore((s) => s.setNoteEditorOpen)
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
+  const [tagResults, setTagResults] = useState<Tag[]>([])
+  const [entityResults, setEntityResults] = useState<TagEntity[]>([])
+  const [selectedTag, setSelectedTag] = useState<string | null>(null)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const isTagMode = query.startsWith('#') && !selectedTag
 
   // Reset state when opened
   useEffect(() => {
     if (open) {
       setQuery('')
       setResults([])
+      setTagResults([])
+      setEntityResults([])
+      setSelectedTag(null)
       setSelectedIndex(0)
-      // Focus input on next frame
       requestAnimationFrame(() => inputRef.current?.focus())
     }
   }, [open])
 
-  // Search on query change
+  // Search / tag browse
   useEffect(() => {
+    if (!open) return
+
+    if (selectedTag) {
+      let cancelled = false
+      window.mycel.getEntitiesByTag(selectedTag).then((entities) => {
+        if (!cancelled) {
+          setEntityResults(entities as TagEntity[])
+          setSelectedIndex(0)
+        }
+      }).catch(() => {})
+      return () => { cancelled = true }
+    }
+
+    if (isTagMode) {
+      const q = query.slice(1).trim().toLowerCase()
+      let cancelled = false
+      window.mycel.getTags().then((tags) => {
+        if (!cancelled) {
+          const normalized = normalizeTags(tags as TagRow[])
+          const list = normalized.filter(
+            (t) => !q || tagName(t).toLowerCase().includes(q)
+          ).slice(0, 15)
+          setTagResults(list)
+          setResults([])
+          setEntityResults([])
+          setSelectedIndex(0)
+        }
+      }).catch(() => {})
+      return () => { cancelled = true }
+    }
+
     if (!query.trim()) {
       setResults([])
+      setTagResults([])
+      setEntityResults([])
       setSelectedIndex(0)
       return
     }
@@ -58,10 +115,12 @@ export function CommandPalette(): React.JSX.Element | null {
         const res = await window.mycel.search(query.trim())
         if (!cancelled) {
           setResults(res)
+          setTagResults([])
+          setEntityResults([])
           setSelectedIndex(0)
         }
       } catch {
-        // ignore search errors
+        // ignore
       }
     }, 150)
 
@@ -69,57 +128,106 @@ export function CommandPalette(): React.JSX.Element | null {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [query])
+  }, [query, open, selectedTag, isTagMode])
 
-  const openResult = useCallback(
+  const openSearchResult = useCallback(
     (result: SearchResult) => {
       setOpen(false)
-
       switch (result.type) {
         case 'contact':
-          setPage('crm')
+          setPage('people')
           setActiveContactId(result.id)
           break
         case 'doc':
-          setPage('docs')
+          setPage('create')
           setActiveDocId(result.id)
           setDocsView('editor')
           break
         case 'note':
-          setPage('notes')
+          setPage('create')
           setActiveNoteId(result.id)
-          setNoteEditorOpen(true)
           break
         case 'project':
-          setPage('crm')
+          setPage('people')
+          break
+        case 'todo':
+          setPage('todo')
           break
       }
     },
-    [setOpen, setPage, setActiveContactId, setActiveDocId, setDocsView, setActiveNoteId, setNoteEditorOpen]
+    [setOpen, setPage, setActiveContactId, setActiveDocId, setDocsView, setActiveNoteId]
   )
+
+  const openEntity = useCallback(
+    (entity: TagEntity) => {
+      setOpen(false)
+      switch (entity.type) {
+        case 'contact':
+          setPage('people')
+          setActiveContactId(entity.id)
+          break
+        case 'doc':
+          setPage('create')
+          setActiveDocId(entity.id)
+          setDocsView('editor')
+          break
+        case 'note':
+          setPage('create')
+          setActiveNoteId(entity.id)
+          break
+      }
+    },
+    [setOpen, setPage, setActiveContactId, setActiveDocId, setDocsView, setActiveNoteId]
+  )
+
+  const activeCount = selectedTag
+    ? entityResults.length
+    : isTagMode
+      ? tagResults.length
+      : results.length
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
         e.preventDefault()
-        setSelectedIndex((prev) => Math.min(prev + 1, results.length - 1))
+        setSelectedIndex((prev) => Math.min(prev + 1, activeCount - 1))
       } else if (e.key === 'ArrowUp') {
         e.preventDefault()
         setSelectedIndex((prev) => Math.max(prev - 1, 0))
-      } else if (e.key === 'Enter' && results.length > 0) {
+      } else if (e.key === 'Enter' && activeCount > 0) {
         e.preventDefault()
-        openResult(results[selectedIndex])
+        if (selectedTag) {
+          openEntity(entityResults[selectedIndex])
+        } else if (isTagMode) {
+          const name = tagName(tagResults[selectedIndex])
+          setSelectedTag(name)
+          setQuery(`#${name}`)
+        } else {
+          openSearchResult(results[selectedIndex])
+        }
       } else if (e.key === 'Escape') {
         e.preventDefault()
-        setOpen(false)
+        if (selectedTag) {
+          setSelectedTag(null)
+          setEntityResults([])
+        } else {
+          setOpen(false)
+        }
       }
     },
-    [results, selectedIndex, openResult, setOpen]
+    [
+      activeCount,
+      selectedTag,
+      isTagMode,
+      entityResults,
+      tagResults,
+      results,
+      selectedIndex,
+      openEntity,
+      openSearchResult,
+      setOpen
+    ]
   )
-
-  const getTitle = (result: SearchResult): string => {
-    return result.title || 'Untitled'
-  }
 
   return (
     <AnimatePresence>
@@ -130,6 +238,7 @@ export function CommandPalette(): React.JSX.Element | null {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
           onClick={() => setOpen(false)}
+          data-ui-overlay=""
           style={{
             position: 'fixed',
             inset: 0,
@@ -158,7 +267,6 @@ export function CommandPalette(): React.JSX.Element | null {
               flexDirection: 'column'
             }}
           >
-            {/* Search input */}
             <div
               style={{
                 display: 'flex',
@@ -168,13 +276,20 @@ export function CommandPalette(): React.JSX.Element | null {
                 borderBottom: '1px solid var(--border)'
               }}
             >
-              <Search size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+              {isTagMode || selectedTag ? (
+                <Hash size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+              ) : (
+                <Search size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+              )}
               <input
                 ref={inputRef}
                 type="text"
-                placeholder="Search..."
+                placeholder={selectedTag ? `Tagged “${selectedTag}”` : 'Search… or type #tag'}
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                  setQuery(e.target.value)
+                  if (!e.target.value.startsWith('#')) setSelectedTag(null)
+                }}
                 onKeyDown={handleKeyDown}
                 style={{
                   flex: 1,
@@ -183,23 +298,21 @@ export function CommandPalette(): React.JSX.Element | null {
                   outline: 'none',
                   backgroundColor: 'transparent',
                   fontSize: 16,
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-ui)',
                   color: 'var(--text)'
                 }}
               />
             </div>
 
-            {/* Results */}
-            {results.length > 0 && (
+            {selectedTag && entityResults.length > 0 && (
               <div style={{ overflowY: 'auto', padding: '4px 0' }}>
-                {results.map((result, index) => {
-                  const Icon = typeIcons[result.type]
+                {entityResults.map((entity, index) => {
+                  const Icon = entityIcons[entity.type]
                   const isSelected = index === selectedIndex
-
                   return (
                     <button
-                      key={`${result.type}-${result.id}`}
-                      onClick={() => openResult(result)}
+                      key={`${entity.type}-${entity.id}`}
+                      onClick={() => openEntity(entity)}
                       onMouseEnter={() => setSelectedIndex(index)}
                       style={{
                         width: '100%',
@@ -210,34 +323,86 @@ export function CommandPalette(): React.JSX.Element | null {
                         border: 'none',
                         cursor: 'pointer',
                         textAlign: 'left',
-                        fontFamily: 'Inter, sans-serif',
-                        backgroundColor: isSelected ? 'var(--bg)' : 'transparent',
-                        transition: 'background 80ms ease'
+                        fontFamily: 'var(--font-ui)',
+                        backgroundColor: isSelected ? 'var(--bg)' : 'transparent'
                       }}
                     >
-                      <Icon
-                        size={16}
-                        style={{ color: 'var(--text-muted)', flexShrink: 0 }}
-                      />
-                      <span
-                        style={{
-                          flex: 1,
-                          fontSize: 14,
-                          color: 'var(--text)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}
-                      >
-                        {getTitle(result)}
+                      <Icon size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                      <span style={{ flex: 1, fontSize: 14, color: 'var(--text)' }}>
+                        {entity.name || 'Untitled'}
                       </span>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          color: 'var(--text-muted)',
-                          flexShrink: 0
-                        }}
-                      >
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+                        {entity.type}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {isTagMode && tagResults.length > 0 && (
+              <div style={{ overflowY: 'auto', padding: '4px 0' }}>
+                {tagResults.map((tag, index) => {
+                  const isSelected = index === selectedIndex
+                  return (
+                    <button
+                      key={tagName(tag)}
+                      onClick={() => {
+                        const name = tagName(tag)
+                        setSelectedTag(name)
+                        setQuery(`#${name}`)
+                      }}
+                      onMouseEnter={() => setSelectedIndex(index)}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: '10px 16px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontFamily: 'var(--font-ui)',
+                        backgroundColor: isSelected ? 'var(--bg)' : 'transparent'
+                      }}
+                    >
+                      <Hash size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                      <span style={{ flex: 1, fontSize: 14, color: 'var(--text)' }}>{tagName(tag)}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{tag.count}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {!selectedTag && !isTagMode && results.length > 0 && (
+              <div style={{ overflowY: 'auto', padding: '4px 0' }}>
+                {results.map((result, index) => {
+                  const Icon = typeIcons[result.type]
+                  const isSelected = index === selectedIndex
+                  return (
+                    <button
+                      key={`${result.type}-${result.id}`}
+                      onClick={() => openSearchResult(result)}
+                      onMouseEnter={() => setSelectedIndex(index)}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: '10px 16px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontFamily: 'var(--font-ui)',
+                        backgroundColor: isSelected ? 'var(--bg)' : 'transparent'
+                      }}
+                    >
+                      <Icon size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                      <span style={{ flex: 1, fontSize: 14, color: 'var(--text)' }}>
+                        {result.title || 'Untitled'}
+                      </span>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                         {typeLabels[result.type]}
                       </span>
                     </button>
@@ -246,14 +411,13 @@ export function CommandPalette(): React.JSX.Element | null {
               </div>
             )}
 
-            {/* Empty state */}
-            {query.trim() && results.length === 0 && (
+            {query.trim() && activeCount === 0 && (
               <div
                 style={{
                   padding: '32px 16px',
                   textAlign: 'center',
                   fontSize: 13,
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-ui)',
                   color: 'var(--text-muted)'
                 }}
               >

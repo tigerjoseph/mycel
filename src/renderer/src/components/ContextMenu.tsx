@@ -87,7 +87,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps): React.J
             border: 'none',
             cursor: 'pointer',
             fontSize: 12,
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-ui)',
             color: item.danger ? '#D93025' : 'var(--text)',
             borderRadius: 6,
             transition: 'background 100ms ease'

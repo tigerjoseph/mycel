@@ -4,6 +4,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { useUIStore } from '../store/ui'
 import { useDocsStore } from '../store/docs'
 import { fadeUp } from '../styles/animation'
+import { useFlushOnLeave } from '../hooks/useFlushOnLeave'
 import type { Doc } from '@shared/types'
 
 interface GridData {
@@ -110,6 +111,19 @@ export function DataGrid(): React.JSX.Element {
     },
     [saveDoc]
   )
+
+  const flushSave = useCallback(async () => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    if (!doc) return
+    const body = serializeGridData(grid)
+    if (title !== doc.title || body !== doc.body) {
+      const updated = { ...doc, title, body, updatedAt: Date.now() }
+      await window.mycel.upsertDoc(updated)
+      if (isMountedRef.current) setDoc(updated)
+    }
+  }, [doc, grid, title])
+
+  useFlushOnLeave(flushSave, { watchCreateView: true })
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -236,7 +250,7 @@ export function DataGrid(): React.JSX.Element {
   const cellStyle: React.CSSProperties = {
     padding: '8px 12px',
     border: '1px solid var(--border)',
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'var(--font-ui)',
     fontSize: 13,
     color: 'var(--text)',
     background: 'transparent',
@@ -423,7 +437,7 @@ export function DataGrid(): React.JSX.Element {
               border: '1px dashed var(--border)',
               borderRadius: '0 0 4px 4px',
               cursor: 'pointer',
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-ui)',
               fontSize: 12,
               color: 'var(--text-muted)',
               width: '100%'
@@ -473,7 +487,7 @@ export function DataGrid(): React.JSX.Element {
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-ui)',
               fontSize: 13,
               color: '#c0392b',
               textAlign: 'left'

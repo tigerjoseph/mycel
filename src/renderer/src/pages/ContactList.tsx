@@ -119,7 +119,7 @@ export function ContactList(): React.JSX.Element {
             outline: 'none',
             flex: 1,
             fontSize: 14,
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-ui)',
             color: 'var(--text)',
             lineHeight: 1.4
           }}
@@ -137,7 +137,7 @@ export function ContactList(): React.JSX.Element {
               border: 'none',
               cursor: 'pointer',
               fontSize: 12,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-ui)',
               fontWeight: sort === mode ? 500 : 400,
               color: sort === mode ? 'var(--text)' : 'var(--text-muted)',
               padding: 0,
@@ -168,7 +168,7 @@ export function ContactList(): React.JSX.Element {
                 padding: '3px 10px',
                 cursor: 'pointer',
                 fontSize: 11,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-ui)',
                 color: 'var(--text-muted)',
                 whiteSpace: 'nowrap',
                 transition: 'color 150ms ease'
@@ -188,7 +188,7 @@ export function ContactList(): React.JSX.Element {
                 padding: '3px 10px',
                 cursor: 'pointer',
                 fontSize: 11,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-ui)',
                 color: activeTag === tag ? '#fff' : 'var(--text-muted)',
                 whiteSpace: 'nowrap',
                 transition: 'all 150ms ease',
@@ -226,7 +226,7 @@ export function ContactList(): React.JSX.Element {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <span
                 style={{
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-ui)',
                   fontSize: 14,
                   color: 'var(--text)',
                   fontWeight: 400
@@ -238,7 +238,7 @@ export function ContactList(): React.JSX.Element {
               {(contact.metadata?.company || contact.metadata?.role) && (
                 <span
                   style={{
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-ui)',
                     fontSize: 12,
                     color: 'var(--text-muted)',
                     overflow: 'hidden',
@@ -258,7 +258,7 @@ export function ContactList(): React.JSX.Element {
                     <span
                       key={tag}
                       style={{
-                        fontFamily: 'Inter, sans-serif',
+                        fontFamily: 'var(--font-ui)',
                         fontSize: 10,
                         color: 'var(--accent)',
                         background: 'var(--surface)',
@@ -273,7 +273,7 @@ export function ContactList(): React.JSX.Element {
                   {contact.tags.length > 2 && (
                     <span
                       style={{
-                        fontFamily: 'Inter, sans-serif',
+                        fontFamily: 'var(--font-ui)',
                         fontSize: 10,
                         color: 'var(--text-muted)'
                       }}
@@ -286,7 +286,7 @@ export function ContactList(): React.JSX.Element {
             </div>
             <span
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-ui)',
                 fontSize: 12,
                 color: 'var(--text-muted)',
                 flexShrink: 0,
@@ -307,7 +307,7 @@ export function ContactList(): React.JSX.Element {
           border: 'none',
           cursor: 'pointer',
           fontSize: 13,
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-ui)',
           color: 'var(--text-muted)',
           padding: '16px 0 0 0',
           display: 'flex',

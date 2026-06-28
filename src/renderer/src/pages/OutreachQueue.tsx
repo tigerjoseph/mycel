@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'motion/react'
-import { Plus, Check, X } from 'lucide-react'
 import { fadeUp, spring } from '../styles/animation'
 import { useUIStore } from '../store/ui'
 import { useContactsStore } from '../store/contacts'
-import type { Contact, Todo } from '@shared/types'
+import type { Contact } from '@shared/types'
 
 export function OutreachQueue(): React.JSX.Element {
   const setActiveContactId = useUIStore((s) => s.setActiveContactId)
@@ -14,43 +13,6 @@ export function OutreachQueue(): React.JSX.Element {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [hoveredCardId, setHoveredCardId] = useState<string | null>(null)
 
-  // Todo state
-  const [todos, setTodos] = useState<Todo[]>([])
-  const [addingTodo, setAddingTodo] = useState(false)
-  const [newTodoText, setNewTodoText] = useState('')
-  const todoInputRef = useRef<HTMLInputElement>(null)
-
-  // Fetch todos on mount
-  useEffect(() => {
-    window.mycel.getTodos().then(setTodos).catch(() => {})
-  }, [])
-
-  const toggleTodo = useCallback(async (todo: Todo) => {
-    const updated = await window.mycel.upsertTodo({ ...todo, done: !todo.done })
-    setTodos((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
-  }, [])
-
-  const commitNewTodo = useCallback(async () => {
-    const text = newTodoText.trim()
-    setAddingTodo(false)
-    setNewTodoText('')
-    if (!text) return
-    const todo = await window.mycel.upsertTodo({
-      id: crypto.randomUUID(),
-      text,
-      done: false,
-      position: todos.length,
-      createdAt: Date.now()
-    })
-    setTodos((prev) => [...prev, todo])
-  }, [newTodoText, todos.length])
-
-  const deleteTodo = useCallback(async (id: string) => {
-    await window.mycel.deleteTodo(id)
-    setTodos((prev) => prev.filter((t) => t.id !== id))
-  }, [])
-
-  // All unique tags
   const allTags = useMemo(() => {
     const tagSet = new Set<string>()
     for (const c of contacts) {
@@ -65,7 +27,6 @@ export function OutreachQueue(): React.JSX.Element {
     )
   }
 
-  // Calculate reason and urgency score
   const getContactReason = (contact: Contact): { text: string; urgency: number; isAccent: boolean } => {
     if (!contact.lastContactedAt) {
       return { text: 'Never contacted', urgency: 1000, isAccent: true }
@@ -92,7 +53,6 @@ export function OutreachQueue(): React.JSX.Element {
     return { text: 'Contacted recently', urgency: 0, isAccent: false }
   }
 
-  // Filter by selected tags then sort by urgency
   const suggestionCards = useMemo(() => {
     let filtered = contacts
     if (selectedTags.length > 0) {
@@ -121,7 +81,7 @@ export function OutreachQueue(): React.JSX.Element {
     setLogTouchpointOpen(true)
   }
 
-  if (contacts.length === 0 && todos.length === 0) {
+  if (contacts.length === 0) {
     return (
       <motion.div
         style={{
@@ -136,188 +96,31 @@ export function OutreachQueue(): React.JSX.Element {
       >
         <span
           style={{
-            fontFamily: 'Lora, serif',
+            fontFamily: 'var(--font-heading)',
             fontSize: 18,
             color: 'var(--text-muted)'
           }}
         >
-          No actions yet
+          No contacts yet
         </span>
         <span
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-ui)',
             fontSize: 13,
             color: 'var(--text-muted)'
           }}
         >
-          Add todos or contacts to get started
+          Add contacts to get started
         </span>
       </motion.div>
     )
   }
 
-  const sortedTodos = [...todos].sort((a, b) => a.position - b.position)
-
   return (
     <motion.div {...fadeUp}>
-      {/* Todo list */}
-      <div style={{ marginBottom: 32, paddingBottom: 24, borderBottom: '1px solid var(--border)' }}>
-        <h2
-          style={{
-            fontFamily: 'Inter, sans-serif',
-            fontSize: 12,
-            fontWeight: 500,
-            color: 'var(--text-muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            margin: '0 0 12px 0'
-          }}
-        >
-          To do
-        </h2>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {sortedTodos.map((todo) => (
-            <div
-              key={todo.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '6px 0',
-                position: 'relative'
-              }}
-              onMouseEnter={(e) => {
-                const btn = e.currentTarget.querySelector('[data-delete]') as HTMLElement
-                if (btn) btn.style.opacity = '1'
-              }}
-              onMouseLeave={(e) => {
-                const btn = e.currentTarget.querySelector('[data-delete]') as HTMLElement
-                if (btn) btn.style.opacity = '0'
-              }}
-            >
-              <button
-                onClick={() => toggleTodo(todo)}
-                style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: 4,
-                  border: todo.done ? 'none' : '1.5px solid var(--border)',
-                  background: todo.done ? 'var(--accent)' : 'transparent',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  cursor: 'pointer',
-                  padding: 0,
-                  transition: 'all 150ms ease'
-                }}
-              >
-                {todo.done && <Check size={12} style={{ color: 'var(--bg)' }} />}
-              </button>
-              <span
-                style={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: 14,
-                  color: todo.done ? 'var(--text-muted)' : 'var(--text)',
-                  textDecoration: todo.done ? 'line-through' : 'none',
-                  flex: 1,
-                  transition: 'color 150ms ease'
-                }}
-              >
-                {todo.text}
-              </span>
-              <button
-                data-delete=""
-                onClick={() => deleteTodo(todo.id)}
-                style={{
-                  opacity: 0,
-                  transition: 'opacity 150ms ease, color 150ms ease',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: 4,
-                  display: 'flex',
-                  alignItems: 'center',
-                  color: 'var(--text-muted)'
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = '#e55' }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
-              >
-                <X size={14} />
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {/* Inline add todo */}
-        {addingTodo ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' }}>
-            <div
-              style={{
-                width: 18,
-                height: 18,
-                borderRadius: 4,
-                border: '1.5px solid var(--border)',
-                background: 'transparent',
-                flexShrink: 0
-              }}
-            />
-            <input
-              ref={todoInputRef}
-              autoFocus
-              value={newTodoText}
-              onChange={(e) => setNewTodoText(e.target.value)}
-              onBlur={commitNewTodo}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') commitNewTodo()
-                if (e.key === 'Escape') { setAddingTodo(false); setNewTodoText('') }
-              }}
-              placeholder="Add action..."
-              style={{
-                fontFamily: 'Inter, sans-serif',
-                fontSize: 14,
-                color: 'var(--text)',
-                background: 'none',
-                border: 'none',
-                outline: 'none',
-                flex: 1,
-                padding: 0
-              }}
-            />
-          </div>
-        ) : (
-          <button
-            onClick={() => {
-              setAddingTodo(true)
-              setTimeout(() => todoInputRef.current?.focus(), 50)
-            }}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontFamily: 'Inter, sans-serif',
-              fontSize: 13,
-              color: 'var(--text-muted)',
-              padding: '8px 0 0 0',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              transition: 'color 150ms ease'
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
-          >
-            <Plus size={13} />
-            add action
-          </button>
-        )}
-      </div>
-
-      {/* People to contact header */}
       <h2
         style={{
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-ui)',
           fontSize: 12,
           fontWeight: 500,
           color: 'var(--text-muted)',
@@ -329,7 +132,6 @@ export function OutreachQueue(): React.JSX.Element {
         People to contact
       </h2>
 
-      {/* Tag filter pills */}
       {allTags.length > 0 && (
         <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
           {allTags.map((tag) => {
@@ -339,7 +141,7 @@ export function OutreachQueue(): React.JSX.Element {
                 key={tag}
                 onClick={() => toggleTag(tag)}
                 style={{
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-ui)',
                   fontSize: 11,
                   padding: '3px 10px',
                   borderRadius: 12,
@@ -358,7 +160,7 @@ export function OutreachQueue(): React.JSX.Element {
             <button
               onClick={() => setSelectedTags([])}
               style={{
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-ui)',
                 fontSize: 11,
                 padding: '3px 10px',
                 borderRadius: 12,
@@ -377,7 +179,6 @@ export function OutreachQueue(): React.JSX.Element {
         </div>
       )}
 
-      {/* Suggestion cards grid */}
       {suggestionCards.length > 0 && (
         <div
           style={{
@@ -420,7 +221,6 @@ export function OutreachQueue(): React.JSX.Element {
                   position: 'relative'
                 }}
               >
-                {/* Avatar + Name row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div
                     style={{
@@ -432,7 +232,7 @@ export function OutreachQueue(): React.JSX.Element {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontFamily: 'Inter, sans-serif',
+                      fontFamily: 'var(--font-ui)',
                       fontSize: 13,
                       fontWeight: 600,
                       flexShrink: 0
@@ -443,7 +243,7 @@ export function OutreachQueue(): React.JSX.Element {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden' }}>
                     <span
                       style={{
-                        fontFamily: 'Inter, sans-serif',
+                        fontFamily: 'var(--font-ui)',
                         fontSize: 14,
                         color: 'var(--text)',
                         fontWeight: 500,
@@ -457,7 +257,7 @@ export function OutreachQueue(): React.JSX.Element {
                     {company && (
                       <span
                         style={{
-                          fontFamily: 'Inter, sans-serif',
+                          fontFamily: 'var(--font-ui)',
                           fontSize: 11,
                           color: 'var(--text-muted)',
                           overflow: 'hidden',
@@ -471,10 +271,9 @@ export function OutreachQueue(): React.JSX.Element {
                   </div>
                 </div>
 
-                {/* Reason */}
                 <span
                   style={{
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-ui)',
                     fontSize: 12,
                     fontStyle: 'italic',
                     color: isAccent ? 'var(--accent)' : 'var(--text-muted)',
@@ -484,14 +283,13 @@ export function OutreachQueue(): React.JSX.Element {
                   {reason}
                 </span>
 
-                {/* Tags */}
                 {contact.tags.length > 0 && (
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                     {contact.tags.slice(0, 3).map((tag) => (
                       <span
                         key={tag}
                         style={{
-                          fontFamily: 'Inter, sans-serif',
+                          fontFamily: 'var(--font-ui)',
                           fontSize: 10,
                           color: 'var(--accent)',
                           background: 'var(--bg)',
@@ -506,7 +304,7 @@ export function OutreachQueue(): React.JSX.Element {
                     {contact.tags.length > 3 && (
                       <span
                         style={{
-                          fontFamily: 'Inter, sans-serif',
+                          fontFamily: 'var(--font-ui)',
                           fontSize: 10,
                           color: 'var(--text-muted)'
                         }}
@@ -517,7 +315,6 @@ export function OutreachQueue(): React.JSX.Element {
                   </div>
                 )}
 
-                {/* Log touchpoint button on hover */}
                 {isHovered && (
                   <motion.button
                     initial={{ opacity: 0 }}
@@ -528,7 +325,7 @@ export function OutreachQueue(): React.JSX.Element {
                       position: 'absolute',
                       top: 16,
                       right: 16,
-                      fontFamily: 'Inter, sans-serif',
+                      fontFamily: 'var(--font-ui)',
                       fontSize: 11,
                       padding: '5px 10px',
                       borderRadius: 6,
@@ -550,7 +347,6 @@ export function OutreachQueue(): React.JSX.Element {
         </div>
       )}
 
-      {/* Empty state for filtered results */}
       {suggestionCards.length === 0 && selectedTags.length > 0 && (
         <div
           style={{
@@ -562,7 +358,7 @@ export function OutreachQueue(): React.JSX.Element {
         >
           <span
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-ui)',
               fontSize: 13,
               color: 'var(--text-muted)'
             }}

@@ -18,7 +18,7 @@ import { Table as TableExtension } from '@tiptap/extension-table'
 import TableRow from '@tiptap/extension-table-row'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
-import { ArrowLeft, FolderClosed, MoreHorizontal, Copy, Files, Trash2 } from 'lucide-react'
+import { ArrowLeft, FolderClosed, MoreHorizontal, Copy, Files, Trash2, FileCode, Newspaper, Sparkles, FolderOutput } from 'lucide-react'
 import { useUIStore } from '../store/ui'
 import { useDocsStore } from '../store/docs'
 import { fadeUp } from '../styles/animation'
@@ -26,6 +26,17 @@ import { FloatingToolbar } from '../components/FloatingToolbar'
 import { SlashCommands } from '../components/SlashMenu'
 import { EmojiPicker } from '../components/EmojiPicker'
 import { DocIcon } from '../components/DocIcon'
+import { TagPicker } from '../components/TagPicker'
+import { useFlushOnLeave } from '../hooks/useFlushOnLeave'
+import { useCopyFeedback } from '../hooks/useCopyFeedback'
+import { htmlToMarkdown } from '../utils/htmlToMarkdown'
+import { copyForSubstack } from '../utils/substackExport'
+import {
+  buildCursorClipboardBundle,
+  buildCursorContext,
+  buildCursorDraft,
+  resolveLinkedContacts
+} from '../utils/cursorExport'
 import type { Doc } from '@shared/types'
 
 export function DocEditor(): React.JSX.Element {
@@ -44,6 +55,7 @@ export function DocEditor(): React.JSX.Element {
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
   const folderMenuRef = useRef<HTMLDivElement>(null)
   const settingsMenuRef = useRef<HTMLDivElement>(null)
+  const { showCopyFeedback } = useCopyFeedback()
 
   // Load doc on mount
   useEffect(() => {
@@ -156,7 +168,7 @@ export function DocEditor(): React.JSX.Element {
           spellcheck: 'true',
           style: [
             'outline: none',
-            'font-family: Inter, sans-serif',
+            'font-family: var(--font-ui)',
             'font-size: 15px',
             'line-height: 1.8',
             'color: var(--text)',
@@ -169,6 +181,19 @@ export function DocEditor(): React.JSX.Element {
     },
     [doc?.id]
   )
+
+  const flushSave = useCallback(async () => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    if (!doc || !editor) return
+    const currentBody = editor.getHTML()
+    if (title !== doc.title || currentBody !== doc.body) {
+      const updated = { ...doc, title, body: currentBody, updatedAt: Date.now() }
+      await window.mycel.upsertDoc(updated)
+      if (isMountedRef.current) setDoc(updated)
+    }
+  }, [doc, editor, title])
+
+  useFlushOnLeave(flushSave, { watchCreateView: true })
 
   const handleDelete = useCallback(async () => {
     if (!doc) return
@@ -202,11 +227,66 @@ export function DocEditor(): React.JSX.Element {
 
   const handleCopyText = useCallback(async () => {
     if (!editor) return
-    const text = editor.getText()
-    await navigator.clipboard.writeText(text)
+    await navigator.clipboard.writeText(editor.getText())
     setSettingsMenuOpen(false)
-    showSaved()
-  }, [editor, showSaved])
+    showCopyFeedback('Copied')
+  }, [editor, showCopyFeedback])
+
+  const handleCopyMarkdown = useCallback(async () => {
+    if (!editor) return
+    await navigator.clipboard.writeText(htmlToMarkdown(editor.getHTML()))
+    setSettingsMenuOpen(false)
+    showCopyFeedback('Copied markdown')
+  }, [editor, showCopyFeedback])
+
+  const currentDoc = useCallback((): Doc | null => {
+    if (!doc || !editor) return null
+    return { ...doc, title, body: editor.getHTML() }
+  }, [doc, editor, title])
+
+  const handleCopySubstack = useCallback(async () => {
+    const d = currentDoc()
+    if (!d) return
+    await copyForSubstack(d.title, d.body)
+    setSettingsMenuOpen(false)
+    showCopyFeedback('Copied for Substack')
+  }, [currentDoc, showCopyFeedback])
+
+  const handleCopyCursor = useCallback(async () => {
+    const d = currentDoc()
+    if (!d) return
+    const linkedContacts = await resolveLinkedContacts(d.id)
+    const bundle = buildCursorClipboardBundle({ doc: d, linkedContacts })
+    await navigator.clipboard.writeText(bundle)
+    setSettingsMenuOpen(false)
+    showCopyFeedback('Copied for Cursor')
+  }, [currentDoc, showCopyFeedback])
+
+  const handleExportCursor = useCallback(async () => {
+    const d = currentDoc()
+    if (!d) return
+    const linkedContacts = await resolveLinkedContacts(d.id)
+    await window.mycel.exportCursorBundle({
+      title: d.title,
+      draft: buildCursorDraft(d),
+      context: buildCursorContext({ doc: d, linkedContacts })
+    })
+    setSettingsMenuOpen(false)
+    showCopyFeedback('Opened in Cursor')
+  }, [currentDoc, showCopyFeedback])
+
+  // Flush on editor blur
+  useEffect(() => {
+    if (!editor) return
+    const onBlur = (): void => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+        saveDoc({ body: editor.getHTML() })
+      }
+    }
+    editor.on('blur', onBlur)
+    return () => { editor.off('blur', onBlur) }
+  }, [editor, saveDoc])
 
   // Title change handler with debounced save
   const handleTitleChange = useCallback(
@@ -307,7 +387,7 @@ export function DocEditor(): React.JSX.Element {
               border: 'none',
               cursor: 'pointer',
               fontSize: 13,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-ui)',
               color: 'var(--text-muted)',
               display: 'flex',
               alignItems: 'center',
@@ -334,7 +414,7 @@ export function DocEditor(): React.JSX.Element {
                 borderRadius: 6,
                 cursor: 'pointer',
                 fontSize: 12,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-ui)',
                 color: 'var(--text-muted)',
                 display: 'flex',
                 alignItems: 'center',
@@ -379,7 +459,7 @@ export function DocEditor(): React.JSX.Element {
                       border: 'none',
                       cursor: 'pointer',
                       fontSize: 12,
-                      fontFamily: 'Inter, sans-serif',
+                      fontFamily: 'var(--font-ui)',
                       color: 'var(--text-muted)',
                       borderRadius: 6,
                       transition: 'background 100ms ease'
@@ -407,7 +487,7 @@ export function DocEditor(): React.JSX.Element {
                       border: 'none',
                       cursor: 'pointer',
                       fontSize: 12,
-                      fontFamily: 'Inter, sans-serif',
+                      fontFamily: 'var(--font-ui)',
                       color: doc?.folderId === f.id ? 'var(--text)' : 'var(--text)',
                       fontWeight: doc?.folderId === f.id ? 500 : 400,
                       borderRadius: 6,
@@ -421,7 +501,7 @@ export function DocEditor(): React.JSX.Element {
                   </button>
                 ))}
                 {folders.length === 0 && (
-                  <span style={{ fontSize: 12, fontFamily: 'Inter, sans-serif', color: 'var(--text-muted)', padding: '7px 10px', display: 'block' }}>
+                  <span style={{ fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--text-muted)', padding: '7px 10px', display: 'block' }}>
                     No folders yet
                   </span>
                 )}
@@ -467,6 +547,10 @@ export function DocEditor(): React.JSX.Element {
                 {[
                   { label: 'Duplicate', icon: Files, action: handleDuplicate },
                   { label: 'Copy as text', icon: Copy, action: handleCopyText },
+                  { label: 'Copy as markdown', icon: FileCode, action: handleCopyMarkdown },
+                  { label: 'Copy for Substack', icon: Newspaper, action: handleCopySubstack },
+                  { label: 'Copy for Cursor', icon: Sparkles, action: handleCopyCursor },
+                  { label: 'Export to Cursor', icon: FolderOutput, action: handleExportCursor },
                 ].map((item) => (
                   <button
                     key={item.label}
@@ -474,7 +558,7 @@ export function DocEditor(): React.JSX.Element {
                     style={{
                       display: 'flex', alignItems: 'center', gap: 8, width: '100%',
                       padding: '7px 10px', background: 'none', border: 'none', cursor: 'pointer',
-                      fontSize: 12, fontFamily: 'Inter, sans-serif', color: 'var(--text)',
+                      fontSize: 12, fontFamily: 'var(--font-ui)', color: 'var(--text)',
                       borderRadius: 6, transition: 'background 100ms ease'
                     }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--border)' }}
@@ -490,7 +574,7 @@ export function DocEditor(): React.JSX.Element {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8, width: '100%',
                     padding: '7px 10px', background: 'none', border: 'none', cursor: 'pointer',
-                    fontSize: 12, fontFamily: 'Inter, sans-serif', color: '#D93025',
+                    fontSize: 12, fontFamily: 'var(--font-ui)', color: '#D93025',
                     borderRadius: 6, transition: 'background 100ms ease'
                   }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--border)' }}
@@ -519,7 +603,7 @@ export function DocEditor(): React.JSX.Element {
             ) : (
               <span style={{
                 fontSize: 13,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-ui)',
                 color: 'var(--text-muted)',
                 opacity: 0.5,
                 cursor: 'pointer',
@@ -556,6 +640,18 @@ export function DocEditor(): React.JSX.Element {
             lineHeight: 1.35
           }}
         />
+
+        {doc && (
+          <div style={{ padding: '0 40px', marginBottom: 16 }}>
+            <TagPicker
+              tags={doc.tags}
+              onChange={(tags) => {
+                setDoc({ ...doc, tags })
+                debouncedSave({ tags })
+              }}
+            />
+          </div>
+        )}
 
         {/* TipTap content */}
         {editor && <FloatingToolbar editor={editor} />}

@@ -8,7 +8,7 @@ interface UIStore {
   logTouchpointOpen: boolean
 
   // CRM sub-views
-  activeCRMView: 'dashboard' | 'projects' | 'contacts' | 'actions'
+  activeCRMView: 'projects' | 'contacts' | 'followups'
   activeContactId: string | null
   activeProjectId: string | null
 
@@ -21,15 +21,21 @@ interface UIStore {
   activeNoteId: string | null
   noteEditorOpen: boolean
 
+  // Create sub-view (keep-alive; used for save flush)
+  createView: 'docs' | 'notes'
+
   // Breadcrumbs
   breadcrumbs: BreadcrumbEntry[]
+
+  // Copy feedback toast
+  copyFeedback: string | null
 
   // Actions
   setPage: (page: PageId) => void
   setCommandPaletteOpen: (open: boolean) => void
   setContactSwitcherOpen: (open: boolean) => void
   setLogTouchpointOpen: (open: boolean) => void
-  setCRMView: (view: 'dashboard' | 'projects' | 'contacts' | 'actions') => void
+  setCRMView: (view: 'projects' | 'contacts' | 'followups') => void
   setActiveContactId: (id: string | null) => void
   setActiveProjectId: (id: string | null) => void
   setActiveDocId: (id: string | null) => void
@@ -37,19 +43,21 @@ interface UIStore {
   setDocsView: (view: 'home' | 'favorites' | 'list' | 'editor' | 'grid') => void
   setActiveNoteId: (id: string | null) => void
   setNoteEditorOpen: (open: boolean) => void
+  setCreateView: (view: 'docs' | 'notes') => void
   pushBreadcrumb: (entry: BreadcrumbEntry) => void
   popBreadcrumb: () => void
   setBreadcrumbs: (entries: BreadcrumbEntry[]) => void
   clearBreadcrumbs: () => void
   closeAllOverlays: () => void
+  showCopyFeedback: (message?: string) => void
 }
 
 export const useUIStore = create<UIStore>((set) => ({
-  activePage: 'crm',
+  activePage: 'todo',
   commandPaletteOpen: false,
   contactSwitcherOpen: false,
   logTouchpointOpen: false,
-  activeCRMView: 'dashboard',
+  activeCRMView: 'contacts',
   activeContactId: null,
   activeProjectId: null,
   activeDocId: null,
@@ -57,9 +65,14 @@ export const useUIStore = create<UIStore>((set) => ({
   docsView: 'home',
   activeNoteId: null,
   noteEditorOpen: false,
+  createView: 'docs',
   breadcrumbs: [],
+  copyFeedback: null,
 
-  setPage: (page) => set({ activePage: page, breadcrumbs: [] }),
+  setPage: (page) => {
+    set({ activePage: page, breadcrumbs: [] })
+    window.mycel.setSettings({ lastPage: page }).catch(() => {})
+  },
   setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
   setContactSwitcherOpen: (open) => set({ contactSwitcherOpen: open }),
   setLogTouchpointOpen: (open) => set({ logTouchpointOpen: open }),
@@ -71,6 +84,7 @@ export const useUIStore = create<UIStore>((set) => ({
   setDocsView: (view) => set({ docsView: view }),
   setActiveNoteId: (id) => set({ activeNoteId: id }),
   setNoteEditorOpen: (open) => set({ noteEditorOpen: open }),
+  setCreateView: (view) => set({ createView: view }),
   pushBreadcrumb: (entry) => set((state) => ({
     breadcrumbs: [...state.breadcrumbs, entry]
   })),
@@ -87,4 +101,10 @@ export const useUIStore = create<UIStore>((set) => ({
     contactSwitcherOpen: false,
     logTouchpointOpen: false,
   }),
+  showCopyFeedback: (message = 'Copied') => {
+    set({ copyFeedback: message })
+    setTimeout(() => {
+      set((state) => (state.copyFeedback === message ? { copyFeedback: null } : state))
+    }, 2000)
+  },
 }))

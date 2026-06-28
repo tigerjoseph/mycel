@@ -3,7 +3,7 @@ import { getDb } from '../db'
 
 interface SearchResult {
   id: string
-  type: 'contact' | 'doc' | 'note'
+  type: 'contact' | 'doc' | 'note' | 'todo'
   title: string
   snippet: string
 }
@@ -71,6 +71,19 @@ export function registerSearchHandlers(): void {
         type: 'note',
         title: (row.title as string) || '',
         snippet
+      })
+    }
+
+    const todos = await db.execute({
+      sql: 'SELECT id, text FROM todos WHERE text LIKE ?',
+      args: [pattern]
+    })
+    for (const row of todos.rows) {
+      results.push({
+        id: row.id as string,
+        type: 'todo',
+        title: (row.text as string) || '',
+        snippet: ''
       })
     }
 

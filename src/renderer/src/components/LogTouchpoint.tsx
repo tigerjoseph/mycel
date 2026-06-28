@@ -119,7 +119,7 @@ export function LogTouchpoint(): React.JSX.Element {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span
                   style={{
-                    fontFamily: 'Lora, serif',
+                    fontFamily: 'var(--font-heading)',
                     fontSize: 18,
                     fontWeight: 600,
                     color: 'var(--text)'
@@ -135,7 +135,7 @@ export function LogTouchpoint(): React.JSX.Element {
                       border: 'none',
                       cursor: 'pointer',
                       fontSize: 12,
-                      fontFamily: 'Inter, sans-serif',
+                      fontFamily: 'var(--font-ui)',
                       color: 'var(--text-muted)',
                       transition: 'color 150ms ease'
                     }}
@@ -160,7 +160,7 @@ export function LogTouchpoint(): React.JSX.Element {
                     borderBottom: '1px solid var(--border)',
                     outline: 'none',
                     fontSize: 14,
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-ui)',
                     color: 'var(--text)',
                     padding: '0 0 8px 0',
                     marginBottom: 8
@@ -178,7 +178,7 @@ export function LogTouchpoint(): React.JSX.Element {
                         padding: '8px 0',
                         textAlign: 'left',
                         fontSize: 14,
-                        fontFamily: 'Inter, sans-serif',
+                        fontFamily: 'var(--font-ui)',
                         color: 'var(--text)',
                         borderBottom: '1px solid var(--border)',
                         width: '100%',
@@ -198,7 +198,7 @@ export function LogTouchpoint(): React.JSX.Element {
             <div>
               <span
                 style={{
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-ui)',
                   fontSize: 12,
                   color: 'var(--text-muted)',
                   display: 'block',
@@ -256,7 +256,7 @@ export function LogTouchpoint(): React.JSX.Element {
                   borderBottom: '1px solid var(--border)',
                   outline: 'none',
                   fontSize: 14,
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-ui)',
                   color: 'var(--text)',
                   padding: '0 0 8px 0'
                 }}
@@ -274,7 +274,7 @@ export function LogTouchpoint(): React.JSX.Element {
                 padding: '10px 0',
                 cursor: selectedContactId && medium ? 'pointer' : 'not-allowed',
                 fontSize: 14,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-ui)',
                 fontWeight: 500,
                 color: selectedContactId && medium ? 'var(--bg)' : 'var(--text-muted)',
                 transition: 'background 150ms ease, color 150ms ease'

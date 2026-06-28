@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { motion } from 'motion/react'
 import { format } from 'date-fns'
-import { Plus, X, ArrowLeft, Trash2 } from 'lucide-react'
+import { Plus, ArrowLeft, Trash2, FileText, X } from 'lucide-react'
 import { fadeUp } from '../styles/animation'
 import { useUIStore } from '../store/ui'
 import { useContactsStore } from '../store/contacts'
-import type { Contact, Touchpoint, Project } from '@shared/types'
+import { TagPicker } from '../components/TagPicker'
+import type { Contact, Touchpoint, Project, Doc, Link } from '@shared/types'
 
 const MEDIUM_ICONS: Record<string, string> = {
   email: '\u{1F4E7}',
@@ -21,6 +22,9 @@ export function ContactDetail(): React.JSX.Element {
   const setActiveContactId = useUIStore((s) => s.setActiveContactId)
   const setActiveProjectId = useUIStore((s) => s.setActiveProjectId)
   const setLogTouchpointOpen = useUIStore((s) => s.setLogTouchpointOpen)
+  const setPage = useUIStore((s) => s.setPage)
+  const setActiveDocId = useUIStore((s) => s.setActiveDocId)
+  const setDocsView = useUIStore((s) => s.setDocsView)
 
   const contacts = useContactsStore((s) => s.contacts)
   const upsert = useContactsStore((s) => s.upsert)
@@ -39,10 +43,10 @@ export function ContactDetail(): React.JSX.Element {
   const [newFieldName, setNewFieldName] = useState('')
   const fieldInputRef = useRef<HTMLInputElement>(null)
 
-  // Inline add-tag state
-  const [addingTag, setAddingTag] = useState(false)
-  const [newTagValue, setNewTagValue] = useState('')
-  const tagInputRef = useRef<HTMLInputElement>(null)
+  const [contactLinks, setContactLinks] = useState<Link[]>([])
+  const [linkedDocs, setLinkedDocs] = useState<Doc[]>([])
+  const [linkPickerOpen, setLinkPickerOpen] = useState(false)
+  const [docOptions, setDocOptions] = useState<Doc[]>([])
 
   // Sync name when contact changes
   useEffect(() => {
@@ -55,6 +59,24 @@ export function ContactDetail(): React.JSX.Element {
     window.mycel.getTouchpoints(activeContactId).then(setTouchpoints).catch(() => {})
     window.mycel.getProjects(activeContactId).then(setProjects).catch(() => {})
   }, [activeContactId])
+
+  const loadLinks = useCallback(async (): Promise<void> => {
+    if (!activeContactId) return
+    const links = await window.mycel.getLinks(activeContactId)
+    setContactLinks(links)
+    const docIds = links.map((link) => {
+      if (link.sourceType === 'doc') return link.sourceId
+      if (link.targetType === 'doc') return link.targetId
+      return null
+    }).filter((id): id is string => Boolean(id))
+    const uniqueIds = [...new Set(docIds)]
+    const docs = await Promise.all(uniqueIds.map((id) => window.mycel.getDoc(id)))
+    setLinkedDocs(docs.filter((d): d is Doc => d !== null))
+  }, [activeContactId])
+
+  useEffect(() => {
+    loadLinks().catch(() => {})
+  }, [loadLinks])
 
   // Auto-focus name input for new (empty-name) contacts
   useEffect(() => {
@@ -102,33 +124,6 @@ export function ContactDetail(): React.JSX.Element {
     await upsert(updated)
   }, [contact, upsert, newFieldName])
 
-  const commitNewTag = useCallback(async () => {
-    const tag = newTagValue.trim()
-    setAddingTag(false)
-    setNewTagValue('')
-    if (!tag || !contact) return
-    if (contact.tags.includes(tag)) return
-    const updated: Contact = {
-      ...contact,
-      tags: [...contact.tags, tag],
-      updatedAt: Date.now()
-    }
-    await upsert(updated)
-  }, [contact, upsert, newTagValue])
-
-  const removeTag = useCallback(
-    async (tag: string) => {
-      if (!contact) return
-      const updated: Contact = {
-        ...contact,
-        tags: contact.tags.filter((t) => t !== tag),
-        updatedAt: Date.now()
-      }
-      await upsert(updated)
-    },
-    [contact, upsert]
-  )
-
   const handleProjectClick = (project: Project): void => {
     setActiveProjectId(project.id)
   }
@@ -161,7 +156,7 @@ export function ContactDetail(): React.JSX.Element {
         }}
         {...fadeUp}
       >
-        <span style={{ fontFamily: 'Lora, serif', color: 'var(--text-muted)' }}>
+        <span style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-muted)' }}>
           Contact not found
         </span>
       </motion.div>
@@ -183,7 +178,7 @@ export function ContactDetail(): React.JSX.Element {
           border: 'none',
           cursor: 'pointer',
           fontSize: 13,
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-ui)',
           color: 'var(--text-muted)',
           display: 'flex',
           alignItems: 'center',
@@ -212,7 +207,7 @@ export function ContactDetail(): React.JSX.Element {
             }}
             placeholder="Contact name"
             style={{
-              fontFamily: 'Lora, serif',
+              fontFamily: 'var(--font-heading)',
               fontSize: 28,
               fontWeight: 600,
               color: 'var(--text)',
@@ -232,7 +227,7 @@ export function ContactDetail(): React.JSX.Element {
               setTimeout(() => nameInputRef.current?.focus(), 50)
             }}
             style={{
-              fontFamily: 'Lora, serif',
+              fontFamily: 'var(--font-heading)',
               fontSize: 28,
               fontWeight: 600,
               color: 'var(--text)',
@@ -253,7 +248,7 @@ export function ContactDetail(): React.JSX.Element {
               border: 'none',
               cursor: 'pointer',
               fontSize: 12,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-ui)',
               color: 'var(--text-muted)',
               display: 'flex',
               alignItems: 'center',
@@ -323,7 +318,7 @@ export function ContactDetail(): React.JSX.Element {
             }}
             placeholder="Field name"
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-ui)',
               fontSize: 12,
               fontWeight: 500,
               color: 'var(--text)',
@@ -348,7 +343,7 @@ export function ContactDetail(): React.JSX.Element {
             border: 'none',
             cursor: 'pointer',
             fontSize: 12,
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-ui)',
             color: 'var(--text-muted)',
             padding: '0 0 20px 0',
             display: 'flex',
@@ -365,78 +360,188 @@ export function ContactDetail(): React.JSX.Element {
       )}
 
       {/* Tags */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-        {contact.tags.map((tag) => (
-          <span
-            key={tag}
-            onClick={() => removeTag(tag)}
+      <div style={{ marginBottom: 16 }}>
+        <TagPicker
+          tags={contact.tags}
+          normalize={false}
+          onChange={async (tags) => {
+            await upsert({ ...contact, tags, updatedAt: Date.now() })
+          }}
+        />
+      </div>
+
+      {/* Linked docs */}
+      <div style={{ marginBottom: 24 }}>
+        <h2
+          style={{
+            fontFamily: 'var(--font-ui)',
+            fontSize: 12,
+            fontWeight: 500,
+            color: 'var(--text-muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            margin: '0 0 12px 0'
+          }}
+        >
+          Linked docs
+        </h2>
+        {linkedDocs.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 8 }}>
+            {linkedDocs.map((doc) => {
+              const link = contactLinks.find(
+                (l) =>
+                  (l.sourceType === 'doc' && l.sourceId === doc.id) ||
+                  (l.targetType === 'doc' && l.targetId === doc.id)
+              )
+              return (
+                <div
+                  key={doc.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '6px 0'
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      setPage('create')
+                      setActiveDocId(doc.id)
+                      setDocsView('editor')
+                    }}
+                    style={{
+                      flex: 1,
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: 0,
+                      textAlign: 'left',
+                      fontFamily: 'var(--font-ui)',
+                      fontSize: 14,
+                      color: 'var(--text)'
+                    }}
+                  >
+                    <FileText size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                    {doc.title || 'Untitled'}
+                  </button>
+                  {link && (
+                    <button
+                      onClick={async () => {
+                        await window.mycel.deleteLink(link.id)
+                        loadLinks().catch(() => {})
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 4,
+                        color: 'var(--text-muted)'
+                      }}
+                      aria-label="Unlink doc"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+        {linkPickerOpen ? (
+          <div
             style={{
-              fontFamily: 'Inter, sans-serif',
-              fontSize: 11,
-              color: 'var(--accent)',
-              background: 'var(--surface)',
               border: '1px solid var(--border)',
-              borderRadius: 12,
-              padding: '3px 10px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              transition: 'opacity 150ms ease'
+              borderRadius: 10,
+              padding: 8,
+              background: 'var(--surface)',
+              maxHeight: 200,
+              overflowY: 'auto'
             }}
           >
-            {tag}
-            <X size={10} style={{ opacity: 0.5 }} />
-          </span>
-        ))}
-
-        {/* Inline add-tag */}
-        {addingTag ? (
-          <input
-            ref={tagInputRef}
-            autoFocus
-            value={newTagValue}
-            onChange={(e) => setNewTagValue(e.target.value)}
-            onBlur={commitNewTag}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') commitNewTag()
-              if (e.key === 'Escape') { setAddingTag(false); setNewTagValue('') }
-            }}
-            placeholder="tag name"
-            style={{
-              fontFamily: 'Inter, sans-serif',
-              fontSize: 11,
-              color: 'var(--text)',
-              background: 'none',
-              border: '1px dashed var(--border)',
-              borderRadius: 12,
-              padding: '3px 10px',
-              outline: 'none',
-              minWidth: 60,
-              maxWidth: 120
-            }}
-          />
+            {docOptions
+              .filter((d) => !linkedDocs.some((ld) => ld.id === d.id))
+              .slice(0, 20)
+              .map((doc) => (
+                <button
+                  key={doc.id}
+                  onClick={async () => {
+                    if (!contact) return
+                    await window.mycel.upsertLink({
+                      sourceId: contact.id,
+                      sourceType: 'contact',
+                      targetId: doc.id,
+                      targetType: 'doc',
+                      createdAt: Date.now()
+                    })
+                    setLinkPickerOpen(false)
+                    loadLinks().catch(() => {})
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    width: '100%',
+                    padding: '8px 10px',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontFamily: 'var(--font-ui)',
+                    fontSize: 13,
+                    color: 'var(--text)',
+                    borderRadius: 6,
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
+                >
+                  <FileText size={13} style={{ color: 'var(--text-muted)' }} />
+                  {doc.title || 'Untitled'}
+                </button>
+              ))}
+            <button
+              onClick={() => setLinkPickerOpen(false)}
+              style={{
+                marginTop: 4,
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 12,
+                fontFamily: 'var(--font-ui)',
+                color: 'var(--text-muted)',
+                padding: '4px 10px'
+              }}
+            >
+              Cancel
+            </button>
+          </div>
         ) : (
           <button
             onClick={() => {
-              setAddingTag(true)
-              setTimeout(() => tagInputRef.current?.focus(), 50)
+              window.mycel.getDocs().then((docs) => {
+                setDocOptions(docs as Doc[])
+                setLinkPickerOpen(true)
+              }).catch(() => {})
             }}
             style={{
               background: 'none',
-              border: '1px dashed var(--border)',
-              borderRadius: 12,
-              padding: '3px 10px',
+              border: 'none',
               cursor: 'pointer',
-              fontSize: 11,
-              fontFamily: 'Inter, sans-serif',
+              fontSize: 13,
+              fontFamily: 'var(--font-ui)',
               color: 'var(--text-muted)',
-              transition: 'color 150ms ease'
+              padding: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
             }}
             onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)' }}
             onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
           >
-            + tag
+            <Plus size={13} />
+            link doc
           </button>
         )}
       </div>
@@ -445,7 +550,7 @@ export function ContactDetail(): React.JSX.Element {
       <div style={{ marginTop: 32 }}>
         <h2
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-ui)',
             fontSize: 12,
             fontWeight: 500,
             color: 'var(--text-muted)',
@@ -461,7 +566,7 @@ export function ContactDetail(): React.JSX.Element {
         {touchpoints.length === 0 ? (
           <span
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-ui)',
               fontSize: 13,
               color: 'var(--text-muted)'
             }}
@@ -488,7 +593,7 @@ export function ContactDetail(): React.JSX.Element {
                     {tp.note && (
                       <p
                         style={{
-                          fontFamily: 'Inter, sans-serif',
+                          fontFamily: 'var(--font-ui)',
                           fontSize: 13,
                           color: 'var(--text)',
                           margin: '0 0 2px 0',
@@ -500,7 +605,7 @@ export function ContactDetail(): React.JSX.Element {
                     )}
                     <span
                       style={{
-                        fontFamily: 'Inter, sans-serif',
+                        fontFamily: 'var(--font-ui)',
                         fontSize: 11,
                         color: 'var(--text-muted)'
                       }}
@@ -519,7 +624,7 @@ export function ContactDetail(): React.JSX.Element {
         <div style={{ marginTop: 32 }}>
           <h2
             style={{
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-ui)',
               fontSize: 12,
               fontWeight: 500,
               color: 'var(--text-muted)',
@@ -540,7 +645,7 @@ export function ContactDetail(): React.JSX.Element {
                 border: 'none',
                 cursor: 'pointer',
                 fontSize: 13,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-ui)',
                 color: 'var(--text-muted)',
                 padding: 0,
                 display: 'flex',
@@ -580,7 +685,7 @@ export function ContactDetail(): React.JSX.Element {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <span
                         style={{
-                          fontFamily: 'Inter, sans-serif',
+                          fontFamily: 'var(--font-ui)',
                           fontSize: 14,
                           color: 'var(--text)'
                         }}
@@ -589,7 +694,7 @@ export function ContactDetail(): React.JSX.Element {
                       </span>
                       <span
                         style={{
-                          fontFamily: 'Inter, sans-serif',
+                          fontFamily: 'var(--font-ui)',
                           fontSize: 12,
                           color: 'var(--text-muted)'
                         }}
@@ -608,7 +713,7 @@ export function ContactDetail(): React.JSX.Element {
                   border: 'none',
                   cursor: 'pointer',
                   fontSize: 13,
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-ui)',
                   color: 'var(--text-muted)',
                   padding: '12px 0 0 0',
                   display: 'flex',
@@ -659,7 +764,7 @@ function MetadataRow({
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
       <span
         style={{
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-ui)',
           fontSize: 12,
           fontWeight: 500,
           color: 'var(--text-muted)',
@@ -681,7 +786,7 @@ function MetadataRow({
             if (e.key === 'Enter') commit()
           }}
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-ui)',
             fontSize: 14,
             color: 'var(--text)',
             background: 'none',
@@ -695,7 +800,7 @@ function MetadataRow({
         <span
           onClick={() => setEditing(true)}
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-ui)',
             fontSize: 14,
             color: value ? 'var(--text)' : 'var(--text-muted)',
             cursor: 'text',

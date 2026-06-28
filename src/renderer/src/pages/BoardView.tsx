@@ -57,7 +57,7 @@ function DraggableCard({
     >
       <div
         style={{
-          fontFamily: 'Lora, serif',
+          fontFamily: 'var(--font-heading)',
           fontSize: 14,
           fontWeight: 500,
           color: 'var(--text)',
@@ -71,7 +71,7 @@ function DraggableCard({
       </div>
       <div
         style={{
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-ui)',
           fontSize: 12,
           color: 'var(--text-muted)',
           overflow: 'hidden',
@@ -115,7 +115,7 @@ function DroppableColumn({
     >
       <div
         style={{
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-ui)',
           fontSize: 12,
           fontWeight: 500,
           textTransform: 'uppercase',
@@ -254,7 +254,7 @@ export function BoardView(): React.JSX.Element {
       >
         <span
           style={{
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-ui)',
             fontSize: 13,
             color: 'var(--text-muted)'
           }}
@@ -278,7 +278,7 @@ export function BoardView(): React.JSX.Element {
       >
         <span
           style={{
-            fontFamily: 'Lora, serif',
+            fontFamily: 'var(--font-heading)',
             fontSize: 18,
             color: 'var(--text-muted)'
           }}

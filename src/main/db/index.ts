@@ -17,6 +17,12 @@ export async function initDb(): Promise<void> {
 
   // Delete any existing canvas docs
   await db.execute("DELETE FROM docs WHERE type = 'canvas'")
+
+  try {
+    await db.execute('ALTER TABLE notes ADD COLUMN body_preview TEXT NOT NULL DEFAULT ""')
+  } catch {
+    // column already exists
+  }
 }
 
 export function getDb(): Client {

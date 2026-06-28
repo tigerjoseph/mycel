@@ -11,6 +11,7 @@ async function getStore(): Promise<any> {
       name: 'mycel-settings',
       defaults: {
         theme: 'light',
+        appearance: 'bold-light',
         settings: {}
       }
     })
@@ -40,6 +41,19 @@ export function registerSettingsHandlers(): void {
     s.set('theme', theme)
     for (const win of BrowserWindow.getAllWindows()) {
       win.webContents.send('theme:changed', theme)
+    }
+  })
+
+  ipcMain.handle('appearance:get', async () => {
+    const s = await getStore()
+    return s.get('appearance', 'bold-light')
+  })
+
+  ipcMain.handle('appearance:set', async (_e, appearance: string) => {
+    const s = await getStore()
+    s.set('appearance', appearance)
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send('appearance:changed', appearance)
     }
   })
 
