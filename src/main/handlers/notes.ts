@@ -46,10 +46,21 @@ export function registerNoteHandlers(): void {
     const now = Date.now()
     const id = (note.id as string) || nanoid()
     const title = (note.title as string) || ''
-    const body = (note.body as string) || ''
+    let body = (note.body as string) || ''
     const tags = JSON.stringify(note.tags || [])
     const createdAt = (note.createdAt ?? note.created_at ?? now) as number
     const updatedAt = now
+
+    // Guard: list views don't load body — never wipe stored content with an empty partial save.
+    const incomingEmpty = !body.trim() || body === '<p></p>'
+    if (incomingEmpty && note.id) {
+      const existing = await db.execute({ sql: 'SELECT body FROM notes WHERE id = ?', args: [id] })
+      if (existing.rows.length > 0) {
+        const stored = (existing.rows[0].body as string) || ''
+        if (stored.trim() && stored !== '<p></p>') body = stored
+      }
+    }
+
     const preview = noteBodyPreview(body)
 
     await db.execute({

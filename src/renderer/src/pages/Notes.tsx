@@ -177,19 +177,33 @@ function NoteComposer({ onSave }: { onSave: () => void }) {
 
 // ── Inline Note Editor (expand in-place) ──────────────
 function InlineNoteEditor({ note, onClose }: { note: Note; onClose: () => void }) {
+  const [loaded, setLoaded] = useState<Note | null>(null)
   const [title, setTitle] = useState(note.title)
-  const [body, setBody] = useState(() => noteBodyHtmlToPlain(note.body))
+  const [body, setBody] = useState('')
   const [tags, setTags] = useState<string[]>(note.tags)
   const fetchNotes = useNotesStore((s) => s.fetch)
   const titleRef = useRef<HTMLInputElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => { titleRef.current?.focus() }, [])
+  useEffect(() => {
+    let cancelled = false
+    window.mycel.getNote(note.id).then((full) => {
+      if (cancelled || !full) return
+      const n = full as Note
+      setLoaded(n)
+      setTitle(n.title)
+      setBody(noteBodyHtmlToPlain(n.body))
+      setTags(n.tags)
+      setTimeout(() => titleRef.current?.focus(), 50)
+    })
+    return () => { cancelled = true }
+  }, [note.id])
 
   const persist = useCallback(async (closeAfter = false) => {
+    if (!loaded) return
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     await window.mycel.upsertNote({
-      ...note,
+      ...loaded,
       title: title.trim(),
       body: noteBodyHasContent(body) ? noteBodyPlainToHtml(body) : '',
       tags,
@@ -197,7 +211,7 @@ function InlineNoteEditor({ note, onClose }: { note: Note; onClose: () => void }
     })
     fetchNotes()
     if (closeAfter) onClose()
-  }, [note, title, body, tags, fetchNotes, onClose])
+  }, [loaded, title, body, tags, fetchNotes, onClose])
 
   const debouncedPersist = useCallback(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
@@ -215,10 +229,23 @@ function InlineNoteEditor({ note, onClose }: { note: Note; onClose: () => void }
   }, [persist])
 
   const handleDelete = async () => {
+    if (!loaded) return
     if (!confirm('Delete this note?')) return
     await window.mycel.deleteNote(note.id)
     fetchNotes()
     onClose()
+  }
+
+  if (!loaded) {
+    return (
+      <div style={{
+        border: '1px solid var(--border)', borderRadius: 12,
+        background: 'var(--surface)', padding: 24,
+        fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--text-muted)'
+      }}>
+        Loading note…
+      </div>
+    )
   }
 
   return (
@@ -390,8 +417,9 @@ export function Notes(): React.JSX.Element {
   }, [filteredNotes])
 
   const handleRemoveTag = useCallback(async (noteId: string, tag: string) => {
-    const note = notes.find((n) => n.id === noteId)
-    if (!note) return
+    const full = await window.mycel.getNote(noteId)
+    if (!full) return
+    const note = full as Note
     await window.mycel.upsertNote({
       ...note,
       tags: note.tags.filter((t) => t !== tag),
@@ -399,7 +427,7 @@ export function Notes(): React.JSX.Element {
     })
     fetchNotes()
     setContextMenu(null)
-  }, [notes, fetchNotes])
+  }, [fetchNotes])
 
   const hasNotes = notes.length > 0
   const hasTags = allTags.length > 0
