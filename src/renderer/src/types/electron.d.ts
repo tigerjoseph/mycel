@@ -64,9 +64,12 @@ declare global {
       deleteTodo(id: string): Promise<void>
 
       // Google Calendar
-      gcalConnect(): Promise<void>
+      gcalGetStatus(): Promise<{ connected: boolean }>
+      gcalConnect(): Promise<{ created: number; skipped: number }>
+      gcalDisconnect(): Promise<void>
+      gcalSyncContacts(): Promise<{ created: number; skipped: number }>
       gcalFetchEvents(): Promise<unknown[]>
-      gcalConfirmImport(imports: unknown): Promise<void>
+      gcalConfirmImport(imports: unknown): Promise<{ created: number; skipped: number }>
       gcalGetUpcoming(contactId: string): Promise<unknown>
 
       // Stripe
@@ -123,6 +126,12 @@ declare global {
         meeting: import('@shared/types').Meeting
         atoms: import('@shared/types').Atom[]
       }[]>
+      pickAndImportToDoc(docId: string): Promise<{
+        fragmentHtml: string
+        atomCount: number
+        meetingCount: number
+      } | null>
+      onCorpusImportProgress(callback: (stage: string) => void): () => void
       deleteMeeting(id: string): Promise<void>
       createDocFromAtoms(input: import('@shared/types').CreateDocFromAtomsInput): Promise<import('@shared/types').Doc>
     }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import TopNav from './components/TopNav'
 import { Todo } from './pages/Todo'
@@ -17,6 +17,13 @@ import { applyAppearanceToDocument } from '@shared/appearance'
 const PAGE_ORDER: PageId[] = ['todo', 'people', 'create', 'corpus']
 const VALID_PAGES = new Set<PageId>(PAGE_ORDER)
 
+const PAGE_COMPONENTS: Record<PageId, () => React.JSX.Element> = {
+  todo: Todo,
+  people: CRM,
+  create: Create,
+  corpus: Corpus
+}
+
 async function loadAppearance(): Promise<void> {
   if (window.mycel.getAppearance) {
     const id = await window.mycel.getAppearance()
@@ -34,25 +41,17 @@ function App(): React.JSX.Element {
   const logTouchpointOpen = useUIStore((s) => s.logTouchpointOpen)
   const contactSwitcherOpen = useUIStore((s) => s.contactSwitcherOpen)
   const copyFeedback = useUIStore((s) => s.copyFeedback)
+  const [mountedPages, setMountedPages] = useState<Set<PageId>>(() => new Set([activePage]))
   useKeyboard()
 
-  const directionRef = useRef(0)
-  const prevPageRef = useRef(activePage)
-
-  if (activePage !== prevPageRef.current) {
-    const prevIdx = PAGE_ORDER.indexOf(prevPageRef.current)
-    const nextIdx = PAGE_ORDER.indexOf(activePage)
-    directionRef.current = nextIdx > prevIdx ? 1 : -1
-    prevPageRef.current = activePage
-  }
-
-  const direction = directionRef.current
-
-  const slideVariants = {
-    enter: (d: number) => ({ x: `${d * 15}%`, opacity: 0 }),
-    center: { x: '0%', opacity: 1 },
-    exit: (d: number) => ({ x: `${d * -15}%`, opacity: 0 })
-  }
+  useEffect(() => {
+    setMountedPages((prev) => {
+      if (prev.has(activePage)) return prev
+      const next = new Set(prev)
+      next.add(activePage)
+      return next
+    })
+  }, [activePage])
 
   // Settings window detection via hash
   const [isSettingsWindow, setIsSettingsWindow] = useState(
@@ -120,23 +119,30 @@ function App(): React.JSX.Element {
     <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg)' }}>
       <TopNav />
       <main style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-        <AnimatePresence initial={false} custom={direction} mode="popLayout">
-          <motion.div
-            key={activePage}
-            custom={direction}
-            variants={slideVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'auto', willChange: 'transform, opacity' }}
-          >
-            {activePage === 'todo' && <Todo />}
-            {activePage === 'people' && <CRM />}
-            {activePage === 'create' && <Create />}
-            {activePage === 'corpus' && <Corpus />}
-          </motion.div>
-        </AnimatePresence>
+        {PAGE_ORDER.map((page) => {
+          if (!mountedPages.has(page)) return null
+          const Page = PAGE_COMPONENTS[page]
+          const isActive = activePage === page
+          return (
+            <div
+              key={page}
+              aria-hidden={!isActive}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                overflow: 'auto',
+                visibility: isActive ? 'visible' : 'hidden',
+                pointerEvents: isActive ? 'auto' : 'none',
+                zIndex: isActive ? 1 : 0
+              }}
+            >
+              <Page />
+            </div>
+          )
+        })}
       </main>
 
       {/* Global overlays */}

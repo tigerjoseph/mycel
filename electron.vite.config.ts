@@ -9,8 +9,20 @@ import tailwindcss from '@tailwindcss/vite'
 delete process.env.ELECTRON_RUN_AS_NODE
 
 export default defineConfig({
-  main: {},
-  preload: {},
+  main: {
+    resolve: {
+      alias: {
+        '@shared': resolve('src/shared')
+      }
+    }
+  },
+  preload: {
+    resolve: {
+      alias: {
+        '@shared': resolve('src/shared')
+      }
+    }
+  },
   renderer: {
     resolve: {
       alias: {

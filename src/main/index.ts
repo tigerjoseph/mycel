@@ -5,6 +5,8 @@ import { setupContextMenu } from './contextMenu'
 import { initDb } from './db'
 import { registerHandlers } from './handlers'
 import { setupAutoUpdater } from './updater'
+import { isGcalConnected } from './gcal/auth'
+import { syncCalendarContacts } from './gcal/sync'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -56,6 +58,9 @@ app.whenReady().then(async () => {
   setApplicationMenu()
   await initDb()
   registerHandlers()
+  if (await isGcalConnected()) {
+    void syncCalendarContacts().catch(() => {})
+  }
   createWindow()
   setupAutoUpdater()
 

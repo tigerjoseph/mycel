@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react
 import { Extension } from '@tiptap/core'
 import { ReactRenderer } from '@tiptap/react'
 import Suggestion from '@tiptap/suggestion'
-import type { SuggestionOptions, SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion'
+import type { SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion'
 import type { Editor, Range } from '@tiptap/core'
 import { fileToDataUrl, pickImageFiles } from '../extensions/docImages'
 import {
@@ -16,7 +16,8 @@ import {
   Quote,
   Code2,
   Image,
-  Table
+  Table,
+  Mic
 } from 'lucide-react'
 
 /* ------------------------------------------------------------------ */
@@ -27,8 +28,11 @@ interface SlashItem {
   title: string
   group: string
   icon: React.ReactNode
+  keywords?: string[]
   command: (props: { editor: Editor; range: Range }) => void
 }
+
+export type ImportAudioHandler = (props: { editor: Editor; range: Range }) => void | Promise<void>
 
 /* ------------------------------------------------------------------ */
 /*  Slash command items                                                 */
@@ -36,7 +40,8 @@ interface SlashItem {
 
 const ICON_SIZE = 16
 
-const slashItems: SlashItem[] = [
+function buildSlashItems(importAudio?: ImportAudioHandler): SlashItem[] {
+  const items: SlashItem[] = [
   {
     title: 'Heading 1',
     group: 'Text',
@@ -146,7 +151,22 @@ const slashItems: SlashItem[] = [
         .run()
     }
   }
-]
+  ]
+
+  if (importAudio) {
+    items.push({
+      title: 'Voice note',
+      group: 'Insert',
+      icon: <Mic size={ICON_SIZE} />,
+      keywords: ['audio', 'voice', 'mic', 'record'],
+      command: ({ editor, range }) => {
+        void importAudio({ editor, range })
+      }
+    })
+  }
+
+  return items
+}
 
 /* ------------------------------------------------------------------ */
 /*  React component rendered as popup                                  */
@@ -301,12 +321,28 @@ export const SlashCommands = Extension.create({
 
   addOptions() {
     return {
+      importAudio: undefined as ImportAudioHandler | undefined,
       suggestion: {
         char: '/',
-        startOfLine: false,
+        startOfLine: false
+      }
+    }
+  },
+
+  addProseMirrorPlugins() {
+    const importAudio = this.options.importAudio
+    const suggestionBase = this.options.suggestion
+
+    return [
+      Suggestion({
+        editor: this.editor,
+        ...suggestionBase,
         items: ({ query }: { query: string }) => {
           const q = query.toLowerCase()
-          return slashItems.filter((item) => item.title.toLowerCase().includes(q))
+          return buildSlashItems(importAudio).filter((item) => {
+            if (item.title.toLowerCase().includes(q)) return true
+            return item.keywords?.some((k) => k.includes(q) || q.includes(k)) ?? false
+          })
         },
         render: () => {
           let popup: HTMLDivElement | null = null
@@ -373,15 +409,6 @@ export const SlashCommands = Extension.create({
             }
           }
         }
-      } satisfies Partial<SuggestionOptions<SlashItem>>
-    }
-  },
-
-  addProseMirrorPlugins() {
-    return [
-      Suggestion({
-        editor: this.editor,
-        ...this.options.suggestion
       })
     ]
   }

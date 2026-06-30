@@ -1,11 +1,34 @@
-import { dialog, ipcMain } from 'electron'
+import { dialog, ipcMain, type WebContents } from 'electron'
 import { nanoid } from 'nanoid'
 import { getDb } from '../db'
 import { extractAtoms } from '../engine/extractAtoms'
-import { atomsToDocHtml, generateProseFromAtoms } from '../engine/generateDoc'
+import { atomsToDocHtml, generateProseFromAtoms, voiceNoteAtomsHtml } from '../engine/generateDoc'
 import { readTranscriptFromFile } from '../engine/readImportFile'
 import { getGoogleApiKey } from '../settingsStore'
 import type { Atom, AtomKind, CreateDocFromAtomsInput, Meeting } from '@shared/types'
+
+const AUDIO_IMPORT_FILTERS = [
+  { name: 'Transcripts & audio', extensions: ['txt', 'md', 'vtt', 'srt', 'm4a', 'mp3', 'wav', 'webm', 'mp4', 'aac', 'caf'] },
+  { name: 'All files', extensions: ['*'] }
+]
+
+export type CorpusImportProgress = 'transcribing' | 'extracting' | 'inserting'
+
+function sendImportProgress(sender: WebContents, stage: CorpusImportProgress): void {
+  sender.send('corpus:importProgress', stage)
+}
+
+async function linkAtomsToDoc(docId: string, atoms: Atom[]): Promise<void> {
+  if (atoms.length === 0) return
+  const db = getDb()
+  const now = Date.now()
+  for (const atom of atoms) {
+    await db.execute({
+      sql: 'INSERT INTO doc_attachments (id, doc_id, atom_id, created_at) VALUES (?, ?, ?, ?)',
+      args: [nanoid(), docId, atom.id, now]
+    })
+  }
+}
 
 function parseMeetingRow(row: Record<string, unknown>): Meeting {
   return {
@@ -132,10 +155,7 @@ export function registerCorpusHandlers(): void {
     const { canceled, filePaths } = await dialog.showOpenDialog({
       title: 'Import voice note or transcript',
       properties: ['openFile', 'multiSelections'],
-      filters: [
-        { name: 'Transcripts & audio', extensions: ['txt', 'md', 'vtt', 'srt', 'm4a', 'mp3', 'wav', 'webm', 'mp4', 'aac', 'caf'] },
-        { name: 'All files', extensions: ['*'] }
-      ]
+      filters: AUDIO_IMPORT_FILTERS
     })
     if (canceled || filePaths.length === 0) return []
 
@@ -145,6 +165,44 @@ export function registerCorpusHandlers(): void {
       results.push(await saveMeetingWithAtoms(text, { title, sourcePath: filePath }))
     }
     return results
+  })
+
+  ipcMain.handle('corpus:pickAndImportToDoc', async (e, docId: string) => {
+    if (!docId) throw new Error('No document open')
+
+    const db = getDb()
+    const docResult = await db.execute({ sql: 'SELECT id FROM docs WHERE id = ?', args: [docId] })
+    if (docResult.rows.length === 0) throw new Error('Document not found')
+
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Import voice note into document',
+      properties: ['openFile', 'multiSelections'],
+      filters: AUDIO_IMPORT_FILTERS
+    })
+    if (canceled || filePaths.length === 0) return null
+
+    const sender = e.sender
+    const fragments: string[] = []
+    let atomCount = 0
+
+    for (const filePath of filePaths) {
+      sendImportProgress(sender, 'transcribing')
+      const { text, title } = await readTranscriptFromFile(filePath)
+
+      sendImportProgress(sender, 'extracting')
+      const { meeting, atoms } = await saveMeetingWithAtoms(text, { title, sourcePath: filePath })
+
+      sendImportProgress(sender, 'inserting')
+      await linkAtomsToDoc(docId, atoms)
+      fragments.push(voiceNoteAtomsHtml(meeting.title, atoms))
+      atomCount += atoms.length
+    }
+
+    return {
+      fragmentHtml: fragments.join(''),
+      atomCount,
+      meetingCount: filePaths.length
+    }
   })
 
   ipcMain.handle('corpus:deleteMeeting', async (_e, id: string) => {
@@ -192,12 +250,7 @@ export function registerCorpusHandlers(): void {
         args: [mergedBody, now, input.docId]
       })
 
-      for (const atom of atoms) {
-        await db.execute({
-          sql: 'INSERT INTO doc_attachments (id, doc_id, atom_id, created_at) VALUES (?, ?, ?, ?)',
-          args: [nanoid(), input.docId, atom.id, now]
-        })
-      }
+      await linkAtomsToDoc(input.docId, atoms)
 
       return {
         id: input.docId,
@@ -224,12 +277,7 @@ export function registerCorpusHandlers(): void {
       args: [docId, title, body, JSON.stringify(tags), now, now]
     })
 
-    for (const atom of atoms) {
-      await db.execute({
-        sql: 'INSERT INTO doc_attachments (id, doc_id, atom_id, created_at) VALUES (?, ?, ?, ?)',
-        args: [nanoid(), docId, atom.id, now]
-      })
-    }
+    await linkAtomsToDoc(docId, atoms)
 
     return {
       id: docId,

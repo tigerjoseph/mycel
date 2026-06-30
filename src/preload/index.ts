@@ -62,9 +62,14 @@ const mycelAPI = {
   deleteTodo: (id: string): Promise<void> => ipcRenderer.invoke('todos:delete', id),
 
   // Google Calendar
-  gcalConnect: (): Promise<void> => ipcRenderer.invoke('gcal:connect'),
+  gcalConnect: (): Promise<{ created: number; skipped: number }> => ipcRenderer.invoke('gcal:connect'),
+  gcalDisconnect: (): Promise<void> => ipcRenderer.invoke('gcal:disconnect'),
+  gcalGetStatus: (): Promise<{ connected: boolean }> => ipcRenderer.invoke('gcal:getStatus'),
   gcalFetchEvents: (): Promise<unknown[]> => ipcRenderer.invoke('gcal:fetchEvents'),
-  gcalConfirmImport: (imports: unknown): Promise<void> => ipcRenderer.invoke('gcal:confirmImport', imports),
+  gcalSyncContacts: (): Promise<{ created: number; skipped: number }> =>
+    ipcRenderer.invoke('gcal:syncContacts'),
+  gcalConfirmImport: (imports: unknown): Promise<{ created: number; skipped: number }> =>
+    ipcRenderer.invoke('gcal:confirmImport', imports),
   gcalGetUpcoming: (contactId: string): Promise<unknown> => ipcRenderer.invoke('gcal:getUpcoming', contactId),
 
   // Stripe
@@ -124,6 +129,16 @@ const mycelAPI = {
     ipcRenderer.invoke('corpus:importTranscript', payload),
   importPaths: (paths: string[]): Promise<unknown[]> => ipcRenderer.invoke('corpus:importPaths', paths),
   pickAndImport: (): Promise<unknown[]> => ipcRenderer.invoke('corpus:pickAndImport'),
+  pickAndImportToDoc: (docId: string): Promise<{
+    fragmentHtml: string
+    atomCount: number
+    meetingCount: number
+  } | null> => ipcRenderer.invoke('corpus:pickAndImportToDoc', docId),
+  onCorpusImportProgress: (callback: (stage: string) => void): (() => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, stage: string): void => callback(stage)
+    ipcRenderer.on('corpus:importProgress', handler)
+    return () => ipcRenderer.removeListener('corpus:importProgress', handler)
+  },
   deleteMeeting: (id: string): Promise<void> => ipcRenderer.invoke('corpus:deleteMeeting', id),
   createDocFromAtoms: (input: unknown): Promise<unknown> =>
     ipcRenderer.invoke('corpus:createDocFromAtoms', input),

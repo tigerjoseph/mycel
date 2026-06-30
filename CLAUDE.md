@@ -3,10 +3,14 @@
 ## Ship Workflow
 
 ```bash
-GH_TOKEN=github_pat_... npm run ship
+./scripts/ship.sh
 ```
 
-- Typechecks, builds universal DMG, notarizes with Apple, uploads to GitHub Releases
+- **GitHub:** `gh auth token` → publishes to [tigerjoseph/mycel](https://github.com/tigerjoseph/mycel) releases
+- **Notarize:** Apple creds in `.env` (see `.env.example`; file is gitignored)
+- Typechecks, builds universal DMG, notarizes with Apple, uploads via `electron-updater`
+
+Legacy one-liner also works: `GH_TOKEN=$(gh auth token) npm run ship` (with `.env` sourced)
 - Auto-updater checks `tigerjoseph/mycel` releases via `electron-updater`
 - `npm run publish:intel` / `npm run publish:silicon` for single-arch builds
 

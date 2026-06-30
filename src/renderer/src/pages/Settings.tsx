@@ -23,6 +23,9 @@ export function Settings(): React.JSX.Element {
   const [appearance, setAppearance] = useState<AppearanceId>('bold-light')
   const [stripeKey, setStripeKey] = useState('')
   const [googleApiKey, setGoogleApiKey] = useState('')
+  const [gcalConnected, setGcalConnected] = useState(false)
+  const [gcalBusy, setGcalBusy] = useState(false)
+  const [gcalMessage, setGcalMessage] = useState<string | null>(null)
   const [version, setVersion] = useState('')
 
   useEffect(() => {
@@ -34,12 +37,62 @@ export function Settings(): React.JSX.Element {
     window.mycel.getSettings().then((s) => {
       if (typeof s.googleApiKey === 'string') setGoogleApiKey(s.googleApiKey)
     })
+    window.mycel.gcalGetStatus().then((s) => setGcalConnected(s.connected)).catch(() => {})
   }, [])
 
   const handleAppearance = (id: AppearanceId): void => {
     setAppearance(id)
     applyAppearanceToDocument(id)
     window.mycel.setAppearance(id)
+  }
+
+  const handleGcalConnect = async (): Promise<void> => {
+    setGcalBusy(true)
+    setGcalMessage(null)
+    try {
+      const result = await window.mycel.gcalConnect()
+      setGcalConnected(true)
+      setGcalMessage(
+        result.created > 0
+          ? `Added ${result.created} contact${result.created === 1 ? '' : 's'} from calendar`
+          : 'Connected — no new contacts to add'
+      )
+    } catch (err) {
+      setGcalMessage(err instanceof Error ? err.message : 'Could not connect Google Calendar')
+    } finally {
+      setGcalBusy(false)
+    }
+  }
+
+  const handleGcalDisconnect = async (): Promise<void> => {
+    setGcalBusy(true)
+    setGcalMessage(null)
+    try {
+      await window.mycel.gcalDisconnect()
+      setGcalConnected(false)
+      setGcalMessage('Disconnected')
+    } catch {
+      setGcalMessage('Could not disconnect')
+    } finally {
+      setGcalBusy(false)
+    }
+  }
+
+  const handleGcalSync = async (): Promise<void> => {
+    setGcalBusy(true)
+    setGcalMessage(null)
+    try {
+      const result = await window.mycel.gcalSyncContacts()
+      setGcalMessage(
+        result.created > 0
+          ? `Added ${result.created} new contact${result.created === 1 ? '' : 's'}`
+          : 'Up to date — no new contacts'
+      )
+    } catch (err) {
+      setGcalMessage(err instanceof Error ? err.message : 'Sync failed')
+    } finally {
+      setGcalBusy(false)
+    }
   }
 
   return (
@@ -148,42 +201,64 @@ export function Settings(): React.JSX.Element {
         </h2>
 
         {/* Google Calendar */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 16
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                backgroundColor: '#9ca3af',
-                flexShrink: 0
-              }}
-            />
-            <span style={{ fontSize: 13, color: 'var(--text)' }}>Google Calendar</span>
-          </div>
-          <button
-            disabled
+        <div style={{ marginBottom: 20 }}>
+          <div
             style={{
-              padding: '6px 12px',
-              borderRadius: 6,
-              border: '1px solid var(--border)',
-              backgroundColor: 'var(--surface)',
-              cursor: 'not-allowed',
-              fontSize: 12,
-              fontFamily: 'var(--font-ui)',
-              color: 'var(--text-muted)',
-              opacity: 0.6
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 10
             }}
           >
-            Connect Google Calendar
-          </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  backgroundColor: gcalConnected ? '#22c55e' : '#9ca3af',
+                  flexShrink: 0
+                }}
+              />
+              <span style={{ fontSize: 13, color: 'var(--text)' }}>Google Calendar</span>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {gcalConnected && (
+                <button
+                  onClick={() => void handleGcalSync()}
+                  disabled={gcalBusy}
+                  style={integrationBtnStyle}
+                >
+                  Sync now
+                </button>
+              )}
+              <button
+                onClick={() => void (gcalConnected ? handleGcalDisconnect() : handleGcalConnect())}
+                disabled={gcalBusy}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 6,
+                  border: gcalConnected ? '1px solid var(--border)' : 'none',
+                  backgroundColor: gcalConnected ? 'var(--surface)' : 'var(--text)',
+                  color: gcalConnected ? 'var(--text)' : 'var(--bg)',
+                  fontSize: 12,
+                  fontFamily: 'var(--font-ui)',
+                  fontWeight: 500,
+                  opacity: gcalBusy ? 0.6 : 1,
+                  cursor: gcalBusy ? 'wait' : 'pointer'
+                }}
+              >
+                {gcalBusy ? 'Working…' : gcalConnected ? 'Disconnect' : 'Connect Google Calendar'}
+              </button>
+            </div>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 4px', lineHeight: 1.5 }}>
+            When you book via Cal.ai (or any calendar invite), meeting attendees are added to your
+            contact list automatically on connect and each app launch.
+          </p>
+          {gcalMessage && (
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '8px 0 0' }}>{gcalMessage}</p>
+          )}
         </div>
 
         {/* Google AI */}
@@ -352,4 +427,14 @@ export function Settings(): React.JSX.Element {
       </div>
     </div>
   )
+}
+
+const integrationBtnStyle: React.CSSProperties = {
+  padding: '6px 12px',
+  borderRadius: 6,
+  border: '1px solid var(--border)',
+  backgroundColor: 'var(--surface)',
+  fontSize: 12,
+  fontFamily: 'var(--font-ui)',
+  color: 'var(--text)'
 }

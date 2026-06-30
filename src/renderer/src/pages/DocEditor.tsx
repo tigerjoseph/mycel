@@ -23,7 +23,7 @@ import { useUIStore } from '../store/ui'
 import { useDocsStore } from '../store/docs'
 import { fadeUp } from '../styles/animation'
 import { FloatingToolbar } from '../components/FloatingToolbar'
-import { SlashCommands } from '../components/SlashMenu'
+import { SlashCommands, type ImportAudioHandler } from '../components/SlashMenu'
 import { EmojiPicker } from '../components/EmojiPicker'
 import { DocIcon } from '../components/DocIcon'
 import { TagPicker } from '../components/TagPicker'
@@ -38,6 +38,12 @@ import {
   resolveLinkedContacts
 } from '../utils/cursorExport'
 import type { Doc } from '@shared/types'
+import {
+  insertAudioPlaceholder,
+  progressLabel,
+  replaceAudioPlaceholder,
+  updateAudioPlaceholder
+} from '../utils/docAudioImport'
 
 export function DocEditor(): React.JSX.Element {
   const activeDocId = useUIStore((s) => s.activeDocId)
@@ -129,6 +135,45 @@ export function DocEditor(): React.JSX.Element {
     }
   }, [])
 
+  const handleImportAudio = useCallback<ImportAudioHandler>(
+    async ({ editor, range }) => {
+      if (!activeDocId) return
+      editor.chain().focus().deleteRange(range).run()
+      insertAudioPlaceholder(editor)
+
+      const stopProgress = window.mycel.onCorpusImportProgress((stage) => {
+        updateAudioPlaceholder(editor, progressLabel(stage))
+      })
+
+      try {
+        const result = await window.mycel.pickAndImportToDoc(activeDocId)
+        if (!result) {
+          replaceAudioPlaceholder(editor, null)
+          return
+        }
+        replaceAudioPlaceholder(editor, result.fragmentHtml)
+        const html = editor.getHTML()
+        if (doc) {
+          const updated = { ...doc, body: html, updatedAt: Date.now() }
+          await window.mycel.upsertDoc(updated)
+          if (isMountedRef.current) {
+            setDoc(updated)
+            showSaved()
+          }
+        }
+        const noun = result.atomCount === 1 ? 'atom' : 'atoms'
+        showCopyFeedback(`Added ${result.atomCount} ${noun} from voice note`)
+      } catch (err) {
+        replaceAudioPlaceholder(editor, null)
+        const msg = err instanceof Error ? err.message : 'Voice note import failed'
+        showCopyFeedback(msg)
+      } finally {
+        stopProgress()
+      }
+    },
+    [activeDocId, doc, showSaved, showCopyFeedback]
+  )
+
   const editor = useEditor(
     {
       extensions: [
@@ -157,7 +202,7 @@ export function DocEditor(): React.JSX.Element {
         TableRow,
         TableCell,
         TableHeader,
-        SlashCommands
+        SlashCommands.configure({ importAudio: handleImportAudio })
       ],
       content: doc?.body || '',
       onUpdate: ({ editor: ed }) => {
@@ -179,7 +224,7 @@ export function DocEditor(): React.JSX.Element {
         }
       }
     },
-    [doc?.id]
+    [doc?.id, handleImportAudio]
   )
 
   const flushSave = useCallback(async () => {

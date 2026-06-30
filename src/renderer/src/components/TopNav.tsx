@@ -1,8 +1,7 @@
 import { motion } from 'motion/react'
-import { ChevronLeft, Search, Settings } from 'lucide-react'
+import { Search, Settings } from 'lucide-react'
 import { useUIStore } from '../store/ui'
 import type { PageId } from '@shared/types'
-import { Logo } from './Logo'
 
 const tabs: { id: PageId; label: string }[] = [
   { id: 'todo', label: 'To-Do' },
@@ -16,11 +15,7 @@ const springTransition = { type: 'spring' as const, stiffness: 400, damping: 28 
 export default function TopNav() {
   const activePage = useUIStore((s) => s.activePage)
   const setPage = useUIStore((s) => s.setPage)
-  const breadcrumbs = useUIStore((s) => s.breadcrumbs)
-  const popBreadcrumb = useUIStore((s) => s.popBreadcrumb)
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen)
-
-  const canGoBack = breadcrumbs.length > 0
 
   return (
     <header
@@ -35,41 +30,6 @@ export default function TopNav() {
         userSelect: 'none'
       }}
     >
-      {/* Back chevron — positioned after macOS traffic lights area */}
-      <button
-        onClick={canGoBack ? popBreadcrumb : undefined}
-        style={{
-          WebkitAppRegion: 'no-drag',
-          marginLeft: 80,
-          background: 'none',
-          border: 'none',
-          padding: 4,
-          cursor: canGoBack ? 'pointer' : 'default',
-          opacity: canGoBack ? 1 : 0.3,
-          pointerEvents: canGoBack ? 'auto' : 'none',
-          color: 'var(--text-muted)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderRadius: 4,
-          transition: 'color 150ms ease'
-        }}
-        onMouseEnter={(e) => {
-          if (canGoBack) e.currentTarget.style.color = 'var(--text)'
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.color = 'var(--text-muted)'
-        }}
-        aria-label="Go back"
-      >
-        <ChevronLeft size={16} />
-      </button>
-
-      {/* Logo */}
-      <div style={{ marginLeft: 8, color: 'var(--text-muted)', WebkitAppRegion: 'no-drag', display: 'flex', alignItems: 'center' }}>
-        <Logo size={20} />
-      </div>
-
       {/* Centered tabs */}
       <nav
         style={{

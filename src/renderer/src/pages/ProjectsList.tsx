@@ -1,8 +1,11 @@
 import { useEffect, useState, useMemo } from 'react'
 import { motion } from 'motion/react'
 import { formatDistanceToNow } from 'date-fns'
+import { Plus } from 'lucide-react'
 import { fadeUp } from '../styles/animation'
 import { useUIStore } from '../store/ui'
+import { NewProjectDialog } from '../components/NewProjectDialog'
+import type { Project } from '@shared/types'
 
 interface ProjectWithContact {
   id: string
@@ -21,9 +24,14 @@ export function ProjectsList(): React.JSX.Element {
 
   const [projects, setProjects] = useState<ProjectWithContact[]>([])
   const [stageFilter, setStageFilter] = useState<string | null>(null)
+  const [newProjectOpen, setNewProjectOpen] = useState(false)
+
+  const loadProjects = (): void => {
+    window.mycel.getAllProjects().then((p) => setProjects(p as ProjectWithContact[])).catch(() => {})
+  }
 
   useEffect(() => {
-    window.mycel.getAllProjects().then((p) => setProjects(p as ProjectWithContact[])).catch(() => {})
+    loadProjects()
   }, [])
 
   const filtered = useMemo(() => {
@@ -37,41 +45,88 @@ export function ProjectsList(): React.JSX.Element {
 
   if (projects.length === 0) {
     return (
-      <motion.div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: 320,
-          gap: 16
-        }}
-        {...fadeUp}
-      >
-        <span
+      <>
+        <motion.div
           style={{
-            fontFamily: 'var(--font-heading)',
-            fontSize: 18,
-            color: 'var(--text-muted)'
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: 320,
+            gap: 16
           }}
+          {...fadeUp}
         >
-          No projects yet
-        </span>
-        <span
-          style={{
-            fontFamily: 'var(--font-ui)',
-            fontSize: 13,
-            color: 'var(--text-muted)'
+          <span
+            style={{
+              fontFamily: 'var(--font-heading)',
+              fontSize: 18,
+              color: 'var(--text-muted)'
+            }}
+          >
+            No projects yet
+          </span>
+          <button
+            onClick={() => setNewProjectOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 14px',
+              borderRadius: 8,
+              border: 'none',
+              background: 'var(--text)',
+              color: 'var(--bg)',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontFamily: 'var(--font-ui)',
+              fontWeight: 500
+            }}
+          >
+            <Plus size={14} />
+            New project
+          </button>
+        </motion.div>
+        <NewProjectDialog
+          open={newProjectOpen}
+          onClose={() => setNewProjectOpen(false)}
+          onCreated={(project: Project) => {
+            loadProjects()
+            setActiveProjectId(project.id)
           }}
-        >
-          Create a project from a contact&apos;s page
-        </span>
-      </motion.div>
+        />
+      </>
     )
   }
 
   return (
+    <>
     <motion.div {...fadeUp}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <span style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--text-muted)' }}>
+          {filtered.length} project{filtered.length === 1 ? '' : 's'}
+        </span>
+        <button
+          onClick={() => setNewProjectOpen(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '6px 12px',
+            borderRadius: 8,
+            border: '1px solid var(--border)',
+            background: 'var(--surface)',
+            cursor: 'pointer',
+            fontSize: 12,
+            fontFamily: 'var(--font-ui)',
+            fontWeight: 500,
+            color: 'var(--text)'
+          }}
+        >
+          <Plus size={13} />
+          New project
+        </button>
+      </div>
       {/* Stage filter pills */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         <button
@@ -188,5 +243,14 @@ export function ProjectsList(): React.JSX.Element {
         ))}
       </div>
     </motion.div>
+    <NewProjectDialog
+      open={newProjectOpen}
+      onClose={() => setNewProjectOpen(false)}
+      onCreated={(project: Project) => {
+        loadProjects()
+        setActiveProjectId(project.id)
+      }}
+    />
+    </>
   )
 }

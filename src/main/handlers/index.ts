@@ -13,15 +13,10 @@ import { registerSettingsHandlers } from './settings'
 import { registerLinkHandlers } from './links'
 import { registerExportHandlers } from './export'
 import { registerCorpusHandlers } from './corpus'
+import { registerGcalHandlers } from './gcal'
 
 /** Register remaining IPC stubs for features not yet implemented */
 function registerRemainingStubs(): void {
-  // Google Calendar
-  ipcMain.handle('gcal:connect', () => {})
-  ipcMain.handle('gcal:fetchEvents', () => [])
-  ipcMain.handle('gcal:confirmImport', () => {})
-  ipcMain.handle('gcal:getUpcoming', () => null)
-
   // Stripe
   ipcMain.handle('stripe:connect', () => {})
   ipcMain.handle('stripe:confirmMatches', () => {})
@@ -47,5 +42,6 @@ export function registerHandlers(): void {
   registerLinkHandlers()
   registerExportHandlers()
   registerCorpusHandlers()
+  registerGcalHandlers()
   registerRemainingStubs()
 }

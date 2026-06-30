@@ -24,6 +24,21 @@ export function atomsToDocHtml(atoms: Atom[], title?: string): string {
   return parts.join('')
 }
 
+/** Inline fragment for appending voice-note atoms into an open document. */
+export function voiceNoteAtomsHtml(meetingTitle: string, atoms: Atom[]): string {
+  const title = meetingTitle.trim() || 'Voice note'
+  const parts = [
+    '<hr>',
+    `<p><em>Voice note: ${escapeHtml(title)}</em></p>`,
+    '<ul>'
+  ]
+  for (const atom of atoms) {
+    parts.push(`<li><p>${escapeHtml(atom.text)}</p></li>`)
+  }
+  parts.push('</ul>')
+  return parts.join('')
+}
+
 export async function generateProseFromAtoms(
   atoms: Atom[],
   docType: CorpusDocType,
