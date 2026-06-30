@@ -1,9 +1,11 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import Fuse from 'fuse.js'
+import { Plus } from 'lucide-react'
 import { springGentle } from '../styles/animation'
 import { useUIStore } from '../store/ui'
 import { useContactsStore } from '../store/contacts'
+import { contactFromQuery, hasExactContactName } from '../utils/contactFromQuery'
 
 export function ContactSwitcher(): React.JSX.Element {
   const open = useUIStore((s) => s.contactSwitcherOpen)
@@ -13,12 +15,13 @@ export function ContactSwitcher(): React.JSX.Element {
   const pushBreadcrumb = useUIStore((s) => s.pushBreadcrumb)
 
   const contacts = useContactsStore((s) => s.contacts)
+  const upsertContact = useContactsStore((s) => s.upsert)
 
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [creating, setCreating] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Reset when opened
   useEffect(() => {
     if (open) {
       setQuery('')
@@ -32,17 +35,21 @@ export function ContactSwitcher(): React.JSX.Element {
     [contacts]
   )
 
+  const queryTrimmed = query.trim()
   const results = useMemo(() => {
-    if (!query.trim()) return contacts.slice(0, 8)
-    return fuse.search(query).map((r) => r.item).slice(0, 8)
-  }, [contacts, query, fuse])
+    if (!queryTrimmed) return contacts.slice(0, 8)
+    return fuse.search(queryTrimmed).map((r) => r.item).slice(0, 8)
+  }, [contacts, queryTrimmed, fuse])
 
-  // Clamp selected index
+  const showAddNew = queryTrimmed.length > 0 && !hasExactContactName(contacts, queryTrimmed)
+  const itemCount = results.length + (showAddNew ? 1 : 0)
+  const addNewIndex = showAddNew ? results.length : -1
+
   useEffect(() => {
-    if (selectedIndex >= results.length) {
-      setSelectedIndex(Math.max(0, results.length - 1))
+    if (selectedIndex >= itemCount) {
+      setSelectedIndex(Math.max(0, itemCount - 1))
     }
-  }, [results.length, selectedIndex])
+  }, [itemCount, selectedIndex])
 
   const selectContact = useCallback(
     (id: string, name: string) => {
@@ -57,7 +64,18 @@ export function ContactSwitcher(): React.JSX.Element {
     [setPage, setActiveContactId, pushBreadcrumb, setOpen]
   )
 
-  // Keyboard navigation
+  const handleAddNew = useCallback(async () => {
+    if (!queryTrimmed || creating) return
+    setCreating(true)
+    try {
+      const contact = contactFromQuery(queryTrimmed)
+      await upsertContact(contact)
+      selectContact(contact.id, contact.name)
+    } finally {
+      setCreating(false)
+    }
+  }, [queryTrimmed, creating, upsertContact, selectContact])
+
   useEffect(() => {
     if (!open) return
     function onKeyDown(e: KeyboardEvent): void {
@@ -69,7 +87,7 @@ export function ContactSwitcher(): React.JSX.Element {
       }
       if (e.key === 'ArrowDown') {
         e.preventDefault()
-        setSelectedIndex((prev) => Math.min(prev + 1, results.length - 1))
+        setSelectedIndex((prev) => Math.min(prev + 1, itemCount - 1))
         return
       }
       if (e.key === 'ArrowUp') {
@@ -77,17 +95,20 @@ export function ContactSwitcher(): React.JSX.Element {
         setSelectedIndex((prev) => Math.max(prev - 1, 0))
         return
       }
-      if (e.key === 'Enter' && results.length > 0) {
+      if (e.key === 'Enter' && itemCount > 0) {
         e.preventDefault()
+        if (selectedIndex === addNewIndex) {
+          void handleAddNew()
+          return
+        }
         const contact = results[selectedIndex]
         if (contact) selectContact(contact.id, contact.name)
       }
     }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [open, results, selectedIndex, selectContact, setOpen])
+  }, [open, results, selectedIndex, addNewIndex, itemCount, selectContact, handleAddNew, setOpen])
 
-  // Register Cmd+J shortcut
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent): void {
       if (e.metaKey && e.key === 'j') {
@@ -134,7 +155,6 @@ export function ContactSwitcher(): React.JSX.Element {
               overflow: 'hidden'
             }}
           >
-            {/* Search input */}
             <div
               style={{
                 padding: '14px 16px',
@@ -162,8 +182,7 @@ export function ContactSwitcher(): React.JSX.Element {
               />
             </div>
 
-            {/* Results */}
-            {results.length > 0 && (
+            {itemCount > 0 && (
               <div style={{ maxHeight: 360, overflowY: 'auto', padding: '4px 0' }}>
                 {results.map((contact, i) => {
                   const isSelected = i === selectedIndex
@@ -209,20 +228,31 @@ export function ContactSwitcher(): React.JSX.Element {
                     </button>
                   )
                 })}
-              </div>
-            )}
-
-            {results.length === 0 && query.trim() && (
-              <div style={{ padding: '20px 16px', textAlign: 'center' }}>
-                <span
-                  style={{
-                    fontFamily: 'var(--font-ui)',
-                    fontSize: 13,
-                    color: 'var(--text-muted)'
-                  }}
-                >
-                  No contacts found
-                </span>
+                {showAddNew && (
+                  <button
+                    onClick={() => void handleAddNew()}
+                    onMouseEnter={() => setSelectedIndex(addNewIndex)}
+                    disabled={creating}
+                    style={{
+                      background: selectedIndex === addNewIndex ? 'var(--bg)' : 'transparent',
+                      border: 'none',
+                      borderTop: results.length > 0 ? '1px solid var(--border)' : undefined,
+                      cursor: creating ? 'wait' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '10px 16px',
+                      width: '100%',
+                      textAlign: 'left',
+                      opacity: creating ? 0.6 : 1
+                    }}
+                  >
+                    <Plus size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                    <span style={{ fontFamily: 'var(--font-ui)', fontSize: 14, color: 'var(--accent)' }}>
+                      {creating ? 'Adding…' : `Add new contact — ${queryTrimmed}`}
+                    </span>
+                  </button>
+                )}
               </div>
             )}
           </motion.div>

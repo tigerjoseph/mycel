@@ -89,23 +89,35 @@ declare global {
       // Appearance
       getAppearance(): Promise<import('@shared/appearance').AppearanceId>
       setAppearance(id: import('@shared/appearance').AppearanceId): Promise<void>
-      onAppearanceChange(callback: (id: import('@shared/appearance').AppearanceId) => void): void
+      onAppearanceChange(callback: (id: import('@shared/appearance').AppearanceId) => void): () => void
 
       // Theme
       getTheme(): Promise<'light' | 'dark'>
       setTheme(theme: 'light' | 'dark'): Promise<void>
-      onThemeChange(callback: (theme: 'light' | 'dark') => void): void
+      onThemeChange(callback: (theme: 'light' | 'dark') => void): () => void
 
       // Events
-      onOpenSettings(callback: () => void): void
+      onOpenSettings(callback: () => void): () => void
 
       // Auto-updates
-      onUpdateAvailable(callback: () => void): void
-      onUpdateDownloaded(callback: () => void): void
+      onUpdateAvailable(callback: () => void): () => void
+      onUpdateDownloaded(callback: () => void): () => void
       installUpdate(): Promise<void>
+      checkForUpdates(): Promise<{ status: 'dev' | 'current' | 'available' | 'error'; version?: string }>
 
       // App info
       getVersion(): Promise<string>
+      getDataInfo(): Promise<{
+        dbPath: string
+        counts: { contacts: number; docs: number; notes: number; meetings: number; projects: number; todos: number }
+      }>
+      openDataFolder(): Promise<void>
+      getVoiceImportStatus(): Promise<{
+        ready: boolean
+        whisperCli: boolean
+        ffmpeg: boolean
+        model: boolean
+      }>
 
       // Export
       exportCursorBundle(payload: { title: string; draft: string; context: string }): Promise<string>

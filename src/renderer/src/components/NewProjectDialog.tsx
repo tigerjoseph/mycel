@@ -4,6 +4,7 @@ import Fuse from 'fuse.js'
 import { springGentle } from '../styles/animation'
 import { useContactsStore } from '../store/contacts'
 import type { Contact, Project } from '@shared/types'
+import { contactFromQuery } from '../utils/contactFromQuery'
 
 interface NewProjectDialogProps {
   open: boolean
@@ -18,11 +19,13 @@ export function NewProjectDialog({
 }: NewProjectDialogProps): React.JSX.Element | null {
   const contacts = useContactsStore((s) => s.contacts)
   const fetchContacts = useContactsStore((s) => s.fetch)
+  const upsertContact = useContactsStore((s) => s.upsert)
 
   const [contactQuery, setContactQuery] = useState('')
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
   const [projectName, setProjectName] = useState('')
   const [saving, setSaving] = useState(false)
+  const [creatingContact, setCreatingContact] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -54,16 +57,52 @@ export function NewProjectDialog({
     [contacts]
   )
 
+  const recentContact = useMemo(() => {
+    if (!contacts.length) return null
+    return [...contacts].sort((a, b) => {
+      const aAt = Math.max(a.lastContactedAt ?? 0, a.updatedAt ?? 0)
+      const bAt = Math.max(b.lastContactedAt ?? 0, b.updatedAt ?? 0)
+      return bAt - aAt
+    })[0]
+  }, [contacts])
+
   const filteredContacts = useMemo(() => {
-    if (!contactQuery.trim()) return contacts.slice(0, 8)
-    return fuse.search(contactQuery).map((r) => r.item).slice(0, 8)
-  }, [contacts, contactQuery, fuse])
+    if (!contactQuery.trim()) return recentContact ? [recentContact] : []
+    return fuse.search(contactQuery).map((r) => r.item).slice(0, 6)
+  }, [contacts, contactQuery, fuse, recentContact])
 
   const selectedContact = contacts.find((c) => c.id === selectedContactId)
 
+  const queryTrimmed = contactQuery.trim()
+  const canCreate = Boolean(selectedContactId || queryTrimmed)
+  const willCreateContact = !selectedContactId && queryTrimmed.length > 0
+
+  const buildContactFromQuery = useCallback((query: string): Contact => contactFromQuery(query), [])
+
+  const handleCreateContact = useCallback(async (): Promise<Contact | null> => {
+    if (!queryTrimmed) return null
+    setCreatingContact(true)
+    setError(null)
+    try {
+      const contact = buildContactFromQuery(queryTrimmed)
+      await upsertContact(contact)
+      return contact
+    } catch {
+      setError('Could not create contact')
+      return null
+    } finally {
+      setCreatingContact(false)
+    }
+  }, [queryTrimmed, buildContactFromQuery, upsertContact])
+
   const handleCreate = useCallback(async () => {
-    if (!selectedContactId) {
-      setError('Pick a contact')
+    let contactId = selectedContactId
+    if (!contactId && queryTrimmed) {
+      const created = await handleCreateContact()
+      contactId = created?.id ?? null
+    }
+    if (!contactId) {
+      setError('Enter a contact name')
       return
     }
     setSaving(true)
@@ -71,9 +110,11 @@ export function NewProjectDialog({
     try {
       const project = await window.mycel.upsertProject({
         id: crypto.randomUUID(),
-        contactId: selectedContactId,
+        contactId,
         name: projectName.trim(),
         stage: 'Lead',
+        valueCents: null,
+        closedAt: null,
         createdAt: Date.now(),
         updatedAt: Date.now()
       })
@@ -84,7 +125,7 @@ export function NewProjectDialog({
     } finally {
       setSaving(false)
     }
-  }, [selectedContactId, projectName, onCreated, onClose])
+  }, [selectedContactId, queryTrimmed, handleCreateContact, projectName, onCreated, onClose])
 
   if (!open) return null
 
@@ -148,15 +189,39 @@ export function NewProjectDialog({
             <input
               value={contactQuery}
               onChange={(e) => setContactQuery(e.target.value)}
-              placeholder="Search contacts…"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  void handleCreate()
+                }
+              }}
+              placeholder="Search or type a new name…"
               autoFocus
               style={{ ...inputStyle, marginTop: 6 }}
             />
-            <div style={{ marginTop: 8, marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div
+              style={{
+                marginTop: 8,
+                marginBottom: 12,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+                maxHeight: queryTrimmed ? 168 : undefined,
+                overflowY: queryTrimmed ? 'auto' : undefined
+              }}
+            >
+              {!queryTrimmed && recentContact && (
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-ui)' }}>
+                  Recent
+                </span>
+              )}
               {filteredContacts.map((c: Contact) => (
                 <button
                   key={c.id}
-                  onClick={() => setSelectedContactId(c.id)}
+                  onClick={() => {
+                    setSelectedContactId(c.id)
+                    setContactQuery('')
+                  }}
                   style={{
                     textAlign: 'left', padding: '8px 10px', borderRadius: 8,
                     border: '1px solid var(--border)', background: 'var(--bg)',
@@ -169,9 +234,14 @@ export function NewProjectDialog({
                   )}
                 </button>
               ))}
-              {filteredContacts.length === 0 && (
+              {willCreateContact && (
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0', fontFamily: 'var(--font-ui)', lineHeight: 1.4 }}>
+                  <span style={{ color: 'var(--text)' }}>{queryTrimmed}</span> will be added as a new contact for this project.
+                </p>
+              )}
+              {!willCreateContact && filteredContacts.length === 0 && !queryTrimmed && (
                 <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-ui)' }}>
-                  No contacts found
+                  Type a name to search or create
                 </span>
               )}
             </div>
@@ -182,6 +252,12 @@ export function NewProjectDialog({
         <input
           value={projectName}
           onChange={(e) => setProjectName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && canCreate) {
+              e.preventDefault()
+              void handleCreate()
+            }
+          }}
           placeholder="Optional — name it on the next screen"
           style={{ ...inputStyle, marginTop: 6 }}
         />
@@ -194,14 +270,14 @@ export function NewProjectDialog({
           <button onClick={onClose} style={btnStyle}>Cancel</button>
           <button
             onClick={() => void handleCreate()}
-            disabled={saving || !selectedContactId}
+            disabled={saving || creatingContact || !canCreate}
             style={{
               ...btnStyle,
               background: 'var(--text)', color: 'var(--bg)', borderColor: 'var(--text)',
-              opacity: saving || !selectedContactId ? 0.5 : 1
+              opacity: saving || creatingContact || !canCreate ? 0.5 : 1
             }}
           >
-            {saving ? 'Creating…' : 'Create'}
+            {saving || creatingContact ? 'Creating…' : 'Create project'}
           </button>
         </div>
       </motion.div>

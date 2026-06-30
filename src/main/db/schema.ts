@@ -62,6 +62,8 @@ CREATE TABLE IF NOT EXISTS projects (
   contact_id TEXT NOT NULL,
   name TEXT NOT NULL DEFAULT '',
   stage TEXT NOT NULL DEFAULT 'Lead',
+  value_cents INTEGER,
+  closed_at INTEGER,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );

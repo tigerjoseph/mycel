@@ -186,3 +186,15 @@ export async function readTranscriptFromFile(
 
   throw new Error(`Unsupported file type (${ext}). Use .txt, .md, or audio.`)
 }
+
+export async function getVoiceImportStatus(): Promise<{
+  ready: boolean
+  whisperCli: boolean
+  ffmpeg: boolean
+  model: boolean
+}> {
+  const whisperCli = Boolean(await resolveBinary('whisper-cli', WHISPER_CLI_PATHS))
+  const ffmpeg = Boolean(await resolveBinary('ffmpeg', FFMPEG_PATHS))
+  const model = Boolean(await resolveWhisperModel())
+  return { ready: whisperCli && ffmpeg && model, whisperCli, ffmpeg, model }
+}

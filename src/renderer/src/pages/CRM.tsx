@@ -40,7 +40,18 @@ export function CRM(): React.JSX.Element {
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', padding: '32px 24px', minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Tab bar */}
-      <nav style={{ display: 'flex', gap: 4, marginBottom: 28, padding: 4, background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)' }}>
+      <nav
+        style={{
+          display: 'flex',
+          gap: 4,
+          marginBottom: 28,
+          padding: 4,
+          background: 'var(--surface)',
+          borderRadius: 12,
+          border: '1px solid var(--border)',
+          overflow: 'hidden'
+        }}
+      >
         {CRM_TABS.map((tab) => {
           const isActive = activeCRMView === tab.id
           const Icon = tab.icon
@@ -52,7 +63,7 @@ export function CRM(): React.JSX.Element {
                 flex: 1,
                 background: 'none',
                 border: 'none',
-                padding: '8px 0',
+                padding: '10px 6px 12px',
                 cursor: 'pointer',
                 position: 'relative',
                 fontSize: 11,
@@ -63,7 +74,7 @@ export function CRM(): React.JSX.Element {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: 3,
+                gap: 4,
                 borderRadius: 8,
                 zIndex: 1
               }}
@@ -73,10 +84,13 @@ export function CRM(): React.JSX.Element {
                   layoutId="crm-tab-bg"
                   style={{
                     position: 'absolute',
-                    inset: 1,
+                    top: 2,
+                    right: 2,
+                    bottom: 2,
+                    left: 2,
                     background: 'var(--bg)',
-                    borderRadius: 8,
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+                    borderRadius: 7,
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.06)'
                   }}
                   transition={spring}
                 />

@@ -6,6 +6,7 @@ interface UIStore {
   commandPaletteOpen: boolean
   contactSwitcherOpen: boolean
   logTouchpointOpen: boolean
+  settingsOpen: boolean
 
   // CRM sub-views
   activeCRMView: 'projects' | 'contacts' | 'followups'
@@ -35,6 +36,7 @@ interface UIStore {
   setCommandPaletteOpen: (open: boolean) => void
   setContactSwitcherOpen: (open: boolean) => void
   setLogTouchpointOpen: (open: boolean) => void
+  setSettingsOpen: (open: boolean) => void
   setCRMView: (view: 'projects' | 'contacts' | 'followups') => void
   setActiveContactId: (id: string | null) => void
   setActiveProjectId: (id: string | null) => void
@@ -57,6 +59,7 @@ export const useUIStore = create<UIStore>((set) => ({
   commandPaletteOpen: false,
   contactSwitcherOpen: false,
   logTouchpointOpen: false,
+  settingsOpen: false,
   activeCRMView: 'contacts',
   activeContactId: null,
   activeProjectId: null,
@@ -76,6 +79,7 @@ export const useUIStore = create<UIStore>((set) => ({
   setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
   setContactSwitcherOpen: (open) => set({ contactSwitcherOpen: open }),
   setLogTouchpointOpen: (open) => set({ logTouchpointOpen: open }),
+  setSettingsOpen: (open) => set({ settingsOpen: open }),
   setCRMView: (view) => set({ activeCRMView: view }),
   setActiveContactId: (id) => set({ activeContactId: id }),
   setActiveProjectId: (id) => set({ activeProjectId: id }),
@@ -100,6 +104,7 @@ export const useUIStore = create<UIStore>((set) => ({
     commandPaletteOpen: false,
     contactSwitcherOpen: false,
     logTouchpointOpen: false,
+    settingsOpen: false
   }),
   showCopyFeedback: (message = 'Copied') => {
     set({ copyFeedback: message })

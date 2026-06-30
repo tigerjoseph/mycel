@@ -5,6 +5,7 @@ import { Plus, Search } from 'lucide-react'
 import { useUIStore } from '../store/ui'
 import { useContactsStore } from '../store/contacts'
 import type { Contact } from '@shared/types'
+import { contactFromQuery, hasExactContactName } from '../utils/contactFromQuery'
 
 type SortMode = 'recent' | 'name' | 'company' | 'last contacted'
 
@@ -18,6 +19,10 @@ export function ContactList(): React.JSX.Element {
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<SortMode>('recent')
   const [activeTag, setActiveTag] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
+
+  const queryTrimmed = query.trim()
+  const showAddNew = queryTrimmed.length > 0 && !hasExactContactName(contacts, queryTrimmed)
 
   useEffect(() => {
     fetchContacts()
@@ -93,6 +98,19 @@ export function ContactList(): React.JSX.Element {
     setActiveContactId(newContact.id)
   }
 
+  const handleAddFromSearch = async (): Promise<void> => {
+    if (!queryTrimmed || creating) return
+    setCreating(true)
+    try {
+      const contact = contactFromQuery(queryTrimmed)
+      await upsert(contact)
+      setQuery('')
+      setActiveContactId(contact.id)
+    } finally {
+      setCreating(false)
+    }
+  }
+
   return (
     <>
       {/* Search input */}
@@ -112,6 +130,12 @@ export function ContactList(): React.JSX.Element {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && showAddNew) {
+              e.preventDefault()
+              void handleAddFromSearch()
+            }
+          }}
           placeholder="search contacts..."
           style={{
             background: 'none',
@@ -125,6 +149,32 @@ export function ContactList(): React.JSX.Element {
           }}
         />
       </div>
+
+      {showAddNew && (
+        <button
+          onClick={() => void handleAddFromSearch()}
+          disabled={creating}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            width: '100%',
+            marginBottom: 16,
+            padding: '10px 12px',
+            borderRadius: 8,
+            border: '1px dashed var(--accent)',
+            background: 'var(--surface)',
+            cursor: creating ? 'wait' : 'pointer',
+            opacity: creating ? 0.6 : 1,
+            textAlign: 'left'
+          }}
+        >
+          <Plus size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--accent)' }}>
+            {creating ? 'Adding…' : `Add new contact — ${queryTrimmed}`}
+          </span>
+        </button>
+      )}
 
       {/* Sort toggle */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
@@ -214,8 +264,9 @@ export function ContactList(): React.JSX.Element {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '12px 0',
+              padding: '12px 14px',
               borderBottom: '1px solid var(--border)',
+              borderRadius: 8,
               width: '100%',
               textAlign: 'left',
               transition: 'background 100ms ease'

@@ -4,6 +4,7 @@ import { Plus, Check, ArrowLeft, Trash2 } from 'lucide-react'
 import { fadeUp, spring } from '../styles/animation'
 import { useUIStore } from '../store/ui'
 import type { Project, Milestone } from '@shared/types'
+import { formatUsdInputFromCents, parseDollarToCents } from '@shared/money'
 
 const STAGES = ['Lead', 'Active', 'Closing', 'Won', 'Lost'] as const
 
@@ -15,6 +16,7 @@ export function ProjectDetail(): React.JSX.Element {
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [editingName, setEditingName] = useState(false)
   const [nameValue, setNameValue] = useState('')
+  const [valueInput, setValueInput] = useState('')
   const nameInputRef = useRef<HTMLInputElement>(null)
 
   // Contact name for back button
@@ -32,6 +34,7 @@ export function ProjectDetail(): React.JSX.Element {
       if (p) {
         setProject(p)
         setNameValue(p.name)
+        setValueInput(formatUsdInputFromCents(p.valueCents))
         if (!p.name) {
           setEditingName(true)
           setTimeout(() => nameInputRef.current?.focus(), 50)
@@ -74,6 +77,21 @@ export function ProjectDetail(): React.JSX.Element {
       setProject(updated)
     }
   }, [project, nameValue])
+
+  const saveValue = useCallback(async () => {
+    if (!project) return
+    const cents = parseDollarToCents(valueInput)
+    const nextCents = valueInput.trim() === '' ? null : cents
+    if (nextCents === null && valueInput.trim() !== '') return
+    if (nextCents === project.valueCents) return
+    const updated = await window.mycel.upsertProject({
+      ...project,
+      valueCents: nextCents,
+      updatedAt: Date.now()
+    })
+    setProject(updated)
+    setValueInput(formatUsdInputFromCents(updated.valueCents))
+  }, [project, valueInput])
 
   const setStage = useCallback(
     async (stage: string) => {
@@ -235,6 +253,50 @@ export function ProjectDetail(): React.JSX.Element {
             {project.name || 'Untitled project'}
           </h1>
         )}
+      </div>
+
+      {/* Deal value */}
+      <div style={{ marginBottom: 28 }}>
+        <h2
+          style={{
+            fontFamily: 'var(--font-ui)',
+            fontSize: 12,
+            fontWeight: 500,
+            color: 'var(--text-muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            margin: '0 0 8px 0'
+          }}
+        >
+          Value
+        </h2>
+        <input
+          value={valueInput}
+          onChange={(e) => setValueInput(e.target.value)}
+          onBlur={() => void saveValue()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.currentTarget.blur()
+            }
+          }}
+          placeholder="$0"
+          inputMode="decimal"
+          style={{
+            width: '100%',
+            maxWidth: 200,
+            padding: '8px 10px',
+            borderRadius: 8,
+            border: '1px solid var(--border)',
+            background: 'var(--bg)',
+            fontFamily: 'var(--font-ui)',
+            fontSize: 15,
+            fontWeight: 500,
+            color: 'var(--text)',
+            outline: 'none',
+            fontVariantNumeric: 'tabular-nums',
+            boxSizing: 'border-box'
+          }}
+        />
       </div>
 
       {/* Stage pipeline */}

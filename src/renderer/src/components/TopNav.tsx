@@ -15,6 +15,7 @@ const springTransition = { type: 'spring' as const, stiffness: 400, damping: 28 
 export default function TopNav() {
   const activePage = useUIStore((s) => s.activePage)
   const setPage = useUIStore((s) => s.setPage)
+  const setSettingsOpen = useUIStore((s) => s.setSettingsOpen)
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen)
 
   return (
@@ -127,7 +128,7 @@ export default function TopNav() {
         </motion.button>
 
         <motion.button
-          onClick={() => window.mycel.openSettingsWindow()}
+          onClick={() => setSettingsOpen(true)}
           whileHover={{ scale: 1.15 }}
           whileTap={{ scale: 0.9 }}
           transition={springTransition}

@@ -62,6 +62,8 @@ export interface Project {
   contactId: string
   name: string
   stage: string
+  valueCents: number | null
+  closedAt: number | null
   createdAt: number
   updatedAt: number
 }

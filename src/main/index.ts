@@ -1,5 +1,12 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
+
+// Dev builds resolve to the same userData folder as the shipped app on case-insensitive
+// volumes (mycel ↔ Mycel). Use a separate folder so npm run dev never touches real data.
+if (!app.isPackaged) {
+  app.setPath('userData', join(app.getPath('appData'), 'mycel-dev'))
+}
+
 import { setApplicationMenu } from './menu'
 import { setupContextMenu } from './contextMenu'
 import { initDb } from './db'
@@ -27,11 +34,10 @@ function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
-      spellcheck: true
+      spellcheck: true,
+      backgroundThrottling: true
     }
   })
-
-  setupContextMenu(mainWindow.webContents)
 
   setupContextMenu(mainWindow.webContents)
 
@@ -75,37 +81,11 @@ app.on('window-all-closed', () => {
   }
 })
 
-// Settings window
-let settingsWindow: BrowserWindow | null = null
-
+// Settings opens as in-app modal (works in fullscreen; child windows do not)
 ipcMain.handle('settings:openWindow', () => {
-  if (settingsWindow) {
-    settingsWindow.focus()
-    return
-  }
-  settingsWindow = new BrowserWindow({
-    width: 520,
-    height: 560,
-    titleBarStyle: 'hiddenInset',
-    resizable: false,
-    parent: mainWindow ?? undefined,
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false
-    }
-  })
-  settingsWindow.on('closed', () => {
-    settingsWindow = null
-  })
-
-  setupContextMenu(settingsWindow.webContents)
-
-  if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
-    settingsWindow.loadURL(process.env['ELECTRON_RENDERER_URL'] + '#settings')
-  } else {
-    settingsWindow.loadFile(join(__dirname, '../renderer/index.html'), { hash: 'settings' })
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('open-settings')
+    mainWindow.focus()
   }
 })
 

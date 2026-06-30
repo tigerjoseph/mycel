@@ -2,7 +2,7 @@ import { OAuth2Client } from 'google-auth-library'
 import { createServer, type Server } from 'http'
 import { shell } from 'electron'
 import { GOOGLE_OAUTH_CONFIG } from '@shared/google-oauth-config'
-import { getGcalTokens, setGcalTokens } from '../settingsStore'
+import { getGcalTokens, setGcalTokens, setAppSettings } from '../settingsStore'
 import { exchangeAuthCode, refreshAuthTokens } from './tokenExchange'
 
 function buildAuthUrl(redirectUri: string): string {
@@ -97,10 +97,25 @@ export async function connectGoogleCalendar(): Promise<void> {
   const { code, redirectUri } = await runOAuthLoopback()
   const tokens = await exchangeAuthCode(code, redirectUri)
   await setGcalTokens(tokens)
+
+  try {
+    const oauth2 = new OAuth2Client(GOOGLE_OAUTH_CONFIG.clientId)
+    oauth2.setCredentials(tokens)
+    const res = await oauth2.request<{ id?: string }>({
+      url: 'https://www.googleapis.com/calendar/v3/calendars/primary'
+    })
+    const email = res.data.id
+    if (typeof email === 'string' && email.includes('@')) {
+      await setAppSettings({ gcalUserEmail: email })
+    }
+  } catch {
+    // Email is optional; tokens are what matter for persistence
+  }
 }
 
 export async function disconnectGoogleCalendar(): Promise<void> {
   await setGcalTokens(null)
+  await setAppSettings({ gcalUserEmail: undefined })
 }
 
 export async function getAuthorizedClient(): Promise<OAuth2Client> {

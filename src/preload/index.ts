@@ -89,33 +89,56 @@ const mycelAPI = {
   // Theme
   getTheme: (): Promise<string> => ipcRenderer.invoke('theme:get'),
   setTheme: (theme: string): Promise<void> => ipcRenderer.invoke('theme:set', theme),
-  onThemeChange: (callback: (theme: string) => void): void => {
-    ipcRenderer.on('theme:changed', (_e, theme: string) => callback(theme))
+  onThemeChange: (callback: (theme: string) => void): (() => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, theme: string): void => callback(theme)
+    ipcRenderer.on('theme:changed', handler)
+    return () => ipcRenderer.removeListener('theme:changed', handler)
   },
 
   // Appearance
   getAppearance: (): Promise<string> => ipcRenderer.invoke('appearance:get'),
   setAppearance: (id: string): Promise<void> => ipcRenderer.invoke('appearance:set', id),
-  onAppearanceChange: (callback: (id: string) => void): void => {
-    ipcRenderer.on('appearance:changed', (_e, id: string) => callback(id))
+  onAppearanceChange: (callback: (id: string) => void): (() => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, id: string): void => callback(id)
+    ipcRenderer.on('appearance:changed', handler)
+    return () => ipcRenderer.removeListener('appearance:changed', handler)
   },
 
   // Listen for main process events
-  onOpenSettings: (callback: () => void): void => {
-    ipcRenderer.on('open-settings', () => callback())
+  onOpenSettings: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on('open-settings', handler)
+    return () => ipcRenderer.removeListener('open-settings', handler)
   },
 
   // Auto-updates
-  onUpdateAvailable: (callback: () => void): void => {
-    ipcRenderer.on('update-available', () => callback())
+  onUpdateAvailable: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on('update-available', handler)
+    return () => ipcRenderer.removeListener('update-available', handler)
   },
-  onUpdateDownloaded: (callback: () => void): void => {
-    ipcRenderer.on('update-downloaded', () => callback())
+  onUpdateDownloaded: (callback: () => void): (() => void) => {
+    const handler = (): void => callback()
+    ipcRenderer.on('update-downloaded', handler)
+    return () => ipcRenderer.removeListener('update-downloaded', handler)
   },
   installUpdate: (): Promise<void> => ipcRenderer.invoke('updates:install'),
+  checkForUpdates: (): Promise<{ status: 'dev' | 'current' | 'available' | 'error'; version?: string }> =>
+    ipcRenderer.invoke('updates:check'),
 
   // App info
   getVersion: (): Promise<string> => ipcRenderer.invoke('app:getVersion'),
+  getDataInfo: (): Promise<{
+    dbPath: string
+    counts: { contacts: number; docs: number; notes: number; meetings: number; projects: number; todos: number }
+  }> => ipcRenderer.invoke('app:getDataInfo'),
+  openDataFolder: (): Promise<void> => ipcRenderer.invoke('app:openDataFolder'),
+  getVoiceImportStatus: (): Promise<{
+    ready: boolean
+    whisperCli: boolean
+    ffmpeg: boolean
+    model: boolean
+  }> => ipcRenderer.invoke('app:getVoiceImportStatus'),
 
   // Export
   exportCursorBundle: (payload: { title: string; draft: string; context: string }): Promise<string> =>

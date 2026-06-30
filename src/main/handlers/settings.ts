@@ -1,61 +1,64 @@
-import { app, ipcMain, BrowserWindow } from 'electron'
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let store: any = null
-
-async function getStore(): Promise<any> {
-  if (!store) {
-    const mod = await import('electron-store')
-    const Store = mod.default
-    store = new Store({
-      name: 'mycel-settings',
-      defaults: {
-        theme: 'light',
-        appearance: 'bold-light',
-        settings: {}
-      }
-    })
-  }
-  return store
-}
+import { app, ipcMain, BrowserWindow, shell } from 'electron'
+import { join } from 'path'
+import { getDb } from '../db'
+import { getVoiceImportStatus } from '../engine/readImportFile'
+import {
+  getAppSettings,
+  setAppSettings,
+  getTheme,
+  setTheme,
+  getAppearance,
+  setAppearance
+} from '../settingsStore'
 
 export function registerSettingsHandlers(): void {
-  ipcMain.handle('settings:get', async () => {
-    const s = await getStore()
-    return s.get('settings', {})
-  })
+  ipcMain.handle('settings:get', async () => getAppSettings())
 
   ipcMain.handle('settings:set', async (_e, newSettings: Record<string, unknown>) => {
-    const s = await getStore()
-    const current = (s.get('settings') || {}) as Record<string, unknown>
-    s.set('settings', { ...current, ...newSettings })
+    await setAppSettings(newSettings)
   })
 
-  ipcMain.handle('theme:get', async () => {
-    const s = await getStore()
-    return s.get('theme', 'light')
-  })
+  ipcMain.handle('theme:get', async () => getTheme())
 
   ipcMain.handle('theme:set', async (_e, theme: string) => {
-    const s = await getStore()
-    s.set('theme', theme)
+    await setTheme(theme)
     for (const win of BrowserWindow.getAllWindows()) {
       win.webContents.send('theme:changed', theme)
     }
   })
 
-  ipcMain.handle('appearance:get', async () => {
-    const s = await getStore()
-    return s.get('appearance', 'bold-light')
-  })
+  ipcMain.handle('appearance:get', async () => getAppearance())
 
   ipcMain.handle('appearance:set', async (_e, appearance: string) => {
-    const s = await getStore()
-    s.set('appearance', appearance)
+    await setAppearance(appearance)
     for (const win of BrowserWindow.getAllWindows()) {
       win.webContents.send('appearance:changed', appearance)
     }
   })
 
   ipcMain.handle('app:getVersion', () => app.getVersion())
+
+  ipcMain.handle('app:getDataInfo', async () => {
+    const db = getDb()
+    const dbPath = join(app.getPath('userData'), 'mycel.db')
+    const count = async (table: string): Promise<number> => {
+      const r = await db.execute(`SELECT COUNT(*) AS n FROM ${table}`)
+      return (r.rows[0]?.n as number) ?? 0
+    }
+    const [contacts, docs, notes, meetings, projects, todos] = await Promise.all([
+      count('contacts'),
+      count('docs'),
+      count('notes'),
+      count('meetings'),
+      count('projects'),
+      count('todos')
+    ])
+    return { dbPath, counts: { contacts, docs, notes, meetings, projects, todos } }
+  })
+
+  ipcMain.handle('app:openDataFolder', async () => {
+    await shell.openPath(app.getPath('userData'))
+  })
+
+  ipcMain.handle('app:getVoiceImportStatus', async () => getVoiceImportStatus())
 }

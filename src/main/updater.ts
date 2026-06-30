@@ -1,9 +1,23 @@
 import { autoUpdater } from 'electron-updater'
-import { BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 
 export function setupAutoUpdater(): void {
   ipcMain.handle('updates:install', () => {
     autoUpdater.quitAndInstall()
+  })
+
+  ipcMain.handle('updates:check', async () => {
+    if (!app.isPackaged) return { status: 'dev' as const }
+    try {
+      const result = await autoUpdater.checkForUpdates()
+      const latest = result?.updateInfo?.version
+      if (latest && latest !== app.getVersion()) {
+        return { status: 'available' as const, version: latest }
+      }
+      return { status: 'current' as const }
+    } catch {
+      return { status: 'error' as const }
+    }
   })
 
   // Only check for updates in packaged app

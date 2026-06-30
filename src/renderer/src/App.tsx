@@ -1,21 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import TopNav from './components/TopNav'
 import { Todo } from './pages/Todo'
 import { CRM } from './pages/CRM'
 import { Create } from './pages/Create'
 import { Corpus } from './pages/Corpus'
-import { Settings } from './pages/Settings'
 import { CommandPalette } from './components/CommandPalette'
 import { LogTouchpoint } from './components/LogTouchpoint'
 import { ContactSwitcher } from './components/ContactSwitcher'
+import { SettingsModal } from './components/SettingsModal'
 import { useUIStore } from './store/ui'
 import { useKeyboard } from './hooks/useKeyboard'
 import type { PageId } from '@shared/types'
 import { applyAppearanceToDocument } from '@shared/appearance'
 
-const PAGE_ORDER: PageId[] = ['todo', 'people', 'create', 'corpus']
-const VALID_PAGES = new Set<PageId>(PAGE_ORDER)
+const VALID_PAGES = new Set<PageId>(['todo', 'people', 'create', 'corpus'])
 
 const PAGE_COMPONENTS: Record<PageId, () => React.JSX.Element> = {
   todo: Todo,
@@ -41,30 +40,8 @@ function App(): React.JSX.Element {
   const logTouchpointOpen = useUIStore((s) => s.logTouchpointOpen)
   const contactSwitcherOpen = useUIStore((s) => s.contactSwitcherOpen)
   const copyFeedback = useUIStore((s) => s.copyFeedback)
-  const [mountedPages, setMountedPages] = useState<Set<PageId>>(() => new Set([activePage]))
+  const setSettingsOpen = useUIStore((s) => s.setSettingsOpen)
   useKeyboard()
-
-  useEffect(() => {
-    setMountedPages((prev) => {
-      if (prev.has(activePage)) return prev
-      const next = new Set(prev)
-      next.add(activePage)
-      return next
-    })
-  }, [activePage])
-
-  // Settings window detection via hash
-  const [isSettingsWindow, setIsSettingsWindow] = useState(
-    () => window.location.hash === '#settings'
-  )
-
-  useEffect(() => {
-    const onHashChange = (): void => {
-      setIsSettingsWindow(window.location.hash === '#settings')
-    }
-    window.addEventListener('hashchange', onHashChange)
-    return () => window.removeEventListener('hashchange', onHashChange)
-  }, [])
 
   // Restore last tab on mount
   useEffect(() => {
@@ -90,59 +67,50 @@ function App(): React.JSX.Element {
     return () => window.removeEventListener('focus', onFocus)
   }, [])
 
-  // Live appearance updates from any window
+  // Live appearance / settings events from main process
   useEffect(() => {
-    window.mycel.onThemeChange((theme) => {
+    const unsubTheme = window.mycel.onThemeChange((theme) => {
       document.documentElement.dataset.theme = theme
     })
-    window.mycel.onAppearanceChange((id) => {
+    const unsubAppearance = window.mycel.onAppearanceChange((id) => {
       applyAppearanceToDocument(id)
     })
-  }, [])
+    const unsubSettings = window.mycel.onOpenSettings(() => {
+      setSettingsOpen(true)
+    })
+    return () => {
+      unsubTheme()
+      unsubAppearance()
+      unsubSettings()
+    }
+  }, [setSettingsOpen])
 
   // Auto-update banner
   const [updateReady, setUpdateReady] = useState(false)
   useEffect(() => {
-    window.mycel.onUpdateDownloaded(() => setUpdateReady(true))
+    const unsub = window.mycel.onUpdateDownloaded(() => setUpdateReady(true))
+    return unsub
   }, [])
-
-  // Render settings page in its own window
-  if (isSettingsWindow) {
-    return (
-      <div style={{ backgroundColor: 'var(--bg)', minHeight: '100vh' }}>
-        <Settings />
-      </div>
-    )
-  }
 
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg)' }}>
       <TopNav />
       <main style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-        {PAGE_ORDER.map((page) => {
-          if (!mountedPages.has(page)) return null
-          const Page = PAGE_COMPONENTS[page]
-          const isActive = activePage === page
+        {(() => {
+          const Page = PAGE_COMPONENTS[activePage]
           return (
             <div
-              key={page}
-              aria-hidden={!isActive}
+              key={activePage}
               style={{
                 position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                overflow: 'auto',
-                visibility: isActive ? 'visible' : 'hidden',
-                pointerEvents: isActive ? 'auto' : 'none',
-                zIndex: isActive ? 1 : 0
+                inset: 0,
+                overflow: 'auto'
               }}
             >
               <Page />
             </div>
           )
-        })}
+        })()}
       </main>
 
       {/* Global overlays */}
@@ -155,6 +123,7 @@ function App(): React.JSX.Element {
       <AnimatePresence>
         {contactSwitcherOpen && <ContactSwitcher key="contact-switcher" />}
       </AnimatePresence>
+      <SettingsModal />
 
       {/* Copy feedback toast */}
       <AnimatePresence>

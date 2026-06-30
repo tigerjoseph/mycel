@@ -40,6 +40,23 @@ export async function initDb(): Promise<void> {
     // column already exists
   }
 
+  try {
+    await db.execute('ALTER TABLE projects ADD COLUMN value_cents INTEGER')
+  } catch {
+    // column already exists
+  }
+
+  try {
+    await db.execute('ALTER TABLE projects ADD COLUMN closed_at INTEGER')
+  } catch {
+    // column already exists
+  }
+
+  await db.execute(
+    `UPDATE projects SET closed_at = updated_at
+     WHERE stage = 'Won' AND closed_at IS NULL`
+  )
+
   await backfillNotePreviews(db)
 }
 
