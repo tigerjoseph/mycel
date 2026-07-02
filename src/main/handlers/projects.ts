@@ -9,6 +9,13 @@ function mapProjectRow(row: Record<string, unknown>, extras?: Record<string, unk
   const valueCents = typeof rawValue === 'number' ? rawValue : rawValue != null ? Number(rawValue) : null
   const rawClosed = row.closed_at
   const closedAt = typeof rawClosed === 'number' ? rawClosed : rawClosed != null ? Number(rawClosed) : null
+  const rawStageChanged = row.stage_changed_at
+  const stageChangedAt =
+    typeof rawStageChanged === 'number'
+      ? rawStageChanged
+      : rawStageChanged != null
+        ? Number(rawStageChanged)
+        : null
   return {
     id: row.id,
     contactId: row.contact_id as string,
@@ -16,6 +23,7 @@ function mapProjectRow(row: Record<string, unknown>, extras?: Record<string, unk
     stage: row.stage,
     valueCents: Number.isFinite(valueCents) ? valueCents : null,
     closedAt: Number.isFinite(closedAt) ? closedAt : null,
+    stageChangedAt: Number.isFinite(stageChangedAt) ? stageChangedAt : null,
     createdAt: row.created_at as number,
     updatedAt: row.updated_at as number,
     ...extras
@@ -108,11 +116,25 @@ export function registerProjectHandlers(): void {
     const updatedAt = now
     const valueCents = resolveValueCents(project, existing)
     const closedAt = await resolveClosedAt(existing, stage, now)
+    const priorStage = existing?.stage as string | undefined
+    const stageChanged = !existing || priorStage !== stage
+    const rawPriorStageAt = existing?.stage_changed_at
+    const priorStageAt =
+      typeof rawPriorStageAt === 'number'
+        ? rawPriorStageAt
+        : rawPriorStageAt != null
+          ? Number(rawPriorStageAt)
+          : null
+    const stageChangedAt = stageChanged
+      ? now
+      : Number.isFinite(priorStageAt) && priorStageAt! > 0
+        ? priorStageAt!
+        : createdAt
 
     await db.execute({
-      sql: `INSERT OR REPLACE INTO projects (id, contact_id, name, stage, value_cents, closed_at, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [id, contactId, name, stage, valueCents, closedAt, createdAt, updatedAt]
+      sql: `INSERT OR REPLACE INTO projects (id, contact_id, name, stage, value_cents, closed_at, stage_changed_at, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [id, contactId, name, stage, valueCents, closedAt, stageChangedAt, createdAt, updatedAt]
     })
 
     return {
@@ -122,6 +144,7 @@ export function registerProjectHandlers(): void {
       stage,
       valueCents: Number.isFinite(valueCents) ? valueCents : null,
       closedAt,
+      stageChangedAt,
       createdAt,
       updatedAt
     }

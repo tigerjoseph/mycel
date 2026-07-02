@@ -64,6 +64,7 @@ export interface Project {
   stage: string
   valueCents: number | null
   closedAt: number | null
+  stageChangedAt: number | null
   createdAt: number
   updatedAt: number
 }

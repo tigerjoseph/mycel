@@ -1,5 +1,8 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
+import { loadProjectEnvEarly, loadProjectEnvUserData } from './loadEnv'
+
+loadProjectEnvEarly()
 
 // Dev builds resolve to the same userData folder as the shipped app on case-insensitive
 // volumes (mycel ↔ Mycel). Use a separate folder so npm run dev never touches real data.
@@ -59,6 +62,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
+  loadProjectEnvUserData()
   app.setAppUserModelId('com.mycel.app')
 
   setApplicationMenu()

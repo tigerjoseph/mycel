@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { motion } from 'motion/react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -21,7 +21,6 @@ import TableHeader from '@tiptap/extension-table-header'
 import { ArrowLeft, FolderClosed, MoreHorizontal, Copy, Files, Trash2, FileCode, Newspaper, Sparkles, FolderOutput } from 'lucide-react'
 import { useUIStore } from '../store/ui'
 import { useDocsStore } from '../store/docs'
-import { fadeUp } from '../styles/animation'
 import { FloatingToolbar } from '../components/FloatingToolbar'
 import { SlashCommands, type ImportAudioHandler } from '../components/SlashMenu'
 import { EmojiPicker } from '../components/EmojiPicker'
@@ -47,10 +46,40 @@ import {
 
 export function DocEditor(): React.JSX.Element {
   const activeDocId = useUIStore((s) => s.activeDocId)
+  const [doc, setDoc] = useState<Doc | null>(null)
+
+  useEffect(() => {
+    if (!activeDocId) {
+      setDoc(null)
+      return
+    }
+    let cancelled = false
+    setDoc(null)
+    void window.mycel.getDoc(activeDocId).then((d) => {
+      if (!cancelled && d) setDoc(d as Doc)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [activeDocId])
+
+  if (!doc) {
+    return <div style={{ height: '100%', background: 'var(--bg)' }} />
+  }
+
+  return <DocEditorSurface key={doc.id} doc={doc} setDoc={setDoc} />
+}
+
+function DocEditorSurface({
+  doc,
+  setDoc
+}: {
+  doc: Doc
+  setDoc: React.Dispatch<React.SetStateAction<Doc | null>>
+}): React.JSX.Element {
   const setDocsView = useUIStore((s) => s.setDocsView)
   const setActiveDocId = useUIStore((s) => s.setActiveDocId)
-  const [doc, setDoc] = useState<Doc | null>(null)
-  const [title, setTitle] = useState('')
+  const [title, setTitle] = useState(doc.title)
   const [savedIndicator, setSavedIndicator] = useState(false)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const indicatorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -62,22 +91,17 @@ export function DocEditor(): React.JSX.Element {
   const folderMenuRef = useRef<HTMLDivElement>(null)
   const settingsMenuRef = useRef<HTMLDivElement>(null)
   const { showCopyFeedback } = useCopyFeedback()
+  const docRef = useRef(doc)
+  docRef.current = doc
+  const importAudioRef = useRef<ImportAudioHandler>(async () => {})
 
   // Load doc on mount
   useEffect(() => {
     isMountedRef.current = true
-    if (!activeDocId) return
-    window.mycel.getDoc(activeDocId).then((d) => {
-      if (!isMountedRef.current) return
-      if (d) {
-        setDoc(d)
-        setTitle(d.title)
-      }
-    })
     return () => {
       isMountedRef.current = false
     }
-  }, [activeDocId])
+  }, [])
 
   useEffect(() => { fetchFolders() }, [fetchFolders])
 
@@ -137,7 +161,8 @@ export function DocEditor(): React.JSX.Element {
 
   const handleImportAudio = useCallback<ImportAudioHandler>(
     async ({ editor, range }) => {
-      if (!activeDocId) return
+      const activeId = docRef.current?.id
+      if (!activeId) return
       editor.chain().focus().deleteRange(range).run()
       insertAudioPlaceholder(editor)
 
@@ -146,15 +171,16 @@ export function DocEditor(): React.JSX.Element {
       })
 
       try {
-        const result = await window.mycel.pickAndImportToDoc(activeDocId)
+        const result = await window.mycel.pickAndImportToDoc(activeId)
         if (!result) {
           replaceAudioPlaceholder(editor, null)
           return
         }
         replaceAudioPlaceholder(editor, result.fragmentHtml)
         const html = editor.getHTML()
-        if (doc) {
-          const updated = { ...doc, body: html, updatedAt: Date.now() }
+        const currentDoc = docRef.current
+        if (currentDoc) {
+          const updated = { ...currentDoc, body: html, updatedAt: Date.now() }
           await window.mycel.upsertDoc(updated)
           if (isMountedRef.current) {
             setDoc(updated)
@@ -171,40 +197,49 @@ export function DocEditor(): React.JSX.Element {
         stopProgress()
       }
     },
-    [activeDocId, doc, showSaved, showCopyFeedback]
+    [setDoc, showSaved, showCopyFeedback]
+  )
+
+  importAudioRef.current = handleImportAudio
+
+  const extensions = useMemo(
+    () => [
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3] }
+      }),
+      Underline,
+      LinkExtension.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          style: 'color: var(--accent); text-decoration: underline;'
+        }
+      }),
+      DocImage,
+      ImageDropPaste,
+      TaskList,
+      TaskItem.configure({ nested: true }),
+      Placeholder.configure({ placeholder: 'Type / for commands...' }),
+      CharacterCount,
+      Typography,
+      Highlight.configure({ multicolor: true }),
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Color,
+      TextStyle,
+      TableExtension.configure({ resizable: true }),
+      TableRow,
+      TableCell,
+      TableHeader,
+      SlashCommands.configure({
+        importAudio: (args) => importAudioRef.current(args)
+      })
+    ],
+    [doc.id]
   )
 
   const editor = useEditor(
     {
-      extensions: [
-        StarterKit.configure({
-          heading: { levels: [1, 2, 3] }
-        }),
-        Underline,
-        LinkExtension.configure({
-          openOnClick: false,
-          HTMLAttributes: {
-            style: 'color: var(--accent); text-decoration: underline;'
-          }
-        }),
-        DocImage,
-        ImageDropPaste,
-        TaskList,
-        TaskItem.configure({ nested: true }),
-        Placeholder.configure({ placeholder: 'Type / for commands...' }),
-        CharacterCount,
-        Typography,
-        Highlight.configure({ multicolor: true }),
-        TextAlign.configure({ types: ['heading', 'paragraph'] }),
-        Color,
-        TextStyle,
-        TableExtension.configure({ resizable: true }),
-        TableRow,
-        TableCell,
-        TableHeader,
-        SlashCommands.configure({ importAudio: handleImportAudio })
-      ],
-      content: doc?.body || '',
+      extensions,
+      content: doc.body || '',
       onUpdate: ({ editor: ed }) => {
         debouncedSave({ body: ed.getHTML() })
       },
@@ -224,7 +259,7 @@ export function DocEditor(): React.JSX.Element {
         }
       }
     },
-    [doc?.id, handleImportAudio]
+    [doc.id]
   )
 
   const flushSave = useCallback(async () => {
@@ -380,7 +415,7 @@ export function DocEditor(): React.JSX.Element {
   const wordCount = editor?.storage.characterCount?.words() ?? 0
 
   return (
-    <motion.div
+    <div
       style={{
         height: '100%',
         background: 'var(--bg)',
@@ -388,7 +423,6 @@ export function DocEditor(): React.JSX.Element {
         flexDirection: 'column',
         position: 'relative'
       }}
-      {...fadeUp}
     >
       {/* Saved indicator */}
       <motion.span
@@ -410,17 +444,14 @@ export function DocEditor(): React.JSX.Element {
       </motion.span>
 
       {/* Editor area */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      <div
         style={{
           flex: 1,
           overflowY: 'auto',
           maxWidth: 760,
           margin: '0 auto',
           width: '100%',
-          paddingTop: 48
+          paddingTop: 28
         }}
       >
         {/* Header row */}
@@ -701,7 +732,7 @@ export function DocEditor(): React.JSX.Element {
         {/* TipTap content */}
         {editor && <FloatingToolbar editor={editor} />}
         <EditorContent editor={editor} />
-      </motion.div>
+      </div>
 
       {/* Word count */}
       <div
@@ -717,6 +748,6 @@ export function DocEditor(): React.JSX.Element {
       >
         {wordCount} {wordCount === 1 ? 'word' : 'words'}
       </div>
-    </motion.div>
+    </div>
   )
 }

@@ -31,6 +31,9 @@ interface UIStore {
   // Copy feedback toast
   copyFeedback: string | null
 
+  // Stuck-project nudge toast
+  projectNudge: { message: string; projectId: string } | null
+
   // Actions
   setPage: (page: PageId) => void
   setCommandPaletteOpen: (open: boolean) => void
@@ -52,6 +55,8 @@ interface UIStore {
   clearBreadcrumbs: () => void
   closeAllOverlays: () => void
   showCopyFeedback: (message?: string) => void
+  showProjectNudge: (nudge: { message: string; projectId: string }) => void
+  clearProjectNudge: () => void
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -71,6 +76,7 @@ export const useUIStore = create<UIStore>((set) => ({
   createView: 'docs',
   breadcrumbs: [],
   copyFeedback: null,
+  projectNudge: null,
 
   setPage: (page) => {
     set({ activePage: page, breadcrumbs: [] })
@@ -112,4 +118,13 @@ export const useUIStore = create<UIStore>((set) => ({
       set((state) => (state.copyFeedback === message ? { copyFeedback: null } : state))
     }, 2000)
   },
+  showProjectNudge: (nudge) => {
+    set({ projectNudge: nudge })
+    setTimeout(() => {
+      set((state) =>
+        state.projectNudge?.projectId === nudge.projectId ? { projectNudge: null } : state
+      )
+    }, 10000)
+  },
+  clearProjectNudge: () => set({ projectNudge: null }),
 }))

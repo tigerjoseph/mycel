@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS projects (
   stage TEXT NOT NULL DEFAULT 'Lead',
   value_cents INTEGER,
   closed_at INTEGER,
+  stage_changed_at INTEGER,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );

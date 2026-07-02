@@ -40,7 +40,7 @@ function appearanceOption(palette: PaletteId, mode: ModeId) {
   return APPEARANCE_OPTIONS.find((o) => o.palette === palette && o.mode === mode)!
 }
 
-export function Settings(): React.JSX.Element {
+export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Element {
   const [appearance, setAppearance] = useState<AppearanceId>('bold-light')
   const [googleApiKey, setGoogleApiKey] = useState('')
   const [stripeApiKey, setStripeApiKey] = useState('')
@@ -59,7 +59,12 @@ export function Settings(): React.JSX.Element {
   const [updateBusy, setUpdateBusy] = useState(false)
   const [updateMessage, setUpdateMessage] = useState<string | null>(null)
 
+  const refreshGcalStatus = (): void => {
+    window.mycel.gcalGetStatus().then((s) => setGcalConnected(s.connected)).catch(() => {})
+  }
+
   useEffect(() => {
+    if (!isOpen) return
     window.mycel.getAppearance().then((a) => {
       setAppearance(a)
       applyAppearanceToDocument(a)
@@ -69,13 +74,13 @@ export function Settings(): React.JSX.Element {
       if (typeof s.googleApiKey === 'string') setGoogleApiKey(s.googleApiKey)
       if (typeof s.stripeApiKey === 'string') setStripeApiKey(s.stripeApiKey)
     })
-    window.mycel.gcalGetStatus().then((s) => setGcalConnected(s.connected)).catch(() => {})
+    refreshGcalStatus()
     window.mycel.getDataInfo().then((info) => {
       setDbPath(info.dbPath)
       setCounts(info.counts)
     }).catch(() => {})
     window.mycel.getVoiceImportStatus().then(setVoiceStatus).catch(() => {})
-  }, [])
+  }, [isOpen])
 
   const handleAppearance = (id: AppearanceId): void => {
     setAppearance(id)
@@ -88,12 +93,16 @@ export function Settings(): React.JSX.Element {
     setGcalMessage(null)
     try {
       const result = await window.mycel.gcalConnect()
-      setGcalConnected(true)
-      setGcalMessage(
-        result.created > 0
-          ? `Added ${result.created} contact${result.created === 1 ? '' : 's'} from calendar`
-          : 'Connected — no new contacts to add'
-      )
+      refreshGcalStatus()
+      if (result.syncWarning) {
+        setGcalMessage(`Connected. ${result.syncWarning}`)
+      } else if (result.sync.created > 0) {
+        setGcalMessage(
+          `Added ${result.sync.created} contact${result.sync.created === 1 ? '' : 's'} from calendar`
+        )
+      } else {
+        setGcalMessage('Connected — no new contacts to add')
+      }
     } catch (err) {
       setGcalMessage(err instanceof Error ? err.message : 'Could not connect Google Calendar')
     } finally {

@@ -104,7 +104,7 @@ export function SettingsModal(): React.JSX.Element {
               </span>
             </div>
             <div style={{ overflowY: 'auto', flex: 1 }}>
-              <Settings />
+              <Settings isOpen={open} />
             </div>
           </motion.div>
         </motion.div>

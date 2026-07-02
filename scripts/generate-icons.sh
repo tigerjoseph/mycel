@@ -3,11 +3,11 @@ set -e
 
 # Generate macOS .icns from a source PNG
 # Usage: ./scripts/generate-icons.sh [source.png]
-# Default source: src/renderer/src/assets/mycel_trans.png
+# Default source: src/renderer/src/assets/app-icon.png
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-SOURCE="${1:-$PROJECT_DIR/src/renderer/src/assets/mycel_trans.png}"
+SOURCE="${1:-$PROJECT_DIR/src/renderer/src/assets/app-icon.png}"
 ICONSET_DIR="$PROJECT_DIR/build/icon.iconset"
 OUTPUT="$PROJECT_DIR/build/icon.icns"
 

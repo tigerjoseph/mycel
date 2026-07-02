@@ -4,6 +4,29 @@ import { Plus, Check, X } from 'lucide-react'
 import { fadeUp } from '../styles/animation'
 import type { Todo as TodoItem } from '@shared/types'
 
+const PAGE_STYLE: React.CSSProperties = {
+  minHeight: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '10vh 32px 64px'
+}
+
+const LIST_STYLE: React.CSSProperties = {
+  width: '100%',
+  maxWidth: 440
+}
+
+const ROW_GAP = 8
+const ITEM_GAP = 15
+const FONT_SIZE = 21
+const META_FONT_SIZE = 20
+const CHECKBOX_SIZE = 27
+const CHECK_ICON = 18
+const DELETE_ICON = 20
+const PLUS_ICON = 20
+
 export function Todo(): React.JSX.Element {
   const [todos, setTodos] = useState<TodoItem[]>([])
   const [addingTodo, setAddingTodo] = useState(false)
@@ -41,83 +64,75 @@ export function Todo(): React.JSX.Element {
 
   const sortedTodos = [...todos].sort((a, b) => a.position - b.position)
 
+  const startAdding = (): void => {
+    setAddingTodo(true)
+    setTimeout(() => todoInputRef.current?.focus(), 50)
+  }
+
+  const addActionButton = (
+    <button
+      onClick={startAdding}
+      style={{
+        background: 'none',
+        border: 'none',
+        cursor: 'pointer',
+        fontFamily: 'var(--font-ui)',
+        fontSize: META_FONT_SIZE,
+        color: 'var(--text-muted)',
+        padding: sortedTodos.length > 0 ? `${ROW_GAP + 4}px 0 0 0` : 0,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        transition: 'color 150ms ease'
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)' }}
+      onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
+    >
+      <Plus size={PLUS_ICON} />
+      add action
+    </button>
+  )
+
   if (todos.length === 0 && !addingTodo) {
     return (
-      <div style={{ maxWidth: 680, margin: '0 auto', padding: '32px 24px', minHeight: '100%' }}>
+      <div style={PAGE_STYLE}>
         <motion.div
           style={{
+            ...LIST_STYLE,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: 320,
-            gap: 16
+            gap: 20
           }}
           {...fadeUp}
         >
           <span
             style={{
               fontFamily: 'var(--font-heading)',
-              fontSize: 18,
+              fontSize: 27,
               color: 'var(--text-muted)'
             }}
           >
             No actions yet
           </span>
-          <button
-            onClick={() => {
-              setAddingTodo(true)
-              setTimeout(() => todoInputRef.current?.focus(), 50)
-            }}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontFamily: 'var(--font-ui)',
-              fontSize: 13,
-              color: 'var(--text-muted)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              transition: 'color 150ms ease'
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
-          >
-            <Plus size={13} />
-            add action
-          </button>
+          {addActionButton}
         </motion.div>
       </div>
     )
   }
 
   return (
-    <div style={{ maxWidth: 680, margin: '0 auto', padding: '32px 24px', minHeight: '100%' }}>
-      <motion.div {...fadeUp}>
-        <h2
-          style={{
-            fontFamily: 'var(--font-ui)',
-            fontSize: 12,
-            fontWeight: 500,
-            color: 'var(--text-muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            margin: '0 0 12px 0'
-          }}
-        >
-          To do
-        </h2>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <div style={PAGE_STYLE}>
+      <motion.div style={LIST_STYLE} {...fadeUp}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: ROW_GAP }}>
           {sortedTodos.map((todo) => (
             <div
               key={todo.id}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 10,
-                padding: '6px 0',
+                gap: ITEM_GAP,
+                padding: '9px 0',
                 position: 'relative'
               }}
               onMouseEnter={(e) => {
@@ -132,10 +147,10 @@ export function Todo(): React.JSX.Element {
               <button
                 onClick={() => toggleTodo(todo)}
                 style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: 4,
-                  border: todo.done ? 'none' : '1.5px solid var(--border)',
+                  width: CHECKBOX_SIZE,
+                  height: CHECKBOX_SIZE,
+                  borderRadius: 6,
+                  border: todo.done ? 'none' : '2px solid var(--border)',
                   background: todo.done ? 'var(--accent)' : 'transparent',
                   display: 'flex',
                   alignItems: 'center',
@@ -143,15 +158,16 @@ export function Todo(): React.JSX.Element {
                   flexShrink: 0,
                   cursor: 'pointer',
                   padding: 0,
-                  transition: 'all 150ms ease'
+                  transition: 'background 150ms ease, border-color 150ms ease'
                 }}
               >
-                {todo.done && <Check size={12} style={{ color: 'var(--bg)' }} />}
+                {todo.done && <Check size={CHECK_ICON} style={{ color: 'var(--bg)' }} />}
               </button>
               <span
                 style={{
                   fontFamily: 'var(--font-ui)',
-                  fontSize: 14,
+                  fontSize: FONT_SIZE,
+                  lineHeight: 1.35,
                   color: todo.done ? 'var(--text-muted)' : 'var(--text)',
                   textDecoration: todo.done ? 'line-through' : 'none',
                   flex: 1,
@@ -169,7 +185,7 @@ export function Todo(): React.JSX.Element {
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
-                  padding: 4,
+                  padding: 6,
                   display: 'flex',
                   alignItems: 'center',
                   color: 'var(--text-muted)'
@@ -177,20 +193,20 @@ export function Todo(): React.JSX.Element {
                 onMouseEnter={(e) => { e.currentTarget.style.color = '#e55' }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
               >
-                <X size={14} />
+                <X size={DELETE_ICON} />
               </button>
             </div>
           ))}
         </div>
 
         {addingTodo ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: ITEM_GAP, padding: '9px 0' }}>
             <div
               style={{
-                width: 18,
-                height: 18,
-                borderRadius: 4,
-                border: '1.5px solid var(--border)',
+                width: CHECKBOX_SIZE,
+                height: CHECKBOX_SIZE,
+                borderRadius: 6,
+                border: '2px solid var(--border)',
                 background: 'transparent',
                 flexShrink: 0
               }}
@@ -208,7 +224,8 @@ export function Todo(): React.JSX.Element {
               placeholder="Add action..."
               style={{
                 fontFamily: 'var(--font-ui)',
-                fontSize: 14,
+                fontSize: FONT_SIZE,
+                lineHeight: 1.35,
                 color: 'var(--text)',
                 background: 'none',
                 border: 'none',
@@ -219,30 +236,7 @@ export function Todo(): React.JSX.Element {
             />
           </div>
         ) : (
-          <button
-            onClick={() => {
-              setAddingTodo(true)
-              setTimeout(() => todoInputRef.current?.focus(), 50)
-            }}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontFamily: 'var(--font-ui)',
-              fontSize: 13,
-              color: 'var(--text-muted)',
-              padding: '8px 0 0 0',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              transition: 'color 150ms ease'
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
-          >
-            <Plus size={13} />
-            add action
-          </button>
+          addActionButton
         )}
       </motion.div>
     </div>

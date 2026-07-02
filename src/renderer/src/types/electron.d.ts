@@ -65,7 +65,11 @@ declare global {
 
       // Google Calendar
       gcalGetStatus(): Promise<{ connected: boolean }>
-      gcalConnect(): Promise<{ created: number; skipped: number }>
+      gcalConnect(): Promise<{
+        ok: true
+        sync: { created: number; skipped: number }
+        syncWarning?: string
+      }>
       gcalDisconnect(): Promise<void>
       gcalSyncContacts(): Promise<{ created: number; skipped: number }>
       gcalFetchEvents(): Promise<unknown[]>

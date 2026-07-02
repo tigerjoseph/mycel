@@ -1,20 +1,26 @@
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let store: any = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let storeInit: Promise<any> | null = null
 
+/** One shared electron-store instance — parallel async init used to create duplicate stores and wipe keys. */
 async function getStore(): Promise<any> {
-  if (!store) {
-    const mod = await import('electron-store')
-    const Store = mod.default
-    store = new Store({
-      name: 'mycel-settings',
-      defaults: {
-        theme: 'light',
-        appearance: 'bold-light',
-        settings: {}
-      }
+  if (store) return store
+  if (!storeInit) {
+    storeInit = import('electron-store').then((mod) => {
+      const Store = mod.default
+      store = new Store({
+        name: 'mycel-settings',
+        defaults: {
+          theme: 'light',
+          appearance: 'bold-light',
+          settings: {}
+        }
+      })
+      return store
     })
   }
-  return store
+  return storeInit
 }
 
 export async function getAppSettings(): Promise<Record<string, unknown>> {
@@ -58,21 +64,39 @@ export async function setAppearance(appearance: string): Promise<void> {
   s.set('appearance', appearance)
 }
 
-export async function getGcalTokens(): Promise<Record<string, unknown> | null> {
+async function migrateLegacyGcalTokens(): Promise<Record<string, unknown> | null> {
   const s = await getStore()
-  return (s.get('gcalTokens') as Record<string, unknown> | null) ?? null
+  const legacy = s.get('gcalTokens') as Record<string, unknown> | null | undefined
+  if (!legacy || typeof legacy !== 'object') return null
+  await setAppSettings({ gcalTokens: legacy })
+  s.delete('gcalTokens')
+  return legacy
+}
+
+export async function getGcalTokens(): Promise<Record<string, unknown> | null> {
+  const settings = await getAppSettings()
+  const nested = settings.gcalTokens
+  if (nested && typeof nested === 'object') {
+    return nested as Record<string, unknown>
+  }
+  return migrateLegacyGcalTokens()
 }
 
 export async function setGcalTokens(tokens: Record<string, unknown> | null): Promise<void> {
-  const s = await getStore()
   if (!tokens) {
+    await setAppSettings({ gcalTokens: undefined })
+    const s = await getStore()
     s.delete('gcalTokens')
     return
   }
-  const existing = (s.get('gcalTokens') as Record<string, unknown> | null) ?? {}
+
+  const settings = await getAppSettings()
+  const existing = (settings.gcalTokens as Record<string, unknown> | null) ?? {}
   const merged = { ...existing, ...tokens }
   if (existing.refresh_token && !tokens.refresh_token) {
     merged.refresh_token = existing.refresh_token
   }
-  s.set('gcalTokens', merged)
+  await setAppSettings({ gcalTokens: merged })
+  const s = await getStore()
+  s.delete('gcalTokens')
 }

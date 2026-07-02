@@ -52,4 +52,4 @@ Legacy one-liner also works: `GH_TOKEN=$(gh auth token) npm run ship` (with `.en
 | `src/renderer/src/App.tsx` | Root component, page routing, update banner |
 | `src/renderer/src/store/ui.ts` | UI state (active page, breadcrumbs, modals) |
 | `src/shared/types.ts` | Shared TypeScript types |
-| `build/icon.icns` | Dock icon (mushroom logo) |
+| `build/icon.icns` | Dock icon (white sphere + network) |

@@ -11,6 +11,7 @@ import { ContactSwitcher } from './components/ContactSwitcher'
 import { SettingsModal } from './components/SettingsModal'
 import { useUIStore } from './store/ui'
 import { useKeyboard } from './hooks/useKeyboard'
+import { useProjectStageNudge } from './hooks/useProjectStageNudge'
 import type { PageId } from '@shared/types'
 import { applyAppearanceToDocument } from '@shared/appearance'
 
@@ -40,8 +41,13 @@ function App(): React.JSX.Element {
   const logTouchpointOpen = useUIStore((s) => s.logTouchpointOpen)
   const contactSwitcherOpen = useUIStore((s) => s.contactSwitcherOpen)
   const copyFeedback = useUIStore((s) => s.copyFeedback)
+  const projectNudge = useUIStore((s) => s.projectNudge)
+  const clearProjectNudge = useUIStore((s) => s.clearProjectNudge)
   const setSettingsOpen = useUIStore((s) => s.setSettingsOpen)
+  const setCRMView = useUIStore((s) => s.setCRMView)
+  const setActiveProjectId = useUIStore((s) => s.setActiveProjectId)
   useKeyboard()
+  useProjectStageNudge()
 
   // Restore last tab on mount
   useEffect(() => {
@@ -136,7 +142,7 @@ function App(): React.JSX.Element {
             transition={{ type: 'spring', stiffness: 500, damping: 30 }}
             style={{
               position: 'fixed',
-              bottom: updateReady ? 72 : 16,
+              bottom: updateReady ? 72 : projectNudge ? 72 : 16,
               left: '50%',
               transform: 'translateX(-50%)',
               padding: '8px 16px',
@@ -152,6 +158,48 @@ function App(): React.JSX.Element {
           >
             {copyFeedback}
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Stuck project nudge */}
+      <AnimatePresence>
+        {projectNudge && (
+          <motion.button
+            key="project-nudge"
+            type="button"
+            initial={{ y: 24, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 24, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            onClick={() => {
+              setPage('people')
+              setCRMView('projects')
+              setActiveProjectId(projectNudge.projectId)
+              clearProjectNudge()
+            }}
+            style={{
+              position: 'fixed',
+              bottom: updateReady ? 72 : 16,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              padding: '10px 16px',
+              background: 'var(--surface)',
+              color: 'var(--text)',
+              border: '1px solid var(--border)',
+              borderLeft: '3px solid var(--accent)',
+              borderRadius: 10,
+              fontSize: 13,
+              fontFamily: 'var(--font-ui)',
+              fontWeight: 500,
+              zIndex: 201,
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+              maxWidth: 'min(420px, calc(100vw - 32px))',
+              textAlign: 'left'
+            }}
+          >
+            {projectNudge.message}
+          </motion.button>
         )}
       </AnimatePresence>
 

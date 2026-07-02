@@ -13,8 +13,13 @@ export function registerGcalHandlers(): void {
 
   ipcMain.handle('gcal:connect', async () => {
     await connectGoogleCalendar()
-    const result = await syncCalendarContacts()
-    return result
+    try {
+      const sync = await syncCalendarContacts()
+      return { ok: true as const, sync }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Calendar sync failed'
+      return { ok: true as const, sync: { created: 0, skipped: 0 }, syncWarning: message }
+    }
   })
 
   ipcMain.handle('gcal:disconnect', async () => {
