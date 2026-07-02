@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="g" cx="36%" cy="30%" r="68%">
+      <stop offset="0%" stop-color="#FAF7F2"/>
+      <stop offset="45%" stop-color="#DDD6CC"/>
+      <stop offset="100%" stop-color="#9C9488"/>
+    </radialGradient>
+    <radialGradient id="shade" cx="58%" cy="62%" r="50%">
+      <stop offset="70%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.2"/>
+    </radialGradient>
+    <clipPath id="ball"><circle cx="512" cy="512" r="512"/></clipPath>
+  </defs>
+  <circle cx="512" cy="512" r="512" fill="url(#g)"/>
+  <g clip-path="url(#ball)" fill="none" stroke="#5C7A5E" stroke-linecap="round">
+    <path d="M 200 520 Q 360 380 512 500 T 820 460" stroke-width="6" opacity="0.28"/>
+    <path d="M 240 600 Q 400 480 520 580 T 780 540" stroke-width="5" opacity="0.22"/>
+    <path d="M 280 420 Q 440 340 580 440" stroke-width="5" opacity="0.2"/>
+    <path d="M 350 680 Q 480 560 620 640" stroke-width="4" opacity="0.18"/>
+    <circle cx="390" cy="470" r="10" fill="#5C7A5E" stroke="none" opacity="0.35"/>
+    <circle cx="540" cy="530" r="8" fill="#5C7A5E" stroke="none" opacity="0.3"/>
+    <circle cx="470" cy="610" r="9" fill="#5C7A5E" stroke="none" opacity="0.28"/>
+    <circle cx="620" cy="480" r="7" fill="#5C7A5E" stroke="none" opacity="0.25"/>
+  </g>
+  <circle cx="512" cy="512" r="512" fill="url(#shade)"/>
+  <ellipse cx="418" cy="368" rx="118" ry="72" fill="#FFFFFF" opacity="0.55"/>
+</svg>

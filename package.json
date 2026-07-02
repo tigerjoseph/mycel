@@ -1,6 +1,6 @@
 {
   "name": "mycel",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Personal CRM + Docs + Notes",
   "main": "./out/main/index.js",
   "author": "example.com",
