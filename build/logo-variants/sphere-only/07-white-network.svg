@@ -1,72 +1,59 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="2048" viewBox="0 0 1024 1024">
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
-    <!-- Multi-stop base — avoids banding when rasterized -->
-    <radialGradient id="base" cx="36%" cy="30%" r="68%" fx="32%" fy="26%">
+    <radialGradient id="sphere" cx="33%" cy="26%" r="74%">
       <stop offset="0%" stop-color="#FFFFFF"/>
-      <stop offset="18%" stop-color="#FAFAF8"/>
-      <stop offset="38%" stop-color="#ECE9E4"/>
-      <stop offset="58%" stop-color="#D4CFC8"/>
-      <stop offset="78%" stop-color="#B0AAA2"/>
-      <stop offset="92%" stop-color="#8F8880"/>
-      <stop offset="100%" stop-color="#6B6560"/>
+      <stop offset="22%" stop-color="#FFFFFF"/>
+      <stop offset="42%" stop-color="#FCFCFA"/>
+      <stop offset="62%" stop-color="#F4F2EF"/>
+      <stop offset="80%" stop-color="#F0EEEB"/>
+      <stop offset="92%" stop-color="#E4E1DD"/>
+      <stop offset="100%" stop-color="#D8D5D0"/>
     </radialGradient>
-
-    <!-- Cool rim falloff -->
-    <radialGradient id="rim" cx="50%" cy="54%" r="52%">
-      <stop offset="72%" stop-color="#000000" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#000000" stop-opacity="0.18"/>
+    <radialGradient id="shade" cx="64%" cy="68%" r="50%">
+      <stop offset="65%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.06"/>
     </radialGradient>
-
-    <!-- Soft specular — gradient only, no pasted ellipse -->
-    <radialGradient id="spec" cx="34%" cy="26%" r="28%">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.95"/>
-      <stop offset="55%" stop-color="#FFFFFF" stop-opacity="0.22"/>
-      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
-    </radialGradient>
-
     <clipPath id="ball">
-      <circle cx="512" cy="512" r="400"/>
+      <circle cx="512" cy="512" r="512"/>
     </clipPath>
   </defs>
 
-  <circle cx="512" cy="512" r="400" fill="url(#base)"/>
-  <circle cx="512" cy="512" r="400" fill="url(#rim)"/>
-  <circle cx="512" cy="512" r="400" fill="url(#spec)"/>
+  <circle cx="512" cy="512" r="512" fill="url(#sphere)"/>
+  <circle cx="512" cy="512" r="512" fill="url(#shade)"/>
 
-  <!-- Network mark -->
-  <g clip-path="url(#ball)" fill="none" stroke="#141414" stroke-linecap="round" stroke-linejoin="round">
-    <g stroke-width="13">
-      <path d="M 268 438 L 404 438 L 512 522 L 656 412 L 776 452"/>
-      <path d="M 308 598 L 436 536 L 512 628 L 644 558 L 756 608"/>
-      <path d="M 360 364 L 436 438 L 512 384 L 588 456"/>
-      <path d="M 384 692 L 512 628 L 600 704"/>
+  <g clip-path="url(#ball)" fill="none" stroke="#000000" stroke-linecap="square" stroke-linejoin="miter">
+    <g stroke-width="14">
+      <path d="M 220 420 L 380 420 L 520 520 L 680 400 L 820 440"/>
+      <path d="M 280 580 L 420 520 L 520 620 L 640 540 L 780 600"/>
+      <path d="M 340 340 L 420 420 L 520 360 L 600 440"/>
+      <path d="M 360 680 L 520 620 L 620 700"/>
     </g>
-    <g stroke-width="8.5" opacity="0.88">
-      <path d="M 404 438 L 404 536 L 436 536"/>
-      <path d="M 512 522 L 512 628 L 644 558"/>
-      <path d="M 436 438 L 436 364 L 512 384"/>
-      <path d="M 656 412 L 656 558 L 644 558"/>
-      <path d="M 308 598 L 308 504 L 404 438"/>
-      <path d="M 776 452 L 756 608"/>
-      <path d="M 512 384 L 588 456 L 656 412"/>
-      <path d="M 384 692 L 308 598"/>
+    <g stroke-width="9" opacity="0.92">
+      <path d="M 380 420 L 380 520 L 420 520"/>
+      <path d="M 520 520 L 520 620 L 640 540"/>
+      <path d="M 420 420 L 420 340 L 520 360"/>
+      <path d="M 680 400 L 680 540 L 640 540"/>
+      <path d="M 280 580 L 280 480 L 380 420"/>
+      <path d="M 820 440 L 780 600"/>
+      <path d="M 520 360 L 600 440 L 680 400"/>
+      <path d="M 360 680 L 280 580"/>
     </g>
-    <g fill="#141414" stroke="none">
-      <circle cx="268" cy="438" r="17"/>
-      <circle cx="404" cy="438" r="21"/>
-      <circle cx="512" cy="522" r="24"/>
-      <circle cx="656" cy="412" r="19"/>
-      <circle cx="776" cy="452" r="15"/>
-      <circle cx="308" cy="598" r="17"/>
-      <circle cx="436" cy="536" r="15"/>
-      <circle cx="512" cy="628" r="19"/>
-      <circle cx="644" cy="558" r="17"/>
-      <circle cx="756" cy="608" r="15"/>
-      <circle cx="360" cy="364" r="13"/>
-      <circle cx="512" cy="384" r="15"/>
-      <circle cx="588" cy="456" r="11"/>
-      <circle cx="384" cy="692" r="13"/>
-      <circle cx="600" cy="704" r="11"/>
+    <g fill="#000000" stroke="none">
+      <circle cx="220" cy="420" r="20"/>
+      <circle cx="380" cy="420" r="24"/>
+      <circle cx="520" cy="520" r="28"/>
+      <circle cx="680" cy="400" r="22"/>
+      <circle cx="820" cy="440" r="18"/>
+      <circle cx="280" cy="580" r="20"/>
+      <circle cx="420" cy="520" r="18"/>
+      <circle cx="520" cy="620" r="22"/>
+      <circle cx="640" cy="540" r="20"/>
+      <circle cx="780" cy="600" r="18"/>
+      <circle cx="340" cy="340" r="16"/>
+      <circle cx="520" cy="360" r="18"/>
+      <circle cx="600" cy="440" r="14"/>
+      <circle cx="360" cy="680" r="16"/>
+      <circle cx="620" cy="700" r="14"/>
     </g>
   </g>
 </svg>
