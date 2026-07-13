@@ -8,12 +8,11 @@ import { fadeUp } from '../styles/animation'
 import { ContextMenu } from '../components/ContextMenu'
 import { DocIcon } from '../components/DocIcon'
 import { format } from 'date-fns'
+import { openDoc } from '../utils/openDoc'
 
 export function DocList(): React.JSX.Element {
   const activeFolderId = useUIStore((s) => s.activeFolderId)
   const setDocsView = useUIStore((s) => s.setDocsView)
-  const setActiveDocId = useUIStore((s) => s.setActiveDocId)
-  const pushBreadcrumb = useUIStore((s) => s.pushBreadcrumb)
   const folders = useDocsStore((s) => s.folders)
   const docs = useDocsStore((s) => s.docs)
   const fetchDocs = useDocsStore((s) => s.fetchDocs)
@@ -41,14 +40,14 @@ export function DocList(): React.JSX.Element {
 
   const handleDocClick = useCallback(
     (docId: string) => {
-      setActiveDocId(docId)
-      setDocsView('editor')
-      pushBreadcrumb({
+      const doc = docs.find((d) => d.id === docId)
+      if (!doc) return
+      openDoc(doc, {
         label: folder?.name ?? 'Folder',
         action: () => setDocsView('list')
       })
     },
-    [setActiveDocId, setDocsView, pushBreadcrumb, folder]
+    [docs, setDocsView, folder]
   )
 
   const handleNewDoc = useCallback(async () => {
@@ -67,13 +66,11 @@ export function DocList(): React.JSX.Element {
       createdAt: Date.now(),
       updatedAt: Date.now()
     })
-    setActiveDocId(doc.id)
-    setDocsView('editor')
-    pushBreadcrumb({
+    openDoc(doc, {
       label: folder?.name ?? 'Folder',
       action: () => setDocsView('list')
     })
-  }, [activeFolderId, setActiveDocId, setDocsView, pushBreadcrumb, folder])
+  }, [activeFolderId, folder, setDocsView])
 
   const startFolderRename = useCallback(() => {
     if (!folder) return

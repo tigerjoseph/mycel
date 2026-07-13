@@ -65,16 +65,20 @@ export function registerProjectHandlers(): void {
   ipcMain.handle('projects:getAll', async () => {
     const db = getDb()
     const result = await db.execute({
-      sql: `SELECT p.*, c.name as contact_name
+      sql: `SELECT p.*, c.name as contact_name, c.last_contacted_at as contact_last_contacted_at
             FROM projects p
             LEFT JOIN contacts c ON p.contact_id = c.id
             ORDER BY p.updated_at DESC`
     })
-    return result.rows.map((row) =>
-      mapProjectRow(row as Record<string, unknown>, {
-        contactName: (row.contact_name as string) || ''
+    return result.rows.map((row) => {
+      const rawLast = row.contact_last_contacted_at
+      const lastContactedAt =
+        typeof rawLast === 'number' ? rawLast : rawLast != null ? Number(rawLast) : null
+      return mapProjectRow(row as Record<string, unknown>, {
+        contactName: (row.contact_name as string) || '',
+        lastContactedAt: Number.isFinite(lastContactedAt) ? lastContactedAt : null
       })
-    )
+    })
   })
 
   ipcMain.handle('projects:get', async (_e, contactId: string) => {

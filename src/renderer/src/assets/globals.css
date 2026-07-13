@@ -65,6 +65,14 @@
   --text-muted: #9A9189;
   --accent: #3D5A3E;
   --border: rgba(0, 0, 0, 0.07);
+  --won: #2E7D32;
+  --won-bg: rgba(46, 125, 50, 0.1);
+  --won-border: rgba(46, 125, 50, 0.28);
+  --lost: #C0392B;
+  --lost-bg: rgba(192, 57, 43, 0.08);
+  --lost-border: rgba(192, 57, 43, 0.22);
+  --follow-up-warn: #B45309;
+  --follow-up-urgent: #C0392B;
   --font-heading: 'Lora', serif;
   --font-ui: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --ui-scale: 1.08;
@@ -79,6 +87,14 @@
   --text-muted: #6B6560;
   --accent: #6B9E6E;
   --border: rgba(255, 255, 255, 0.07);
+  --won: #6BBF6E;
+  --won-bg: rgba(107, 191, 110, 0.12);
+  --won-border: rgba(107, 191, 110, 0.3);
+  --lost: #E57373;
+  --lost-bg: rgba(229, 115, 115, 0.1);
+  --lost-border: rgba(229, 115, 115, 0.28);
+  --follow-up-warn: #D4A054;
+  --follow-up-urgent: #E57373;
 }
 
 /* --- Bold palette ----------------------------------------- */
@@ -238,12 +254,13 @@ button:active:not(:disabled) {
 /* Tailwind preflight strips list markers; restore them inside editors */
 .tiptap ul:not([data-type="taskList"]) {
   list-style-type: disc;
-  padding-left: 1.4em;
-  margin: 0.4em 0;
+  padding-left: 1.5em;
+  margin: 0.5em 0;
 }
 
 .tiptap ul:not([data-type="taskList"]) ul {
   list-style-type: circle;
+  margin: 0.25em 0;
 }
 
 .tiptap ul:not([data-type="taskList"]) ul ul {
@@ -252,16 +269,27 @@ button:active:not(:disabled) {
 
 .tiptap ol {
   list-style-type: decimal;
-  padding-left: 1.4em;
-  margin: 0.4em 0;
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.tiptap ol ol {
+  margin: 0.25em 0;
 }
 
 .tiptap li {
-  margin: 0.15em 0;
+  margin: 0;
+  padding: 0.2em 0;
 }
 
-.tiptap li p {
+.tiptap li > ul,
+.tiptap li > ol {
+  margin: 0.2em 0;
+}
+
+.tiptap li > p {
   margin: 0;
+  line-height: 1.75;
 }
 
 .tiptap blockquote {

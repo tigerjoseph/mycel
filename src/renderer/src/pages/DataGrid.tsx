@@ -3,7 +3,7 @@ import { motion } from 'motion/react'
 import { Plus, Trash2 } from 'lucide-react'
 import { useUIStore } from '../store/ui'
 import { useDocsStore } from '../store/docs'
-import { fadeUp } from '../styles/animation'
+import { findCachedDoc } from '../utils/docCache'
 import { useFlushOnLeave } from '../hooks/useFlushOnLeave'
 import type { Doc } from '@shared/types'
 
@@ -33,7 +33,9 @@ export function DataGrid(): React.JSX.Element {
   const setDocsView = useUIStore((s) => s.setDocsView)
   const folders = useDocsStore((s) => s.folders)
   const activeFolderId = useUIStore((s) => s.activeFolderId)
-  const [doc, setDoc] = useState<Doc | null>(null)
+  const [doc, setDoc] = useState<Doc | null>(() =>
+    activeDocId ? findCachedDoc(activeDocId) ?? null : null
+  )
   const [title, setTitle] = useState('')
   const [grid, setGrid] = useState<GridData>({ columns: [], rows: [] })
   const [savedIndicator, setSavedIndicator] = useState(false)
@@ -53,6 +55,14 @@ export function DataGrid(): React.JSX.Element {
   useEffect(() => {
     isMountedRef.current = true
     if (!activeDocId) return
+
+    const cached = findCachedDoc(activeDocId)
+    if (cached) {
+      setDoc(cached)
+      setTitle(cached.title)
+      setGrid(parseGridData(cached.body))
+    }
+
     window.mycel.getDoc(activeDocId).then((d) => {
       if (!isMountedRef.current) return
       if (d) {
@@ -268,7 +278,7 @@ export function DataGrid(): React.JSX.Element {
   }
 
   return (
-    <motion.div
+    <div
       style={{
         height: '100%',
         background: 'var(--bg)',
@@ -276,7 +286,6 @@ export function DataGrid(): React.JSX.Element {
         flexDirection: 'column',
         position: 'relative'
       }}
-      {...fadeUp}
     >
       {/* Breadcrumb */}
       <div
@@ -340,6 +349,9 @@ export function DataGrid(): React.JSX.Element {
           flex: 1,
           overflowY: 'auto',
           overflowX: 'auto',
+          maxWidth: 800,
+          margin: '0 auto',
+          width: '100%',
           padding: '120px 40px 60px'
         }}
       >
@@ -349,6 +361,7 @@ export function DataGrid(): React.JSX.Element {
           onChange={handleTitleChange}
           onBlur={handleTitleBlur}
           placeholder="Untitled Grid"
+          spellCheck
           className="font-heading"
           style={{
             display: 'block',
@@ -382,6 +395,7 @@ export function DataGrid(): React.JSX.Element {
                   >
                     <input
                       value={col}
+                      spellCheck
                       onChange={(e) => handleColumnEdit(colIdx, e.target.value)}
                       style={headerCellStyle}
                     />
@@ -413,6 +427,7 @@ export function DataGrid(): React.JSX.Element {
                       <input
                         data-cell={`${rowIdx}-${colIdx}`}
                         value={cell}
+                        spellCheck
                         onChange={(e) => handleCellEdit(rowIdx, colIdx, e.target.value)}
                         onKeyDown={(e) => handleCellKeyDown(e, rowIdx, colIdx)}
                         style={cellStyle}
@@ -504,6 +519,6 @@ export function DataGrid(): React.JSX.Element {
           </button>
         </div>
       )}
-    </motion.div>
+    </div>
   )
 }

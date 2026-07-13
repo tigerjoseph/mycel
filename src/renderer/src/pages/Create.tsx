@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'motion/react'
+import { motion } from 'motion/react'
 import { FileText, StickyNote } from 'lucide-react'
 import { spring } from '../styles/animation'
 import { useUIStore } from '../store/ui'
@@ -13,41 +13,30 @@ const CREATE_TABS = [
 export function Create(): React.JSX.Element {
   const activeCreateView = useUIStore((s) => s.createView)
   const setCreateView = useUIStore((s) => s.setCreateView)
-  const docsView = useUIStore((s) => s.docsView)
-  const hideCreateTabs =
-    activeCreateView === 'docs' && (docsView === 'editor' || docsView === 'grid')
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <AnimatePresence initial={false}>
-        {!hideCreateTabs && (
-          <motion.div
-            key="create-tabs"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            style={{
-              maxWidth: 680,
-              margin: '0 auto',
-              padding: '32px 24px 0',
-              width: '100%',
-              overflow: 'hidden',
-              flexShrink: 0
-            }}
-          >
-            <nav
-              style={{
-                display: 'flex',
-                gap: 4,
-                marginBottom: 28,
-                padding: 4,
-                background: 'var(--surface)',
-                borderRadius: 12,
-                border: '1px solid var(--border)',
-                overflow: 'hidden'
-              }}
-            >
+      <div
+        style={{
+          maxWidth: 680,
+          margin: '0 auto',
+          padding: '32px 24px 0',
+          width: '100%',
+          flexShrink: 0
+        }}
+      >
+        <nav
+          style={{
+            display: 'flex',
+            gap: 4,
+            marginBottom: 28,
+            padding: 4,
+            background: 'var(--surface)',
+            borderRadius: 12,
+            border: '1px solid var(--border)',
+            overflow: 'hidden'
+          }}
+        >
           {CREATE_TABS.map((tab) => {
             const isActive = activeCreateView === tab.id
             const Icon = tab.icon
@@ -96,10 +85,8 @@ export function Create(): React.JSX.Element {
               </button>
             )
           })}
-            </nav>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        </nav>
+      </div>
 
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 0 }}>
         {activeCreateView === 'docs' ? <Docs /> : <Notes />}

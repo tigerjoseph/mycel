@@ -12,6 +12,7 @@
       <stop offset="100%" stop-color="#000000" stop-opacity="0.05"/>
     </radialGradient>
   </defs>
-  <circle cx="512" cy="512" r="512" fill="url(#sphere)"/>
-  <circle cx="512" cy="512" r="512" fill="url(#rim)"/>
+  <!-- r=369 ≈ 72% of canvas for dock padding -->
+  <circle cx="512" cy="512" r="369" fill="url(#sphere)"/>
+  <circle cx="512" cy="512" r="369" fill="url(#rim)"/>
 </svg>

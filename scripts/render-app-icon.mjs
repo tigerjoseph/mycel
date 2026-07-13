@@ -14,7 +14,8 @@ const resourcesPng = join(root, 'resources/icon.png')
 const SIZE = 2048
 const CX = SIZE / 2
 const CY = SIZE / 2
-const R = SIZE / 2
+// ~72% of canvas — circular marks need more inset than square app icons
+const R = SIZE * 0.36
 
 let createCanvas
 try {

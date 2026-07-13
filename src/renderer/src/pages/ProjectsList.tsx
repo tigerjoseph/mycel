@@ -15,6 +15,8 @@ import {
   sumProjectValueCents,
   type RevenuePeriod
 } from '@shared/money'
+import { ALL_STAGES, getStageBadgeColors } from '@shared/stages'
+import { followUpAccentColor, getProjectFollowUpHint } from '@shared/followUp'
 
 interface ProjectWithContact {
   id: string
@@ -24,11 +26,11 @@ interface ProjectWithContact {
   stage: string
   valueCents: number | null
   closedAt: number | null
+  stageChangedAt: number | null
+  lastContactedAt: number | null
   createdAt: number
   updatedAt: number
 }
-
-const STAGE_ORDER = ['Lead', 'Active', 'Closing', 'Won', 'Lost']
 
 export function ProjectsList(): React.JSX.Element {
   const setActiveProjectId = useUIStore((s) => s.setActiveProjectId)
@@ -210,7 +212,7 @@ export function ProjectsList(): React.JSX.Element {
               fontFamily: 'var(--font-heading)',
               fontSize: 22,
               fontWeight: 600,
-              color: 'var(--text)',
+              color: 'var(--won)',
               fontVariantNumeric: 'tabular-nums',
               lineHeight: 1.2
             }}
@@ -276,7 +278,10 @@ export function ProjectsList(): React.JSX.Element {
         >
           All
         </button>
-        {STAGE_ORDER.map((stage) => (
+        {ALL_STAGES.map((stage) => {
+          const badge = getStageBadgeColors(stage)
+          const isActive = stageFilter === stage
+          return (
           <button
             key={stage}
             onClick={() => setStageFilter(stageFilter === stage ? null : stage)}
@@ -285,21 +290,25 @@ export function ProjectsList(): React.JSX.Element {
               fontSize: 12,
               padding: '4px 12px',
               borderRadius: 12,
-              border: '1px solid var(--border)',
-              background: stageFilter === stage ? 'var(--accent)' : 'transparent',
-              color: stageFilter === stage ? '#fff' : 'var(--text-muted)',
+              border: `1px solid ${isActive ? badge.border : 'var(--border)'}`,
+              background: isActive ? badge.background : 'transparent',
+              color: isActive ? badge.color : 'var(--text-muted)',
               cursor: 'pointer',
               transition: 'all 150ms ease'
             }}
           >
             {stage}
           </button>
-        ))}
+          )
+        })}
       </div>
 
       {/* Project rows */}
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {filtered.map((project, index) => (
+        {filtered.map((project, index) => {
+          const followUp = getProjectFollowUpHint(project, project.lastContactedAt)
+          const stageBadge = getStageBadgeColors(project.stage)
+          return (
           <motion.button
             key={project.id}
             {...fadeUp}
@@ -318,6 +327,7 @@ export function ProjectsList(): React.JSX.Element {
               justifyContent: 'space-between',
               padding: '12px 14px',
               borderBottom: '1px solid var(--border)',
+              borderLeft: followUp ? `3px solid ${followUpAccentColor(followUp.urgency)}` : '3px solid transparent',
               borderRadius: 8,
               width: '100%',
               textAlign: 'left',
@@ -327,19 +337,39 @@ export function ProjectsList(): React.JSX.Element {
             onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 0 }}>
-              <span
-                style={{
-                  fontFamily: 'var(--font-ui)',
-                  fontSize: 14,
-                  color: 'var(--text)',
-                  fontWeight: 400,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {project.name || 'Untitled project'}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-ui)',
+                    fontSize: 14,
+                    color: 'var(--text)',
+                    fontWeight: 400,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {project.name || 'Untitled project'}
+                </span>
+                {followUp && (
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-ui)',
+                      fontSize: 10,
+                      fontWeight: 500,
+                      color: followUpAccentColor(followUp.urgency),
+                      background: followUp.urgency === 'urgent' ? 'var(--lost-bg)' : 'rgba(180, 83, 9, 0.08)',
+                      border: `1px solid ${followUpAccentColor(followUp.urgency)}`,
+                      borderRadius: 6,
+                      padding: '1px 6px',
+                      flexShrink: 0,
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    Follow up
+                  </span>
+                )}
+              </div>
               <span
                 style={{
                   fontFamily: 'var(--font-ui)',
@@ -369,9 +399,9 @@ export function ProjectsList(): React.JSX.Element {
                 style={{
                   fontFamily: 'var(--font-ui)',
                   fontSize: 11,
-                  color: project.stage === 'Won' ? 'var(--accent)' : project.stage === 'Lost' ? 'var(--text-muted)' : 'var(--text)',
-                  background: 'var(--surface)',
-                  border: '1px solid var(--border)',
+                  color: stageBadge.color,
+                  background: stageBadge.background,
+                  border: `1px solid ${stageBadge.border}`,
                   borderRadius: 8,
                   padding: '2px 8px',
                   whiteSpace: 'nowrap'
@@ -381,7 +411,8 @@ export function ProjectsList(): React.JSX.Element {
               </span>
             </div>
           </motion.button>
-        ))}
+          )
+        })}
       </div>
 
       <AnimatePresence>

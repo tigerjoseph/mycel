@@ -45,6 +45,12 @@ function createWindow(): void {
   setupContextMenu(mainWindow.webContents)
 
   mainWindow.on('ready-to-show', () => {
+    const session = mainWindow?.webContents.session
+    session?.setSpellCheckerEnabled(true)
+    const locale = app.getLocale().replace('_', '-')
+    session?.setSpellCheckerLanguages(
+      locale ? [locale, 'en-US'] : ['en-US']
+    )
     mainWindow?.webContents.setZoomFactor(1.18)
     mainWindow?.show()
   })

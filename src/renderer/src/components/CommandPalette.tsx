@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { User, FileText, StickyNote, Search, CheckSquare, Hash } from 'lucide-react'
 import { useUIStore } from '../store/ui'
-import type { SearchResult, Tag, TagEntity } from '@shared/types'
+import type { Doc, SearchResult, Tag, TagEntity } from '@shared/types'
+import { openDoc } from '../utils/openDoc'
 
 const typeIcons = {
   contact: User,
@@ -140,8 +141,9 @@ export function CommandPalette(): React.JSX.Element | null {
           break
         case 'doc':
           setPage('create')
-          setActiveDocId(result.id)
-          setDocsView('editor')
+          void window.mycel.getDoc(result.id).then((d) => {
+            if (d) openDoc(d as Doc)
+          })
           break
         case 'note':
           setPage('create')
@@ -168,8 +170,9 @@ export function CommandPalette(): React.JSX.Element | null {
           break
         case 'doc':
           setPage('create')
-          setActiveDocId(entity.id)
-          setDocsView('editor')
+          void window.mycel.getDoc(entity.id).then((d) => {
+            if (d) openDoc(d as Doc)
+          })
           break
         case 'note':
           setPage('create')

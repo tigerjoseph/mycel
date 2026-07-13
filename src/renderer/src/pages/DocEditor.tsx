@@ -18,7 +18,7 @@ import { Table as TableExtension } from '@tiptap/extension-table'
 import TableRow from '@tiptap/extension-table-row'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
-import { ArrowLeft, FolderClosed, MoreHorizontal, Copy, Files, Trash2, FileCode, Newspaper, Sparkles, FolderOutput } from 'lucide-react'
+import { FolderClosed, MoreHorizontal, Copy, Files, Trash2, FileCode, Newspaper, Sparkles, FolderOutput } from 'lucide-react'
 import { useUIStore } from '../store/ui'
 import { useDocsStore } from '../store/docs'
 import { FloatingToolbar } from '../components/FloatingToolbar'
@@ -28,6 +28,7 @@ import { DocIcon } from '../components/DocIcon'
 import { TagPicker } from '../components/TagPicker'
 import { useFlushOnLeave } from '../hooks/useFlushOnLeave'
 import { useCopyFeedback } from '../hooks/useCopyFeedback'
+import { findCachedDoc } from '../utils/docCache'
 import { htmlToMarkdown } from '../utils/htmlToMarkdown'
 import { copyForSubstack } from '../utils/substackExport'
 import {
@@ -44,17 +45,73 @@ import {
   updateAudioPlaceholder
 } from '../utils/docAudioImport'
 
+function DocEditorShell(): React.JSX.Element {
+  return (
+    <div
+      style={{
+        height: '100%',
+        background: 'var(--bg)',
+        position: 'relative'
+      }}
+    >
+      <div
+        className="font-ui"
+        style={{
+          position: 'absolute',
+          top: 20,
+          left: 40,
+          fontSize: 12,
+          color: 'var(--text-muted)',
+          zIndex: 10
+        }}
+      >
+        Docs
+      </div>
+      <div
+        style={{
+          maxWidth: 800,
+          margin: '0 auto',
+          width: '100%',
+          padding: '120px 40px 60px'
+        }}
+      >
+        <div
+          style={{
+            height: 52,
+            marginBottom: 32,
+            borderRadius: 8,
+            background: 'var(--surface)',
+            opacity: 0.45
+          }}
+        />
+        <div
+          style={{
+            height: 180,
+            borderRadius: 8,
+            background: 'var(--surface)',
+            opacity: 0.25
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
 export function DocEditor(): React.JSX.Element {
   const activeDocId = useUIStore((s) => s.activeDocId)
-  const [doc, setDoc] = useState<Doc | null>(null)
+  const [doc, setDoc] = useState<Doc | null>(() =>
+    activeDocId ? findCachedDoc(activeDocId) ?? null : null
+  )
 
   useEffect(() => {
     if (!activeDocId) {
       setDoc(null)
       return
     }
+    const cached = findCachedDoc(activeDocId)
+    if (cached) setDoc(cached)
+
     let cancelled = false
-    setDoc(null)
     void window.mycel.getDoc(activeDocId).then((d) => {
       if (!cancelled && d) setDoc(d as Doc)
     })
@@ -63,8 +120,8 @@ export function DocEditor(): React.JSX.Element {
     }
   }, [activeDocId])
 
-  if (!doc) {
-    return <div style={{ height: '100%', background: 'var(--bg)' }} />
+  if (!doc || doc.id !== activeDocId) {
+    return <DocEditorShell />
   }
 
   return <DocEditorSurface key={doc.id} doc={doc} setDoc={setDoc} />
@@ -79,6 +136,9 @@ function DocEditorSurface({
 }): React.JSX.Element {
   const setDocsView = useUIStore((s) => s.setDocsView)
   const setActiveDocId = useUIStore((s) => s.setActiveDocId)
+  const activeFolderId = useUIStore((s) => s.activeFolderId)
+  const breadcrumbs = useUIStore((s) => s.breadcrumbs)
+  const popBreadcrumb = useUIStore((s) => s.popBreadcrumb)
   const [title, setTitle] = useState(doc.title)
   const [savedIndicator, setSavedIndicator] = useState(false)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -250,11 +310,9 @@ function DocEditorSurface({
             'outline: none',
             'font-family: var(--font-ui)',
             'font-size: 15px',
-            'line-height: 1.8',
             'color: var(--text)',
-            'max-width: 760px',
-            'margin: 0 auto',
-            'padding: 0 40px 120px'
+            'width: 100%',
+            'padding: 0 0 120px'
           ].join('; ')
         }
       }
@@ -379,20 +437,22 @@ function DocEditorSurface({
   )
 
   const handleBack = useCallback(async () => {
-    // Flush any pending save
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current)
     }
-    // Force save current state
     if (doc && editor) {
       const currentBody = editor.getHTML()
       if (title !== doc.title || currentBody !== doc.body) {
         await window.mycel.upsertDoc({ ...doc, title, body: currentBody, updatedAt: Date.now() })
       }
     }
+    if (breadcrumbs.length > 0) {
+      popBreadcrumb()
+      return
+    }
     setActiveDocId(null)
     setDocsView('home')
-  }, [doc, editor, title, setActiveDocId, setDocsView])
+  }, [doc, editor, title, breadcrumbs.length, popBreadcrumb, setActiveDocId, setDocsView])
 
   // Immediate save on blur (for title)
   const handleTitleBlur = useCallback(() => {
@@ -413,6 +473,7 @@ function DocEditorSurface({
 
   // Word count
   const wordCount = editor?.storage.characterCount?.words() ?? 0
+  const folder = folders.find((f) => f.id === (doc.folderId ?? activeFolderId))
 
   return (
     <div
@@ -424,7 +485,42 @@ function DocEditorSurface({
         position: 'relative'
       }}
     >
-      {/* Saved indicator */}
+      <div
+        className="font-ui"
+        style={{
+          position: 'absolute',
+          top: 20,
+          left: 40,
+          fontSize: 12,
+          color: 'var(--text-muted)',
+          zIndex: 10
+        }}
+      >
+        <span
+          style={{ cursor: 'pointer' }}
+          onClick={() => setDocsView('home')}
+          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
+        >
+          Docs
+        </span>
+        {folder && (
+          <>
+            <span style={{ margin: '0 6px' }}>&rsaquo;</span>
+            <span
+              style={{ cursor: 'pointer' }}
+              onClick={() => setDocsView('list')}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
+            >
+              {folder.name}
+            </span>
+          </>
+        )}
+        <span style={{ margin: '0 6px' }}>&rsaquo;</span>
+        <span style={{ color: 'var(--text)' }}>{title || 'Untitled'}</span>
+      </div>
+
       <motion.span
         initial={{ opacity: 0 }}
         animate={{ opacity: savedIndicator ? 1 : 0 }}
@@ -443,42 +539,17 @@ function DocEditorSurface({
         Saved
       </motion.span>
 
-      {/* Editor area */}
       <div
         style={{
           flex: 1,
           overflowY: 'auto',
-          maxWidth: 760,
+          maxWidth: 800,
           margin: '0 auto',
           width: '100%',
-          paddingTop: 28
+          padding: '120px 40px 60px'
         }}
       >
-        {/* Header row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 40px 24px' }}>
-          <button
-            onClick={handleBack}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: 13,
-              fontFamily: 'var(--font-ui)',
-              color: 'var(--text-muted)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              transition: 'color 150ms ease'
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
-          >
-            <ArrowLeft size={14} />
-            Docs
-          </button>
-
-          {/* Right-side actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, marginBottom: 16 }}>
 
           {/* Move to folder */}
           <div style={{ position: 'relative' }} ref={folderMenuRef}>
@@ -663,11 +734,9 @@ function DocEditorSurface({
             )}
           </div>
 
-          </div>
         </div>
 
-        {/* Icon picker — Notion style */}
-        <div style={{ padding: '0 40px', marginBottom: 8 }}>
+        <div style={{ marginBottom: 8 }}>
           <EmojiPicker
             currentIcon={doc?.icon ?? null}
             onSelect={(icon) => saveDoc({ icon })}
@@ -711,14 +780,14 @@ function DocEditorSurface({
             background: 'transparent',
             border: 'none',
             outline: 'none',
-            padding: '8px 40px 12px',
+            padding: '8px 0 12px',
             marginBottom: 24,
-            lineHeight: 1.35
+            lineHeight: 1.2
           }}
         />
 
         {doc && (
-          <div style={{ padding: '0 40px', marginBottom: 16 }}>
+          <div style={{ marginBottom: 16 }}>
             <TagPicker
               tags={doc.tags}
               onChange={(tags) => {

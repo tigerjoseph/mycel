@@ -13,6 +13,7 @@ import {
   PIPELINE_STAGES
 } from '@shared/money'
 import type { Touchpoint, Project } from '@shared/types'
+import { getStageBadgeColors } from '@shared/stages'
 
 const CORE_FIELDS = ['email', 'company', 'role', 'phone'] as const
 
@@ -257,7 +258,9 @@ export function ContactDetail(): React.JSX.Element {
       </div>
 
       <section style={{ marginBottom: 28 }}>
-        {projects.map((project) => (
+        {projects.map((project) => {
+          const stageBadge = getStageBadgeColors(project.stage)
+          return (
           <button
             key={project.id}
             onClick={() => setActiveProjectId(project.id)}
@@ -280,13 +283,29 @@ export function ContactDetail(): React.JSX.Element {
             <span style={{ fontFamily: 'var(--font-ui)', fontSize: 14, color: 'var(--text)' }}>
               {project.name || 'Untitled project'}
             </span>
-            <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
-              {[project.stage, project.valueCents ? formatUsdCompact(project.valueCents) : null]
-                .filter(Boolean)
-                .join(' · ')}
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <span
+                style={{
+                  fontFamily: 'var(--font-ui)',
+                  fontSize: 11,
+                  color: stageBadge.color,
+                  background: stageBadge.background,
+                  border: `1px solid ${stageBadge.border}`,
+                  borderRadius: 6,
+                  padding: '1px 7px'
+                }}
+              >
+                {project.stage}
+              </span>
+              {project.valueCents ? (
+                <span style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--text-muted)' }}>
+                  {formatUsdCompact(project.valueCents)}
+                </span>
+              ) : null}
             </span>
           </button>
-        ))}
+          )
+        })}
         <button
           onClick={() => void handleNewProject()}
           style={{ ...linkBtn, fontSize: 13, marginTop: projects.length > 0 ? 10 : 0 }}

@@ -47,7 +47,7 @@ declare global {
       logTouchpoint(t: unknown): Promise<import('@shared/types').Touchpoint>
 
       // Projects
-      getAllProjects(): Promise<(import('@shared/types').Project & { contactName: string })[]>
+      getAllProjects(): Promise<(import('@shared/types').Project & { contactName: string; lastContactedAt: number | null })[]>
       getProjects(contactId: string): Promise<import('@shared/types').Project[]>
       getProject(id: string): Promise<import('@shared/types').Project | null>
       upsertProject(p: unknown): Promise<import('@shared/types').Project>

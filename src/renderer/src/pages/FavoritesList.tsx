@@ -4,11 +4,10 @@ import { useUIStore } from '../store/ui'
 import { useDocsStore } from '../store/docs'
 import { fadeUp } from '../styles/animation'
 import { format } from 'date-fns'
+import { openDoc } from '../utils/openDoc'
 
 export function FavoritesList(): React.JSX.Element {
   const setDocsView = useUIStore((s) => s.setDocsView)
-  const setActiveDocId = useUIStore((s) => s.setActiveDocId)
-  const pushBreadcrumb = useUIStore((s) => s.pushBreadcrumb)
   const favorites = useDocsStore((s) => s.favorites)
   const fetchFavorites = useDocsStore((s) => s.fetchFavorites)
   const [loaded, setLoaded] = useState(false)
@@ -23,10 +22,8 @@ export function FavoritesList(): React.JSX.Element {
     return ao - bo
   })
 
-  const handleDocClick = (docId: string, _title: string): void => {
-    setActiveDocId(docId)
-    setDocsView('editor')
-    pushBreadcrumb({
+  const handleDocClick = (doc: (typeof favorites)[number]): void => {
+    openDoc(doc, {
       label: 'Favorites',
       action: () => setDocsView('favorites')
     })
@@ -76,7 +73,7 @@ export function FavoritesList(): React.JSX.Element {
           {sorted.map((doc) => (
             <motion.button
               key={doc.id}
-              onClick={() => handleDocClick(doc.id, doc.title)}
+              onClick={() => handleDocClick(doc)}
               whileHover={{ backgroundColor: 'var(--surface)' }}
               style={{
                 display: 'flex',

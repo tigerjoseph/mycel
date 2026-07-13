@@ -3,10 +3,10 @@ import { motion } from 'motion/react'
 import { Plus, Check, ArrowLeft, Trash2 } from 'lucide-react'
 import { fadeUp, spring } from '../styles/animation'
 import { useUIStore } from '../store/ui'
-import type { Project, Milestone } from '@shared/types'
+import { ProjectFollowUp } from '../components/ProjectFollowUp'
+import type { Project, Milestone, Contact, Touchpoint } from '@shared/types'
 import { formatUsdInputFromCents, parseDollarToCents } from '@shared/money'
-
-const STAGES = ['Lead', 'Active', 'Closing', 'Won', 'Lost'] as const
+import { ALL_STAGES, getStageDotColor, getStageLabelColor } from '@shared/stages'
 
 export function ProjectDetail(): React.JSX.Element {
   const activeProjectId = useUIStore((s) => s.activeProjectId)
@@ -19,8 +19,17 @@ export function ProjectDetail(): React.JSX.Element {
   const [valueInput, setValueInput] = useState('')
   const nameInputRef = useRef<HTMLInputElement>(null)
 
-  // Contact name for back button
-  const [contactName, setContactName] = useState('')
+  // Contact for follow-up section
+  const [contact, setContact] = useState<Contact | null>(null)
+  const [touchpoints, setTouchpoints] = useState<Touchpoint[]>([])
+
+  const reloadTouchpoints = useCallback(() => {
+    if (!project?.contactId) return
+    void window.mycel.getTouchpoints(project.contactId).then(setTouchpoints).catch(() => {})
+    void window.mycel.getContact(project.contactId).then((c) => {
+      if (c) setContact(c)
+    }).catch(() => {})
+  }, [project?.contactId])
 
   // Inline add-milestone state
   const [addingMilestone, setAddingMilestone] = useState(false)
@@ -44,14 +53,13 @@ export function ProjectDetail(): React.JSX.Element {
     window.mycel.getMilestones(activeProjectId).then(setMilestones).catch(() => {})
   }, [activeProjectId])
 
-  // Fetch contact name for back button label
+  // Fetch contact + touchpoints for follow-up section
   useEffect(() => {
-    if (project?.contactId) {
-      window.mycel.getContact(project.contactId).then((c) => {
-        if (c) setContactName(c.name || '')
-      }).catch(() => {})
-    }
-  }, [project?.contactId])
+    if (!project?.contactId) return
+    reloadTouchpoints()
+  }, [project?.contactId, reloadTouchpoints])
+
+  const contactName = contact?.name ?? ''
 
   const handleBack = (): void => {
     setActiveProjectId(null)
@@ -326,8 +334,9 @@ export function ProjectDetail(): React.JSX.Element {
               background: 'var(--border)'
             }}
           />
-          {STAGES.map((stage) => {
+          {ALL_STAGES.map((stage) => {
             const isActive = project.stage === stage
+            const dotColor = getStageDotColor(stage, isActive)
             return (
               <button
                 key={stage}
@@ -350,10 +359,10 @@ export function ProjectDetail(): React.JSX.Element {
                     width: 16,
                     height: 16,
                     borderRadius: '50%',
-                    border: isActive ? 'none' : '2px solid var(--border)',
-                    background: isActive ? 'var(--accent)' : 'var(--bg)',
+                    border: isActive ? 'none' : `2px solid ${dotColor}`,
+                    background: isActive ? dotColor : 'var(--bg)',
                     position: 'relative',
-                    transition: 'border-color 150ms ease'
+                    transition: 'border-color 150ms ease, background 150ms ease'
                   }}
                 >
                   {isActive && (
@@ -363,7 +372,7 @@ export function ProjectDetail(): React.JSX.Element {
                         position: 'absolute',
                         inset: 0,
                         borderRadius: '50%',
-                        background: 'var(--accent)'
+                        background: dotColor
                       }}
                       transition={spring}
                     />
@@ -374,7 +383,7 @@ export function ProjectDetail(): React.JSX.Element {
                     fontFamily: 'var(--font-ui)',
                     fontSize: 11,
                     fontWeight: isActive ? 500 : 400,
-                    color: isActive ? 'var(--text)' : 'var(--text-muted)',
+                    color: getStageLabelColor(stage, isActive),
                     transition: 'color 150ms ease'
                   }}
                 >
@@ -385,6 +394,13 @@ export function ProjectDetail(): React.JSX.Element {
           })}
         </div>
       </div>
+
+      <ProjectFollowUp
+        project={project}
+        contact={contact}
+        touchpoints={touchpoints}
+        onTouchpointLogged={reloadTouchpoints}
+      />
 
       {/* Milestones */}
       <div>
