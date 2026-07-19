@@ -50,8 +50,9 @@ export function getProjectFollowUpHint(
   if (!isPipelineStage(project.stage)) return null
 
   const contactUrgency = contactFollowUpUrgency(lastContactedAt, now)
-  const stageDays = daysInStage(project, now)
-  const stuckInStage = stageDays >= 3
+
+  // Any recent follow-up clears the indicator; stage duration alone is not enough.
+  if (contactUrgency === 'none') return null
 
   if (contactUrgency === 'urgent') {
     return {
@@ -60,21 +61,15 @@ export function getProjectFollowUpHint(
     }
   }
 
-  if (contactUrgency === 'warn') {
-    return {
-      urgency: 'warn',
-      reason: formatLastContacted(lastContactedAt, now)
-    }
+  // contactUrgency === 'warn'
+  const stageDays = daysInStage(project, now)
+  const stuckInStage = stageDays >= 3
+  return {
+    urgency: 'warn',
+    reason: stuckInStage
+      ? `In ${project.stage} for ${stageDays} day${stageDays === 1 ? '' : 's'} — ${formatLastContacted(lastContactedAt, now).toLowerCase()}`
+      : formatLastContacted(lastContactedAt, now)
   }
-
-  if (stuckInStage) {
-    return {
-      urgency: 'warn',
-      reason: `In ${project.stage} for ${stageDays} day${stageDays === 1 ? '' : 's'} — consider a check-in`
-    }
-  }
-
-  return null
 }
 
 export function followUpAccentColor(urgency: FollowUpUrgency): string {

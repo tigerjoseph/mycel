@@ -18,6 +18,10 @@ const mycelAPI = {
   getDoc: (id: string): Promise<unknown> => ipcRenderer.invoke('docs:get', id),
   upsertDoc: (d: unknown): Promise<unknown> => ipcRenderer.invoke('docs:upsert', d),
   deleteDoc: (id: string): Promise<void> => ipcRenderer.invoke('docs:delete', id),
+  getDocVersions: (id: string): Promise<unknown[]> => ipcRenderer.invoke('docs:getVersions', id),
+  getDeletedDocs: (): Promise<unknown[]> => ipcRenderer.invoke('docs:getDeleted'),
+  restoreDocVersion: (versionId: string): Promise<unknown> =>
+    ipcRenderer.invoke('docs:restoreVersion', versionId),
   getFavorites: (): Promise<unknown[]> => ipcRenderer.invoke('docs:getFavorites'),
   setFavorite: (id: string, val: boolean): Promise<void> => ipcRenderer.invoke('docs:setFavorite', id, val),
   reorderFavorites: (ids: string[]): Promise<void> => ipcRenderer.invoke('docs:reorderFavorites', ids),

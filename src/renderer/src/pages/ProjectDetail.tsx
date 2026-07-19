@@ -59,6 +59,16 @@ export function ProjectDetail(): React.JSX.Element {
     reloadTouchpoints()
   }, [project?.contactId, reloadTouchpoints])
 
+  // Refresh after the global LogTouchpoint modal closes (follow-up resets)
+  const logTouchpointOpen = useUIStore((s) => s.logTouchpointOpen)
+  const prevLogOpenRef = useRef(logTouchpointOpen)
+  useEffect(() => {
+    if (prevLogOpenRef.current && !logTouchpointOpen) {
+      reloadTouchpoints()
+    }
+    prevLogOpenRef.current = logTouchpointOpen
+  }, [logTouchpointOpen, reloadTouchpoints])
+
   const contactName = contact?.name ?? ''
 
   const handleBack = (): void => {

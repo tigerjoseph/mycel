@@ -7,3 +7,10 @@ export const fadeUp = {
   exit: { opacity: 0, y: -4 },
   transition: { type: 'spring' as const, stiffness: 280, damping: 24 }
 }
+
+export const fade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
+  transition: { duration: 0.14, ease: 'easeOut' as const }
+}

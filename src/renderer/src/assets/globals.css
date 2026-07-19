@@ -355,6 +355,16 @@ button:active:not(:disabled) {
   gap: 8px;
 }
 
+.tiptap ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tiptap ul[data-type="taskList"] ul[data-type="taskList"] {
+  margin: 0.2em 0;
+  padding-left: 1.5em;
+}
+
 .tiptap ul[data-type="taskList"] li > label {
   flex-shrink: 0;
   margin-top: 3px;
@@ -408,6 +418,39 @@ button:active:not(:disabled) {
   background: var(--surface);
   font-weight: 600;
   font-size: 13px;
+}
+
+.tiptap .tableWrapper {
+  margin: 0.8em 0;
+  overflow-x: auto;
+}
+
+.tiptap .selectedCell {
+  position: relative;
+}
+
+.tiptap .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.tiptap .column-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  bottom: -2px;
+  width: 4px;
+  z-index: 3;
+  pointer-events: none;
+  background: var(--accent);
+}
+
+.resize-cursor {
+  cursor: col-resize;
 }
 
 /* Images (block + resizable node view) */

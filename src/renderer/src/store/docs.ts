@@ -15,6 +15,8 @@ interface DocsStore {
   removeDoc: (id: string) => Promise<void>
 }
 
+let docsRequestId = 0
+
 export const useDocsStore = create<DocsStore>((set) => ({
   folders: [],
   docs: [],
@@ -31,12 +33,13 @@ export const useDocsStore = create<DocsStore>((set) => ({
     }
   },
   fetchDocs: async (folderId) => {
-    set({ loading: true })
+    const requestId = ++docsRequestId
+    set({ docs: [], loading: true })
     try {
       const docs = await window.mycel.getDocs(folderId)
-      set({ docs, loading: false })
+      if (requestId === docsRequestId) set({ docs, loading: false })
     } catch {
-      set({ loading: false })
+      if (requestId === docsRequestId) set({ loading: false })
     }
   },
   fetchFavorites: async () => {

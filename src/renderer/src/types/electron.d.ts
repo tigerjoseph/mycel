@@ -20,6 +20,9 @@ declare global {
       getDoc(id: string): Promise<import('@shared/types').Doc | null>
       upsertDoc(d: unknown): Promise<import('@shared/types').Doc>
       deleteDoc(id: string): Promise<void>
+      getDocVersions(id: string): Promise<import('@shared/types').DocVersion[]>
+      getDeletedDocs(): Promise<import('@shared/types').DocVersion[]>
+      restoreDocVersion(versionId: string): Promise<import('@shared/types').Doc>
       getFavorites(): Promise<import('@shared/types').Doc[]>
       setFavorite(id: string, val: boolean): Promise<void>
       reorderFavorites(ids: string[]): Promise<void>

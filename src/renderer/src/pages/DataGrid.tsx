@@ -3,6 +3,7 @@ import { motion } from 'motion/react'
 import { Plus, Trash2 } from 'lucide-react'
 import { useUIStore } from '../store/ui'
 import { useDocsStore } from '../store/docs'
+import { DocumentBreadcrumbs } from '../components/DocumentBreadcrumbs'
 import { findCachedDoc } from '../utils/docCache'
 import { useFlushOnLeave } from '../hooks/useFlushOnLeave'
 import type { Doc } from '@shared/types'
@@ -12,7 +13,7 @@ interface GridData {
   rows: string[][]
 }
 
-function parseGridData(body: string): GridData {
+function parseGridData(body: string): GridData | null {
   try {
     const parsed = JSON.parse(body)
     if (Array.isArray(parsed.columns) && Array.isArray(parsed.rows)) {
@@ -21,7 +22,7 @@ function parseGridData(body: string): GridData {
   } catch {
     // ignore
   }
-  return { columns: ['Column 1', 'Column 2', 'Column 3'], rows: [['', '', '']] }
+  return null
 }
 
 function serializeGridData(data: GridData): string {
@@ -31,6 +32,7 @@ function serializeGridData(data: GridData): string {
 export function DataGrid(): React.JSX.Element {
   const activeDocId = useUIStore((s) => s.activeDocId)
   const setDocsView = useUIStore((s) => s.setDocsView)
+  const setActiveFolderId = useUIStore((s) => s.setActiveFolderId)
   const folders = useDocsStore((s) => s.folders)
   const activeFolderId = useUIStore((s) => s.activeFolderId)
   const [doc, setDoc] = useState<Doc | null>(() =>
@@ -38,6 +40,8 @@ export function DataGrid(): React.JSX.Element {
   )
   const [title, setTitle] = useState('')
   const [grid, setGrid] = useState<GridData>({ columns: [], rows: [] })
+  const [loadError, setLoadError] = useState(false)
+  const [saveError, setSaveError] = useState(false)
   const [savedIndicator, setSavedIndicator] = useState(false)
   const [contextMenu, setContextMenu] = useState<{
     x: number
@@ -48,33 +52,54 @@ export function DataGrid(): React.JSX.Element {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const indicatorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isMountedRef = useRef(true)
+  const docRef = useRef<Doc | null>(doc)
+  docRef.current = doc
+  const titleRef = useRef(title)
+  titleRef.current = title
+  const gridRef = useRef(grid)
+  gridRef.current = grid
+  const pendingUpdatesRef = useRef<Partial<Doc>>({})
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve())
 
   const folder = folders.find((f) => f.id === (doc?.folderId ?? activeFolderId))
 
   // Load doc on mount
   useEffect(() => {
     isMountedRef.current = true
-    if (!activeDocId) return
+    if (!activeDocId) {
+      setDoc(null)
+      return
+    }
+    let cancelled = false
+    const requestedId = activeDocId
 
     const cached = findCachedDoc(activeDocId)
     if (cached) {
+      const parsed = parseGridData(cached.body)
       setDoc(cached)
       setTitle(cached.title)
-      setGrid(parseGridData(cached.body))
+      setLoadError(!parsed)
+      if (parsed) setGrid(parsed)
     }
 
-    window.mycel.getDoc(activeDocId).then((d) => {
-      if (!isMountedRef.current) return
+    void window.mycel.getDoc(activeDocId).then((d) => {
+      if (cancelled || !isMountedRef.current || d?.id !== requestedId) return
       if (d) {
+        const parsed = parseGridData(d.body)
         setDoc(d)
         setTitle(d.title)
-        setGrid(parseGridData(d.body))
+        setLoadError(!parsed)
+        if (parsed) setGrid(parsed)
       }
     })
     return () => {
-      isMountedRef.current = false
+      cancelled = true
     }
   }, [activeDocId])
+
+  useEffect(() => () => {
+    isMountedRef.current = false
+  }, [])
 
   // Close context menu on click elsewhere or Escape
   useEffect(() => {
@@ -100,38 +125,68 @@ export function DataGrid(): React.JSX.Element {
   }, [])
 
   const saveDoc = useCallback(
-    async (updates: Partial<Doc>) => {
-      if (!doc) return
-      const updated = { ...doc, ...updates, updatedAt: Date.now() }
-      await window.mycel.upsertDoc(updated)
-      if (isMountedRef.current) {
-        setDoc(updated)
-        showSaved()
-      }
+    (updates: Partial<Doc>): Promise<void> => {
+      saveQueueRef.current = saveQueueRef.current.catch(() => {}).then(async () => {
+        const current = docRef.current
+        if (!current || loadError) return
+        const updated = {
+          ...current,
+          title: titleRef.current,
+          body: serializeGridData(gridRef.current),
+          ...updates
+        }
+        const changed =
+          updated.title !== current.title ||
+          updated.body !== current.body ||
+          Object.entries(updates).some(
+            ([key, value]) => current[key as keyof Doc] !== value
+          )
+        if (!changed) return
+        try {
+          const saved = await window.mycel.upsertDoc({
+            ...updated,
+            expectedUpdatedAt: current.updatedAt
+          })
+          docRef.current = saved
+          setSaveError(false)
+          if (isMountedRef.current) {
+            setDoc(saved)
+            showSaved()
+          }
+        } catch (error) {
+          setSaveError(true)
+          throw error
+        }
+      })
+      return saveQueueRef.current
     },
-    [doc, showSaved]
+    [loadError, showSaved]
   )
 
   const debouncedSave = useCallback(
     (updates: Partial<Doc>) => {
+      pendingUpdatesRef.current = { ...pendingUpdatesRef.current, ...updates }
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       saveTimerRef.current = setTimeout(() => {
-        saveDoc(updates)
-      }, 2000)
+        saveTimerRef.current = null
+        const pending = pendingUpdatesRef.current
+        pendingUpdatesRef.current = {}
+        void saveDoc(pending)
+      }, 800)
     },
     [saveDoc]
   )
 
   const flushSave = useCallback(async () => {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    if (!doc) return
-    const body = serializeGridData(grid)
-    if (title !== doc.title || body !== doc.body) {
-      const updated = { ...doc, title, body, updatedAt: Date.now() }
-      await window.mycel.upsertDoc(updated)
-      if (isMountedRef.current) setDoc(updated)
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
     }
-  }, [doc, grid, title])
+    if (!doc || loadError) return
+    const pending = pendingUpdatesRef.current
+    pendingUpdatesRef.current = {}
+    await saveDoc(pending)
+  }, [doc, loadError, saveDoc])
 
   useFlushOnLeave(flushSave, { watchCreateView: true })
 
@@ -145,6 +200,7 @@ export function DataGrid(): React.JSX.Element {
   const handleTitleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const newTitle = e.target.value
+      titleRef.current = newTitle
       setTitle(newTitle)
       debouncedSave({ title: newTitle })
     },
@@ -160,6 +216,7 @@ export function DataGrid(): React.JSX.Element {
 
   const updateGrid = useCallback(
     (newGrid: GridData) => {
+      gridRef.current = newGrid
       setGrid(newGrid)
       debouncedSave({ body: serializeGridData(newGrid) })
     },
@@ -287,47 +344,25 @@ export function DataGrid(): React.JSX.Element {
         position: 'relative'
       }}
     >
-      {/* Breadcrumb */}
-      <div
-        className="font-ui"
-        style={{
-          position: 'absolute',
-          top: 20,
-          left: 40,
-          fontSize: 12,
-          color: 'var(--text-muted)',
-          zIndex: 10
-        }}
-      >
-        <span
-          style={{ cursor: 'pointer' }}
-          onClick={() => setDocsView('home')}
-          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
-        >
-          Docs
-        </span>
-        {folder && (
-          <>
-            <span style={{ margin: '0 6px' }}>&rsaquo;</span>
-            <span
-              style={{ cursor: 'pointer' }}
-              onClick={() => setDocsView('list')}
-              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
-            >
-              {folder.name}
-            </span>
-          </>
-        )}
-        <span style={{ margin: '0 6px' }}>&rsaquo;</span>
-        <span style={{ color: 'var(--text)' }}>{title || 'Untitled table'}</span>
-      </div>
+      <DocumentBreadcrumbs
+        items={[
+          { label: 'Docs', onClick: () => setDocsView('home') },
+          ...(folder
+            ? [{
+                label: folder.name,
+                onClick: () => {
+                  setActiveFolderId(folder.id)
+                  setDocsView('list')
+                }
+              }]
+            : [])
+        ]}
+      />
 
       {/* Saved indicator */}
       <motion.span
         initial={{ opacity: 0 }}
-        animate={{ opacity: savedIndicator ? 1 : 0 }}
+        animate={{ opacity: savedIndicator || saveError ? 1 : 0 }}
         transition={{ duration: 0.2 }}
         className="font-ui"
         style={{
@@ -335,12 +370,12 @@ export function DataGrid(): React.JSX.Element {
           top: 16,
           right: 24,
           fontSize: 11,
-          color: 'var(--text-muted)',
+          color: saveError ? 'var(--lost)' : 'var(--text-muted)',
           pointerEvents: 'none',
           zIndex: 10
         }}
       >
-        Saved
+        {saveError ? 'Save failed — changes remain open' : 'Saved'}
       </motion.span>
 
       {/* Content area */}
@@ -352,7 +387,7 @@ export function DataGrid(): React.JSX.Element {
           maxWidth: 800,
           margin: '0 auto',
           width: '100%',
-          padding: '120px 40px 60px'
+          padding: '56px 40px 60px'
         }}
       >
         {/* Title input */}
@@ -377,7 +412,24 @@ export function DataGrid(): React.JSX.Element {
           }}
         />
 
-        {/* Table */}
+        {loadError ? (
+          <div
+            className="font-ui"
+            style={{
+              padding: 20,
+              border: '1px solid var(--lost-border)',
+              borderRadius: 10,
+              color: 'var(--lost)',
+              background: 'var(--lost-bg)',
+              fontSize: 13,
+              lineHeight: 1.5
+            }}
+          >
+            This table’s saved data is malformed. Editing is disabled so the original data is not
+            overwritten.
+          </div>
+        ) : (
+        /* Table */
         <div style={{ overflowX: 'auto' }}>
           <table
             style={{
@@ -468,6 +520,7 @@ export function DataGrid(): React.JSX.Element {
             New row
           </button>
         </div>
+        )}
       </div>
 
       {/* Context menu */}

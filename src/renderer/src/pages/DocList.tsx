@@ -4,9 +4,10 @@ import { nanoid } from 'nanoid'
 import { Trash2, Pencil } from 'lucide-react'
 import { useUIStore } from '../store/ui'
 import { useDocsStore } from '../store/docs'
-import { fadeUp } from '../styles/animation'
+import { fade } from '../styles/animation'
 import { ContextMenu } from '../components/ContextMenu'
 import { DocIcon } from '../components/DocIcon'
+import { DocumentBreadcrumbs } from '../components/DocumentBreadcrumbs'
 import { format } from 'date-fns'
 import { openDoc } from '../utils/openDoc'
 
@@ -15,6 +16,7 @@ export function DocList(): React.JSX.Element {
   const setDocsView = useUIStore((s) => s.setDocsView)
   const folders = useDocsStore((s) => s.folders)
   const docs = useDocsStore((s) => s.docs)
+  const loading = useDocsStore((s) => s.loading)
   const fetchDocs = useDocsStore((s) => s.fetchDocs)
   const fetchFolders = useDocsStore((s) => s.fetchFolders)
 
@@ -90,27 +92,11 @@ export function DocList(): React.JSX.Element {
   }, [activeFolderId, renameFolderName, fetchFolders])
 
   return (
-    <motion.div style={{ maxWidth: 800, margin: '0 auto', padding: '32px 40px', height: '100%' }} {...fadeUp}>
-      {/* Breadcrumb */}
-      <div
-        className="font-ui"
-        style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 24 }}
-      >
-        <span
-          style={{ cursor: 'pointer' }}
-          onClick={() => setDocsView('home')}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = 'var(--text)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = 'var(--text-muted)'
-          }}
-        >
-          Docs
-        </span>
-        <span style={{ margin: '0 6px' }}>&rsaquo;</span>
-        <span style={{ color: 'var(--text)' }}>{folder?.name ?? 'Folder'}</span>
-      </div>
+    <motion.div style={{ maxWidth: 800, margin: '0 auto', padding: '32px 40px', height: '100%', overflowY: 'auto' }} {...fade}>
+      <DocumentBreadcrumbs
+        position="flow"
+        items={[{ label: 'Docs', onClick: () => setDocsView('home') }]}
+      />
 
       {/* Header row */}
       <div
@@ -202,7 +188,22 @@ export function DocList(): React.JSX.Element {
       </div>
 
       {/* List */}
-      {docs.length === 0 ? (
+      {loading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {[0, 1, 2].map((index) => (
+            <div
+              key={index}
+              style={{
+                height: 48,
+                borderRadius: 7,
+                background: 'var(--surface)',
+                opacity: 0.45 - index * 0.08,
+                marginBottom: 4
+              }}
+            />
+          ))}
+        </div>
+      ) : docs.length === 0 ? (
         <div
           style={{
             display: 'flex',
@@ -270,7 +271,7 @@ export function DocList(): React.JSX.Element {
                   data-delete
                   onClick={(e) => {
                     e.stopPropagation()
-                    if (confirm('Delete this document?')) {
+                    if (confirm('Delete this document? It can be restored from Recently deleted.')) {
                       window.mycel.deleteDoc(doc.id).then(() => {
                         if (activeFolderId) fetchDocs(activeFolderId)
                       })

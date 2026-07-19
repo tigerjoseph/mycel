@@ -1,10 +1,30 @@
 import { createClient, type Client } from '@libsql/client'
 import { app } from 'electron'
 import { join } from 'path'
+import { copyFile, mkdir, readdir, stat, unlink } from 'fs/promises'
 import { SCHEMA } from './schema'
 import { noteBodyPreview } from './notePreview'
 
 let db: Client | null = null
+
+async function backupDatabase(dbPath: string): Promise<void> {
+  try {
+    await stat(dbPath)
+    const backupDir = join(app.getPath('userData'), 'backups')
+    await mkdir(backupDir, { recursive: true })
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    await copyFile(dbPath, join(backupDir, `mycel-${timestamp}.db`))
+
+    const backups = (await readdir(backupDir))
+      .filter((name) => name.startsWith('mycel-') && name.endsWith('.db'))
+      .sort()
+    for (const name of backups.slice(0, -10)) {
+      await unlink(join(backupDir, name))
+    }
+  } catch (error) {
+    console.error('Database backup failed:', error)
+  }
+}
 
 async function backfillNotePreviews(client: Client): Promise<void> {
   const result = await client.execute(
@@ -23,6 +43,7 @@ async function backfillNotePreviews(client: Client): Promise<void> {
 
 export async function initDb(): Promise<void> {
   const dbPath = join(app.getPath('userData'), 'mycel.db')
+  await backupDatabase(dbPath)
   db = createClient({ url: `file:${dbPath}` })
 
   // Run each CREATE TABLE statement
@@ -30,9 +51,6 @@ export async function initDb(): Promise<void> {
   for (const stmt of statements) {
     await db.execute(stmt)
   }
-
-  // Delete any existing canvas docs
-  await db.execute("DELETE FROM docs WHERE type = 'canvas'")
 
   try {
     await db.execute('ALTER TABLE notes ADD COLUMN body_preview TEXT NOT NULL DEFAULT ""')

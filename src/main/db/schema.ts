@@ -31,6 +31,28 @@ CREATE TABLE IF NOT EXISTS docs (
   updated_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS doc_versions (
+  id TEXT PRIMARY KEY,
+  doc_id TEXT NOT NULL,
+  title TEXT NOT NULL DEFAULT '',
+  body TEXT NOT NULL DEFAULT '',
+  type TEXT NOT NULL DEFAULT 'doc',
+  folder_id TEXT,
+  icon TEXT,
+  cover_image TEXT,
+  is_template INTEGER NOT NULL DEFAULT 0,
+  is_favorite INTEGER NOT NULL DEFAULT 0,
+  favorite_order INTEGER,
+  tags TEXT NOT NULL DEFAULT '[]',
+  created_at INTEGER NOT NULL,
+  document_updated_at INTEGER NOT NULL,
+  saved_at INTEGER NOT NULL,
+  reason TEXT NOT NULL DEFAULT 'save'
+);
+
+CREATE INDEX IF NOT EXISTS idx_doc_versions_doc_saved
+  ON doc_versions (doc_id, saved_at DESC);
+
 CREATE TABLE IF NOT EXISTS notes (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL DEFAULT '',

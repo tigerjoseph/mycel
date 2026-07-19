@@ -30,6 +30,13 @@ export interface Doc {
   updatedAt: number
 }
 
+export interface DocVersion extends Doc {
+  versionId: string
+  docId: string
+  savedAt: number
+  reason: 'save' | 'delete' | 'restore'
+}
+
 export interface Note {
   id: string
   title: string

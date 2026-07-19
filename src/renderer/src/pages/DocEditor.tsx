@@ -18,7 +18,7 @@ import { Table as TableExtension } from '@tiptap/extension-table'
 import TableRow from '@tiptap/extension-table-row'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
-import { FolderClosed, MoreHorizontal, Copy, Files, Trash2, FileCode, Newspaper, Sparkles, FolderOutput } from 'lucide-react'
+import { FolderClosed, MoreHorizontal, Copy, Files, Trash2, FileCode, Newspaper, Sparkles, FolderOutput, History, RotateCcw, X } from 'lucide-react'
 import { useUIStore } from '../store/ui'
 import { useDocsStore } from '../store/docs'
 import { FloatingToolbar } from '../components/FloatingToolbar'
@@ -26,6 +26,7 @@ import { SlashCommands, type ImportAudioHandler } from '../components/SlashMenu'
 import { EmojiPicker } from '../components/EmojiPicker'
 import { DocIcon } from '../components/DocIcon'
 import { TagPicker } from '../components/TagPicker'
+import { DocumentBreadcrumbs } from '../components/DocumentBreadcrumbs'
 import { useFlushOnLeave } from '../hooks/useFlushOnLeave'
 import { useCopyFeedback } from '../hooks/useCopyFeedback'
 import { findCachedDoc } from '../utils/docCache'
@@ -37,7 +38,7 @@ import {
   buildCursorDraft,
   resolveLinkedContacts
 } from '../utils/cursorExport'
-import type { Doc } from '@shared/types'
+import type { Doc, DocVersion } from '@shared/types'
 import {
   insertAudioPlaceholder,
   progressLabel,
@@ -54,25 +55,13 @@ function DocEditorShell(): React.JSX.Element {
         position: 'relative'
       }}
     >
-      <div
-        className="font-ui"
-        style={{
-          position: 'absolute',
-          top: 20,
-          left: 40,
-          fontSize: 12,
-          color: 'var(--text-muted)',
-          zIndex: 10
-        }}
-      >
-        Docs
-      </div>
+      <DocumentBreadcrumbs items={[{ label: 'Docs' }]} />
       <div
         style={{
           maxWidth: 800,
           margin: '0 auto',
           width: '100%',
-          padding: '120px 40px 60px'
+          padding: '56px 40px 60px'
         }}
       >
         <div
@@ -136,11 +125,13 @@ function DocEditorSurface({
 }): React.JSX.Element {
   const setDocsView = useUIStore((s) => s.setDocsView)
   const setActiveDocId = useUIStore((s) => s.setActiveDocId)
+  const setActiveFolderId = useUIStore((s) => s.setActiveFolderId)
   const activeFolderId = useUIStore((s) => s.activeFolderId)
   const breadcrumbs = useUIStore((s) => s.breadcrumbs)
   const popBreadcrumb = useUIStore((s) => s.popBreadcrumb)
   const [title, setTitle] = useState(doc.title)
   const [savedIndicator, setSavedIndicator] = useState(false)
+  const [saveError, setSaveError] = useState(false)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const indicatorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isMountedRef = useRef(true)
@@ -148,11 +139,20 @@ function DocEditorSurface({
   const fetchFolders = useDocsStore((s) => s.fetchFolders)
   const [folderMenuOpen, setFolderMenuOpen] = useState(false)
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false)
+  const [versions, setVersions] = useState<DocVersion[]>([])
+  const [versionsLoading, setVersionsLoading] = useState(false)
   const folderMenuRef = useRef<HTMLDivElement>(null)
   const settingsMenuRef = useRef<HTMLDivElement>(null)
   const { showCopyFeedback } = useCopyFeedback()
   const docRef = useRef(doc)
   docRef.current = doc
+  const titleRef = useRef(title)
+  titleRef.current = title
+  const bodyRef = useRef(doc.body)
+  const pendingUpdatesRef = useRef<Partial<Doc>>({})
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve())
+  const deletingRef = useRef(false)
   const importAudioRef = useRef<ImportAudioHandler>(async () => {})
 
   // Load doc on mount
@@ -188,24 +188,57 @@ function DocEditorSurface({
   }, [])
 
   const saveDoc = useCallback(
-    async (updates: Partial<Doc>) => {
-      if (!doc) return
-      const updated = { ...doc, ...updates, updatedAt: Date.now() }
-      await window.mycel.upsertDoc(updated)
-      if (isMountedRef.current) {
-        setDoc(updated)
-        showSaved()
-      }
+    (updates: Partial<Doc>): Promise<void> => {
+      if (deletingRef.current) return Promise.resolve()
+
+      saveQueueRef.current = saveQueueRef.current.catch(() => {}).then(async () => {
+        const current = docRef.current
+        if (!current || deletingRef.current) return
+        const draft = {
+          ...current,
+          title: titleRef.current,
+          body: bodyRef.current,
+          ...updates
+        }
+        const changed =
+          draft.title !== current.title ||
+          draft.body !== current.body ||
+          Object.entries(updates).some(
+            ([key, value]) => current[key as keyof Doc] !== value
+          )
+        if (!changed) return
+
+        try {
+          const saved = await window.mycel.upsertDoc({
+            ...draft,
+            expectedUpdatedAt: current.updatedAt
+          })
+          docRef.current = saved
+          setSaveError(false)
+          if (isMountedRef.current) {
+            setDoc(saved)
+            showSaved()
+          }
+        } catch (error) {
+          setSaveError(true)
+          throw error
+        }
+      })
+      return saveQueueRef.current
     },
-    [doc, showSaved]
+    [setDoc, showSaved]
   )
 
   const debouncedSave = useCallback(
     (updates: Partial<Doc>) => {
+      pendingUpdatesRef.current = { ...pendingUpdatesRef.current, ...updates }
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       saveTimerRef.current = setTimeout(() => {
-        saveDoc(updates)
-      }, 2000)
+        saveTimerRef.current = null
+        const pending = pendingUpdatesRef.current
+        pendingUpdatesRef.current = {}
+        void saveDoc(pending)
+      }, 800)
     },
     [saveDoc]
   )
@@ -238,15 +271,8 @@ function DocEditorSurface({
         }
         replaceAudioPlaceholder(editor, result.fragmentHtml)
         const html = editor.getHTML()
-        const currentDoc = docRef.current
-        if (currentDoc) {
-          const updated = { ...currentDoc, body: html, updatedAt: Date.now() }
-          await window.mycel.upsertDoc(updated)
-          if (isMountedRef.current) {
-            setDoc(updated)
-            showSaved()
-          }
-        }
+        bodyRef.current = html
+        await saveDoc({ body: html })
         const noun = result.atomCount === 1 ? 'atom' : 'atoms'
         showCopyFeedback(`Added ${result.atomCount} ${noun} from voice note`)
       } catch (err) {
@@ -257,7 +283,7 @@ function DocEditorSurface({
         stopProgress()
       }
     },
-    [setDoc, showSaved, showCopyFeedback]
+    [saveDoc, showCopyFeedback]
   )
 
   importAudioRef.current = handleImportAudio
@@ -265,7 +291,9 @@ function DocEditorSurface({
   const extensions = useMemo(
     () => [
       StarterKit.configure({
-        heading: { levels: [1, 2, 3] }
+        heading: { levels: [1, 2, 3] },
+        link: false,
+        underline: false
       }),
       Underline,
       LinkExtension.configure({
@@ -301,6 +329,7 @@ function DocEditorSurface({
       extensions,
       content: doc.body || '',
       onUpdate: ({ editor: ed }) => {
+        bodyRef.current = ed.getHTML()
         debouncedSave({ body: ed.getHTML() })
       },
       editorProps: {
@@ -321,25 +350,34 @@ function DocEditorSurface({
   )
 
   const flushSave = useCallback(async () => {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    if (!doc || !editor) return
-    const currentBody = editor.getHTML()
-    if (title !== doc.title || currentBody !== doc.body) {
-      const updated = { ...doc, title, body: currentBody, updatedAt: Date.now() }
-      await window.mycel.upsertDoc(updated)
-      if (isMountedRef.current) setDoc(updated)
+    if (deletingRef.current) return
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
     }
-  }, [doc, editor, title])
+    const pending = pendingUpdatesRef.current
+    pendingUpdatesRef.current = {}
+    await saveDoc(pending)
+  }, [saveDoc])
 
   useFlushOnLeave(flushSave, { watchCreateView: true })
 
   const handleDelete = useCallback(async () => {
     if (!doc) return
-    if (!confirm('Delete this document? This cannot be undone.')) return
-    await window.mycel.deleteDoc(doc.id)
-    setActiveDocId(null)
-    setDocsView('home')
-  }, [doc, setActiveDocId, setDocsView])
+    if (!confirm('Delete this document? It can be recovered from version history.')) return
+    deletingRef.current = true
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    pendingUpdatesRef.current = {}
+    try {
+      await saveQueueRef.current.catch(() => {})
+      await window.mycel.deleteDoc(doc.id)
+      setActiveDocId(null)
+      setDocsView('home')
+    } catch (error) {
+      deletingRef.current = false
+      showCopyFeedback(error instanceof Error ? error.message : 'Delete failed')
+    }
+  }, [doc, setActiveDocId, setDocsView, showCopyFeedback])
 
   const handleDuplicate = useCallback(async () => {
     if (!doc || !editor) return
@@ -362,6 +400,39 @@ function DocEditorSurface({
     setActiveDocId(copy.id)
     setSettingsMenuOpen(false)
   }, [doc, editor, setActiveDocId])
+
+  const openVersionHistory = useCallback(async () => {
+    if (!doc) return
+    setSettingsMenuOpen(false)
+    setVersionHistoryOpen(true)
+    setVersionsLoading(true)
+    try {
+      await flushSave()
+      setVersions(await window.mycel.getDocVersions(doc.id))
+    } catch (error) {
+      showCopyFeedback(error instanceof Error ? error.message : 'Could not load version history')
+    } finally {
+      setVersionsLoading(false)
+    }
+  }, [doc, flushSave, showCopyFeedback])
+
+  const restoreVersion = useCallback(async (version: DocVersion) => {
+    if (!editor) return
+    if (!confirm(`Restore the version from ${new Date(version.updatedAt).toLocaleString()}?`)) return
+    try {
+      const restored = await window.mycel.restoreDocVersion(version.versionId)
+      docRef.current = restored
+      titleRef.current = restored.title
+      bodyRef.current = restored.body
+      setTitle(restored.title)
+      editor.commands.setContent(restored.body, { emitUpdate: false })
+      setDoc(restored)
+      setVersionHistoryOpen(false)
+      showCopyFeedback('Version restored')
+    } catch (error) {
+      showCopyFeedback(error instanceof Error ? error.message : 'Restore failed')
+    }
+  }, [editor, setDoc, showCopyFeedback])
 
   const handleCopyText = useCallback(async () => {
     if (!editor) return
@@ -417,19 +488,18 @@ function DocEditorSurface({
   useEffect(() => {
     if (!editor) return
     const onBlur = (): void => {
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current)
-        saveDoc({ body: editor.getHTML() })
-      }
+      bodyRef.current = editor.getHTML()
+      void flushSave()
     }
     editor.on('blur', onBlur)
     return () => { editor.off('blur', onBlur) }
-  }, [editor, saveDoc])
+  }, [editor, flushSave])
 
   // Title change handler with debounced save
   const handleTitleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const newTitle = e.target.value
+      titleRef.current = newTitle
       setTitle(newTitle)
       debouncedSave({ title: newTitle })
     },
@@ -437,39 +507,39 @@ function DocEditorSurface({
   )
 
   const handleBack = useCallback(async () => {
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current)
-    }
-    if (doc && editor) {
-      const currentBody = editor.getHTML()
-      if (title !== doc.title || currentBody !== doc.body) {
-        await window.mycel.upsertDoc({ ...doc, title, body: currentBody, updatedAt: Date.now() })
-      }
-    }
+    if (editor) bodyRef.current = editor.getHTML()
+    await flushSave()
     if (breadcrumbs.length > 0) {
       popBreadcrumb()
       return
     }
     setActiveDocId(null)
     setDocsView('home')
-  }, [doc, editor, title, breadcrumbs.length, popBreadcrumb, setActiveDocId, setDocsView])
+  }, [editor, flushSave, breadcrumbs.length, popBreadcrumb, setActiveDocId, setDocsView])
 
   // Immediate save on blur (for title)
   const handleTitleBlur = useCallback(() => {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    if (doc && title !== doc.title) {
-      saveDoc({ title })
-    }
-  }, [doc, title, saveDoc])
+    void flushSave()
+  }, [flushSave])
 
   // Escape key to go back
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') handleBack()
+      if (e.key !== 'Escape') return
+      if (folderMenuOpen || settingsMenuOpen) {
+        setFolderMenuOpen(false)
+        setSettingsMenuOpen(false)
+        return
+      }
+      const target = e.target as HTMLElement | null
+      if (target?.isContentEditable || target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') {
+        return
+      }
+      void handleBack()
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleBack])
+  }, [handleBack, folderMenuOpen, settingsMenuOpen])
 
   // Word count
   const wordCount = editor?.storage.characterCount?.words() ?? 0
@@ -485,45 +555,24 @@ function DocEditorSurface({
         position: 'relative'
       }}
     >
-      <div
-        className="font-ui"
-        style={{
-          position: 'absolute',
-          top: 20,
-          left: 40,
-          fontSize: 12,
-          color: 'var(--text-muted)',
-          zIndex: 10
-        }}
-      >
-        <span
-          style={{ cursor: 'pointer' }}
-          onClick={() => setDocsView('home')}
-          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
-        >
-          Docs
-        </span>
-        {folder && (
-          <>
-            <span style={{ margin: '0 6px' }}>&rsaquo;</span>
-            <span
-              style={{ cursor: 'pointer' }}
-              onClick={() => setDocsView('list')}
-              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
-            >
-              {folder.name}
-            </span>
-          </>
-        )}
-        <span style={{ margin: '0 6px' }}>&rsaquo;</span>
-        <span style={{ color: 'var(--text)' }}>{title || 'Untitled'}</span>
-      </div>
+      <DocumentBreadcrumbs
+        items={[
+          { label: 'Docs', onClick: () => setDocsView('home') },
+          ...(folder
+            ? [{
+                label: folder.name,
+                onClick: () => {
+                  setActiveFolderId(folder.id)
+                  setDocsView('list')
+                }
+              }]
+            : [])
+        ]}
+      />
 
       <motion.span
         initial={{ opacity: 0 }}
-        animate={{ opacity: savedIndicator ? 1 : 0 }}
+        animate={{ opacity: savedIndicator || saveError ? 1 : 0 }}
         transition={{ duration: 0.2 }}
         className="font-ui"
         style={{
@@ -531,12 +580,12 @@ function DocEditorSurface({
           top: 16,
           right: 24,
           fontSize: 11,
-          color: 'var(--text-muted)',
+          color: saveError ? 'var(--lost)' : 'var(--text-muted)',
           pointerEvents: 'none',
           zIndex: 10
         }}
       >
-        Saved
+        {saveError ? 'Save failed — your draft is still open' : 'Saved'}
       </motion.span>
 
       <div
@@ -546,10 +595,10 @@ function DocEditorSurface({
           maxWidth: 800,
           margin: '0 auto',
           width: '100%',
-          padding: '120px 40px 60px'
+          padding: '56px 40px 60px'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, marginBottom: 8 }}>
 
           {/* Move to folder */}
           <div style={{ position: 'relative' }} ref={folderMenuRef}>
@@ -692,6 +741,7 @@ function DocEditorSurface({
                 boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
               }}>
                 {[
+                  { label: 'Version history', icon: History, action: openVersionHistory },
                   { label: 'Duplicate', icon: Files, action: handleDuplicate },
                   { label: 'Copy as text', icon: Copy, action: handleCopyText },
                   { label: 'Copy as markdown', icon: FileCode, action: handleCopyMarkdown },
@@ -802,6 +852,99 @@ function DocEditorSurface({
         {editor && <FloatingToolbar editor={editor} />}
         <EditorContent editor={editor} />
       </div>
+
+      {versionHistoryOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setVersionHistoryOpen(false)
+          }}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 50,
+            display: 'flex',
+            justifyContent: 'flex-end',
+            background: 'rgba(0, 0, 0, 0.18)',
+            backdropFilter: 'blur(2px)'
+          }}
+        >
+          <motion.aside
+            initial={{ x: 20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+            style={{
+              width: 'min(380px, 88vw)',
+              height: '100%',
+              padding: 20,
+              overflowY: 'auto',
+              background: 'var(--surface)',
+              borderLeft: '1px solid var(--border)',
+              boxShadow: '-12px 0 32px rgba(0, 0, 0, 0.08)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+              <div>
+                <div className="font-heading" style={{ fontSize: 22, color: 'var(--text)' }}>Version history</div>
+                <div className="font-ui" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
+                  Previous content is saved automatically.
+                </div>
+              </div>
+              <button
+                onClick={() => setVersionHistoryOpen(false)}
+                aria-label="Close version history"
+                style={{ border: 0, background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', padding: 6 }}
+              >
+                <X size={17} />
+              </button>
+            </div>
+
+            {versionsLoading ? (
+              <div className="font-ui" style={{ color: 'var(--text-muted)', fontSize: 13 }}>Loading versions…</div>
+            ) : versions.length === 0 ? (
+              <div className="font-ui" style={{ color: 'var(--text-muted)', fontSize: 13 }}>No earlier versions yet.</div>
+            ) : versions.map((version) => (
+              <div
+                key={version.versionId}
+                style={{
+                  padding: 14,
+                  marginBottom: 8,
+                  border: '1px solid var(--border)',
+                  borderRadius: 10,
+                  background: 'var(--bg)'
+                }}
+              >
+                <div className="font-ui" style={{ fontSize: 12, color: 'var(--text)', fontWeight: 600 }}>
+                  {new Date(version.updatedAt).toLocaleString()}
+                </div>
+                <div className="font-ui" style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 10px' }}>
+                  {version.reason === 'delete' ? 'Saved before deletion' : version.body.length.toLocaleString() + ' characters'}
+                </div>
+                <button
+                  onClick={() => { void restoreVersion(version) }}
+                  className="font-ui"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    border: '1px solid var(--border)',
+                    borderRadius: 7,
+                    padding: '6px 9px',
+                    color: 'var(--text)',
+                    background: 'var(--surface)',
+                    cursor: 'pointer',
+                    fontSize: 12
+                  }}
+                >
+                  <RotateCcw size={12} />
+                  Restore
+                </button>
+              </div>
+            ))}
+          </motion.aside>
+        </motion.div>
+      )}
 
       {/* Word count */}
       <div

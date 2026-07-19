@@ -10,31 +10,33 @@ export function useFlushOnLeave(
   const createView = useUIStore((s) => s.createView)
   const wasOnCreateRef = useRef(false)
   const prevCreateViewRef = useRef(createView)
+  const flushRef = useRef(flush)
+  flushRef.current = flush
 
   useEffect(() => {
     const onCreate = activePage === 'create'
     if (wasOnCreateRef.current && !onCreate) {
-      void flush()
+      void flushRef.current()
     }
     wasOnCreateRef.current = onCreate
-  }, [activePage, flush])
+  }, [activePage])
 
   useEffect(() => {
     if (!options?.watchCreateView) return
     if (activePage !== 'create') return
     if (prevCreateViewRef.current === 'docs' && createView === 'notes') {
-      void flush()
+      void flushRef.current()
     }
     prevCreateViewRef.current = createView
-  }, [activePage, createView, flush, options?.watchCreateView])
+  }, [activePage, createView, options?.watchCreateView])
 
   useEffect(() => {
     const onVisibility = (): void => {
-      if (document.visibilityState === 'hidden') void flush()
+      if (document.visibilityState === 'hidden') void flushRef.current()
     }
     window.addEventListener('visibilitychange', onVisibility)
     return () => window.removeEventListener('visibilitychange', onVisibility)
-  }, [flush])
+  }, [])
 
-  useEffect(() => () => { void flush() }, [flush])
+  useEffect(() => () => { void flushRef.current() }, [])
 }

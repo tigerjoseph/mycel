@@ -36,8 +36,38 @@ export function registerFolderHandlers(): void {
 
   ipcMain.handle('folders:delete', async (_e, id: string) => {
     const db = getDb()
-    // Delete all docs in this folder first
-    await db.execute({ sql: 'DELETE FROM docs WHERE folder_id = ?', args: [id] })
-    await db.execute({ sql: 'DELETE FROM folders WHERE id = ?', args: [id] })
+    const tx = await db.transaction('write')
+    try {
+      const docs = await tx.execute({
+        sql: 'SELECT * FROM docs WHERE folder_id = ?',
+        args: [id]
+      })
+      const now = Date.now()
+      for (const row of docs.rows) {
+        await tx.execute({
+          sql: `INSERT INTO doc_versions
+                (id, doc_id, title, body, type, folder_id, icon, cover_image,
+                 is_template, is_favorite, favorite_order, tags, created_at,
+                 document_updated_at, saved_at, reason)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [
+            nanoid(), row.id as string, row.title as string, row.body as string,
+            row.type as string, row.folder_id as string | null, row.icon as string | null,
+            row.cover_image as string | null, row.is_template as number,
+            row.is_favorite as number, row.favorite_order as number | null,
+            row.tags as string, row.created_at as number, row.updated_at as number,
+            now, 'delete'
+          ]
+        })
+      }
+      await tx.execute({ sql: 'DELETE FROM docs WHERE folder_id = ?', args: [id] })
+      await tx.execute({ sql: 'DELETE FROM folders WHERE id = ?', args: [id] })
+      await tx.commit()
+    } catch (error) {
+      await tx.rollback()
+      throw error
+    } finally {
+      tx.close()
+    }
   })
 }

@@ -1,14 +1,14 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Plus, LayoutGrid, List, FolderClosed, FileText, Table, Search, Trash2, Pencil } from 'lucide-react'
+import { Plus, LayoutGrid, List, FolderClosed, FileText, Table, Search, Trash2, Pencil, RotateCcw } from 'lucide-react'
 import { ContextMenu } from '../components/ContextMenu'
 import { DocIcon } from '../components/DocIcon'
 import { nanoid } from 'nanoid'
 import { useUIStore } from '../store/ui'
 import { useDocsStore } from '../store/docs'
-import { fadeUp } from '../styles/animation'
+import { fade } from '../styles/animation'
 import { formatDistanceToNow } from 'date-fns'
-import type { Folder } from '@shared/types'
+import type { DocVersion, Folder } from '@shared/types'
 
 export function DocsHome(): React.JSX.Element {
   const setDocsView = useUIStore((s) => s.setDocsView)
@@ -34,6 +34,7 @@ export function DocsHome(): React.JSX.Element {
   } | null>(null)
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
   const [renameFolderName, setRenameFolderName] = useState('')
+  const [deletedDocs, setDeletedDocs] = useState<DocVersion[]>([])
   const dropdownRef = useRef<HTMLDivElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
   const renameFolderInputRef = useRef<HTMLInputElement>(null)
@@ -42,7 +43,20 @@ export function DocsHome(): React.JSX.Element {
     fetchFolders()
     fetchFavorites()
     fetchRecentDocs()
+    void window.mycel.getDeletedDocs().then(setDeletedDocs)
   }, [fetchFolders, fetchFavorites, fetchRecentDocs])
+
+  const refreshDeletedDocs = useCallback(async () => {
+    setDeletedDocs(await window.mycel.getDeletedDocs())
+  }, [])
+
+  const restoreDeletedDoc = useCallback(async (version: DocVersion) => {
+    const restored = await window.mycel.restoreDocVersion(version.versionId)
+    await Promise.all([fetchRecentDocs(), refreshDeletedDocs()])
+    setActiveDocId(restored.id)
+    setDocsView(restored.type === 'grid' ? 'grid' : 'editor')
+    pushBreadcrumb({ label: 'Docs', action: () => setDocsView('home') })
+  }, [fetchRecentDocs, pushBreadcrumb, refreshDeletedDocs, setActiveDocId, setDocsView])
 
   useEffect(() => {
     if (creatingFolder && folderInputRef.current) {
@@ -166,7 +180,7 @@ export function DocsHome(): React.JSX.Element {
   }, [folderName, fetchFolders])
 
   return (
-    <motion.div style={{ maxWidth: 800, margin: '0 auto', padding: '32px 40px', height: '100%', overflowY: 'auto' }} {...fadeUp}>
+    <motion.div style={{ maxWidth: 800, margin: '0 auto', padding: '32px 40px', height: '100%', overflowY: 'auto' }} {...fade}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
         <h1 className="font-heading" style={{ fontSize: 24, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
@@ -652,6 +666,34 @@ export function DocsHome(): React.JSX.Element {
           )}
         </div>
       )}
+
+      {deletedDocs.length > 0 && (
+        <div style={{ marginTop: 32, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+          <div className="font-ui" style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+            Recently deleted
+          </div>
+          {deletedDocs.slice(0, 5).map((version) => (
+            <div
+              key={version.versionId}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 4px' }}
+            >
+              <FileText size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+              <span className="font-ui" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, color: 'var(--text-muted)' }}>
+                {version.title || 'Untitled'}
+              </span>
+              <button
+                onClick={() => { void restoreDeletedDoc(version) }}
+                className="font-ui"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, border: 0, background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px 6px', fontSize: 12 }}
+              >
+                <RotateCcw size={12} />
+                Restore
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <AnimatePresence>
         {contextMenu && (() => {
           const { x, y, target } = contextMenu
@@ -663,7 +705,9 @@ export function DocsHome(): React.JSX.Element {
                     danger: true,
                     icon: <Trash2 size={13} />,
                     onClick: () => {
-                      window.mycel.deleteDoc(target.docId).then(() => fetchRecentDocs())
+                      window.mycel.deleteDoc(target.docId).then(() =>
+                        Promise.all([fetchRecentDocs(), refreshDeletedDocs()])
+                      )
                     }
                   }
                 ]
@@ -682,7 +726,9 @@ export function DocsHome(): React.JSX.Element {
                       icon: <Trash2 size={13} />,
                       onClick: () => {
                         if (!confirm(`Delete "${folder.name}" and all documents inside?`)) return
-                        window.mycel.deleteFolder(folder.id).then(() => fetchFolders())
+                        window.mycel.deleteFolder(folder.id).then(() =>
+                          Promise.all([fetchFolders(), fetchRecentDocs(), refreshDeletedDocs()])
+                        )
                       }
                     }
                   ]

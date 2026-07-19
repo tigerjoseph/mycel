@@ -13,6 +13,7 @@ const SHELL_STYLE: React.CSSProperties = {
 
 export function Docs(): React.JSX.Element {
   const docsView = useUIStore((s) => s.docsView)
+  const activeDocId = useUIStore((s) => s.activeDocId)
 
   if (docsView === 'editor') {
     return (
@@ -25,7 +26,7 @@ export function Docs(): React.JSX.Element {
   if (docsView === 'grid') {
     return (
       <div style={SHELL_STYLE}>
-        <DataGrid />
+        <DataGrid key={activeDocId ?? 'empty-grid'} />
       </div>
     )
   }

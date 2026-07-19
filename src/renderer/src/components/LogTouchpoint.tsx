@@ -49,6 +49,8 @@ export function LogTouchpoint(): React.JSX.Element {
 
   const selectedContact = contacts.find((c) => c.id === selectedContactId)
 
+  const fetchContacts = useContactsStore((s) => s.fetch)
+
   const handleDone = useCallback(async () => {
     if (!selectedContactId || !medium) return
     await window.mycel.logTouchpoint({
@@ -57,8 +59,9 @@ export function LogTouchpoint(): React.JSX.Element {
       note,
       createdAt: Date.now()
     })
+    await fetchContacts()
     setOpen(false)
-  }, [selectedContactId, medium, note, setOpen])
+  }, [selectedContactId, medium, note, setOpen, fetchContacts])
 
   const handleBackdropClick = useCallback(() => {
     setOpen(false)

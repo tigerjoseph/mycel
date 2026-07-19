@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import { useUIStore } from '../store/ui'
 import { useDocsStore } from '../store/docs'
-import { fadeUp } from '../styles/animation'
+import { fade } from '../styles/animation'
+import { DocumentBreadcrumbs } from '../components/DocumentBreadcrumbs'
 import { format } from 'date-fns'
 import { openDoc } from '../utils/openDoc'
 
@@ -30,27 +31,14 @@ export function FavoritesList(): React.JSX.Element {
   }
 
   return (
-    <motion.div style={{ padding: '32px 40px', height: '100%' }} {...fadeUp}>
-      {/* Breadcrumb */}
-      <div
-        className="font-ui"
-        style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 24 }}
-      >
-        <span
-          style={{ cursor: 'pointer' }}
-          onClick={() => setDocsView('home')}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = 'var(--text)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = 'var(--text-muted)'
-          }}
-        >
-          Docs
-        </span>
-        <span style={{ margin: '0 6px' }}>&rsaquo;</span>
-        <span style={{ color: 'var(--text)' }}>Favorites</span>
-      </div>
+    <motion.div style={{ padding: '32px 40px', height: '100%', overflowY: 'auto' }} {...fade}>
+      <DocumentBreadcrumbs
+        position="flow"
+        items={[
+          { label: 'Docs', onClick: () => setDocsView('home') },
+          { label: 'Favorites' }
+        ]}
+      />
 
       {/* List */}
       {sorted.length === 0 ? (

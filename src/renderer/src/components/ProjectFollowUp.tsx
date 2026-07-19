@@ -1,13 +1,13 @@
 import { useState, useCallback } from 'react'
 import { format } from 'date-fns'
 import { useUIStore } from '../store/ui'
-import type { Contact, Touchpoint } from '@shared/types'
+import { useContactsStore } from '../store/contacts'
+import type { Contact, Project, Touchpoint } from '@shared/types'
 import {
   followUpAccentColor,
   formatLastContacted,
   getProjectFollowUpHint
 } from '@shared/followUp'
-import type { Project } from '@shared/types'
 
 const MEDIA: { id: Touchpoint['medium']; label: string; icon: string }[] = [
   { id: 'email', label: 'Email', icon: '\u{1F4E7}' },
@@ -42,6 +42,7 @@ export function ProjectFollowUp({
 }: ProjectFollowUpProps): React.JSX.Element {
   const setLogTouchpointOpen = useUIStore((s) => s.setLogTouchpointOpen)
   const setActiveContactId = useUIStore((s) => s.setActiveContactId)
+  const fetchContacts = useContactsStore((s) => s.fetch)
 
   const [medium, setMedium] = useState<Touchpoint['medium'] | null>(null)
   const [note, setNote] = useState('')
@@ -63,11 +64,12 @@ export function ProjectFollowUp({
       })
       setMedium(null)
       setNote('')
+      await fetchContacts()
       onTouchpointLogged()
     } finally {
       setSaving(false)
     }
-  }, [contact, medium, note, onTouchpointLogged, saving])
+  }, [contact, medium, note, onTouchpointLogged, saving, fetchContacts])
 
   const openFullLog = (): void => {
     if (!contact) return
