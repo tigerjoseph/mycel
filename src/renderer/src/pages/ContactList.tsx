@@ -112,7 +112,7 @@ export function ContactList(): React.JSX.Element {
   }
 
   return (
-    <>
+    <div style={{ maxWidth: 680, margin: '0 auto', width: '100%' }}>
       {/* Search input */}
       <div
         style={{
@@ -372,6 +372,6 @@ export function ContactList(): React.JSX.Element {
         <Plus size={13} />
         new contact
       </button>
-    </>
+    </div>
   )
 }

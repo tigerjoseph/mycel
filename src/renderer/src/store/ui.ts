@@ -9,7 +9,7 @@ interface UIStore {
   settingsOpen: boolean
 
   // CRM sub-views
-  activeCRMView: 'projects' | 'contacts' | 'followups'
+  activeCRMView: 'projects' | 'contacts'
   activeContactId: string | null
   activeProjectId: string | null
 
@@ -20,10 +20,16 @@ interface UIStore {
 
   // Notes
   activeNoteId: string | null
-  noteEditorOpen: boolean
 
   // Create sub-view (keep-alive; used for save flush)
   createView: 'docs' | 'notes'
+
+  // Library sub-views
+  libraryView: 'extractions' | 'mindspace'
+
+  // Focus requests from search — jump to and highlight a specific item
+  libraryFocusItemId: string | null
+  extractionsFocus: { meetingId: string; atomId: string } | null
 
   // Breadcrumbs
   breadcrumbs: BreadcrumbEntry[]
@@ -40,15 +46,17 @@ interface UIStore {
   setContactSwitcherOpen: (open: boolean) => void
   setLogTouchpointOpen: (open: boolean) => void
   setSettingsOpen: (open: boolean) => void
-  setCRMView: (view: 'projects' | 'contacts' | 'followups') => void
+  setCRMView: (view: 'projects' | 'contacts') => void
   setActiveContactId: (id: string | null) => void
   setActiveProjectId: (id: string | null) => void
   setActiveDocId: (id: string | null) => void
   setActiveFolderId: (id: string | null) => void
   setDocsView: (view: 'home' | 'favorites' | 'list' | 'editor' | 'grid') => void
   setActiveNoteId: (id: string | null) => void
-  setNoteEditorOpen: (open: boolean) => void
   setCreateView: (view: 'docs' | 'notes') => void
+  setLibraryView: (view: 'extractions' | 'mindspace') => void
+  setLibraryFocusItemId: (id: string | null) => void
+  setExtractionsFocus: (focus: { meetingId: string; atomId: string } | null) => void
   pushBreadcrumb: (entry: BreadcrumbEntry) => void
   popBreadcrumb: () => void
   setBreadcrumbs: (entries: BreadcrumbEntry[]) => void
@@ -72,8 +80,10 @@ export const useUIStore = create<UIStore>((set) => ({
   activeFolderId: null,
   docsView: 'home',
   activeNoteId: null,
-  noteEditorOpen: false,
   createView: 'docs',
+  libraryView: 'extractions',
+  libraryFocusItemId: null,
+  extractionsFocus: null,
   breadcrumbs: [],
   copyFeedback: null,
   projectNudge: null,
@@ -93,8 +103,10 @@ export const useUIStore = create<UIStore>((set) => ({
   setActiveFolderId: (id) => set({ activeFolderId: id }),
   setDocsView: (view) => set({ docsView: view }),
   setActiveNoteId: (id) => set({ activeNoteId: id }),
-  setNoteEditorOpen: (open) => set({ noteEditorOpen: open }),
   setCreateView: (view) => set({ createView: view }),
+  setLibraryView: (view) => set({ libraryView: view }),
+  setLibraryFocusItemId: (id) => set({ libraryFocusItemId: id }),
+  setExtractionsFocus: (focus) => set({ extractionsFocus: focus }),
   pushBreadcrumb: (entry) => set((state) => ({
     breadcrumbs: [...state.breadcrumbs, entry]
   })),

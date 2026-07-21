@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import Fuse from 'fuse.js'
 import { springGentle } from '../styles/animation'
@@ -129,37 +130,42 @@ export function NewProjectDialog({
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         key="new-project-backdrop"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
         onClick={onClose}
-        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)', zIndex: 200 }}
-      />
-      <motion.div
-        key="new-project-dialog"
-        initial={{ opacity: 0, scale: 0.96, y: 8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96, y: 8 }}
-        transition={springGentle}
-        onClick={(e) => e.stopPropagation()}
         style={{
           position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: 'min(400px, calc(100vw - 32px))',
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 14,
-          padding: 20,
-          zIndex: 201,
-          boxShadow: '0 16px 48px rgba(0,0,0,0.12)'
+          inset: 0,
+          background: 'rgba(0,0,0,0.25)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 200,
+          padding: 24
         }}
       >
+        <motion.div
+          key="new-project-dialog"
+          initial={{ opacity: 0, scale: 0.97, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.97, y: 8 }}
+          transition={springGentle}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: 'min(400px, calc(100vw - 48px))',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 14,
+            padding: 20,
+            boxShadow: '0 16px 48px rgba(0,0,0,0.12)'
+          }}
+        >
         <h2 style={{
           fontFamily: 'var(--font-heading)', fontSize: 17, fontWeight: 600,
           margin: '0 0 16px', color: 'var(--text)'
@@ -280,8 +286,10 @@ export function NewProjectDialog({
             {saving || creatingContact ? 'Creating…' : 'Create project'}
           </button>
         </div>
+        </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   )
 }
 

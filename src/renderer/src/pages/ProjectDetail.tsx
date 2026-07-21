@@ -6,7 +6,7 @@ import { useUIStore } from '../store/ui'
 import { ProjectFollowUp } from '../components/ProjectFollowUp'
 import type { Project, Milestone, Contact, Touchpoint } from '@shared/types'
 import { formatUsdInputFromCents, parseDollarToCents } from '@shared/money'
-import { ALL_STAGES, getStageDotColor, getStageLabelColor } from '@shared/stages'
+import { ALL_STAGES, getStageDisplayLabel, getStageDotColor, getStageLabelColor } from '@shared/stages'
 
 export function ProjectDetail(): React.JSX.Element {
   const activeProjectId = useUIStore((s) => s.activeProjectId)
@@ -397,7 +397,7 @@ export function ProjectDetail(): React.JSX.Element {
                     transition: 'color 150ms ease'
                   }}
                 >
-                  {stage}
+                  {getStageDisplayLabel(stage)}
                 </span>
               </button>
             )

@@ -1,8 +1,9 @@
 import { Upload, FileText, Trash2, ChevronDown, ChevronRight, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { fadeUp } from '../styles/animation'
+import { fadeUp, pageEnter } from '../styles/animation'
 import { CorpusChooser } from '../components/CorpusChooser'
+import { LibraryFeed } from './LibraryFeed'
 import { useUIStore } from '../store/ui'
 import type { Atom, AtomKind, Meeting } from '@shared/types'
 
@@ -23,17 +24,21 @@ const KIND_COLORS: Record<AtomKind, string> = {
 type MeetingGroup = Meeting & { atoms: Atom[] }
 
 export function Corpus(): React.JSX.Element {
+  const libraryView = useUIStore((s) => s.libraryView)
   const showCopyFeedback = useUIStore((s) => s.showCopyFeedback)
   const setPage = useUIStore((s) => s.setPage)
   const setCreateView = useUIStore((s) => s.setCreateView)
   const setActiveDocId = useUIStore((s) => s.setActiveDocId)
   const setDocsView = useUIStore((s) => s.setDocsView)
   const activeDocId = useUIStore((s) => s.activeDocId)
+  const extractionsFocus = useUIStore((s) => s.extractionsFocus)
+  const setExtractionsFocus = useUIStore((s) => s.setExtractionsFocus)
 
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [atoms, setAtoms] = useState<Atom[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [highlightedAtomId, setHighlightedAtomId] = useState<string | null>(null)
   const [pasteOpen, setPasteOpen] = useState(false)
   const [pasteText, setPasteText] = useState('')
   const [pasteTitle, setPasteTitle] = useState('')
@@ -62,6 +67,23 @@ export function Corpus(): React.JSX.Element {
       setHasGoogleKey(typeof s.googleApiKey === 'string' && s.googleApiKey.length > 0)
     })
   }, [load])
+
+  // Jump to and highlight an atom requested from search (Cmd+K)
+  useEffect(() => {
+    if (!extractionsFocus || libraryView !== 'extractions') return
+    const { meetingId, atomId } = extractionsFocus
+    setExpanded((prev) => new Set(prev).add(meetingId))
+    setHighlightedAtomId(atomId)
+    const timer = setTimeout(() => {
+      document.querySelector(`[data-atom-id="${atomId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 50)
+    const clear = setTimeout(() => setHighlightedAtomId(null), 2200)
+    setExtractionsFocus(null)
+    return () => {
+      clearTimeout(timer)
+      clearTimeout(clear)
+    }
+  }, [extractionsFocus, libraryView, setExtractionsFocus])
 
   const groups = useMemo<MeetingGroup[]>(() => {
     const byMeeting = new Map<string, Atom[]>()
@@ -99,7 +121,7 @@ export function Corpus(): React.JSX.Element {
     try {
       await fn()
       await load()
-      showCopyFeedback('Imported to Corpus')
+      showCopyFeedback('Imported')
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Import failed'
       showCopyFeedback(msg)
@@ -150,12 +172,31 @@ export function Corpus(): React.JSX.Element {
   }, [setPage, setCreateView, setActiveDocId, setDocsView])
 
   return (
-    <div
-      style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}
-      onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={handleDrop}
-    >
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+      <AnimatePresence mode="wait" initial={false}>
+        {libraryView === 'mindspace' ? (
+          <motion.div
+            key="mindspace"
+            initial={pageEnter.initial}
+            animate={pageEnter.animate}
+            exit={pageEnter.exit}
+            transition={pageEnter.transition}
+            style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+          >
+            <LibraryFeed />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="extractions"
+            initial={pageEnter.initial}
+            animate={pageEnter.animate}
+            exit={pageEnter.exit}
+            transition={pageEnter.transition}
+            style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+          >
       {dragOver && (
         <div style={{
           position: 'absolute', inset: 0, zIndex: 50,
@@ -175,10 +216,10 @@ export function Corpus(): React.JSX.Element {
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 20 }}>
             <div>
               <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 600, margin: 0, color: 'var(--text)' }}>
-                Corpus
+                Extractions
               </h1>
               <p style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--text-muted)', margin: '6px 0 0' }}>
-                Drop voice notes or transcripts — Mycel extracts atoms you can turn into essays.
+                Drop voice notes or transcripts — Mycel extracts quotes, insights, and actions.
               </p>
             </div>
             <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
@@ -280,7 +321,7 @@ export function Corpus(): React.JSX.Element {
                       {group.title || 'Untitled'}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-ui)', marginTop: 2 }}>
-                      {group.atoms.length} atoms · {new Date(group.createdAt).toLocaleDateString()}
+                      {group.atoms.length} {group.atoms.length === 1 ? 'extraction' : 'extractions'} · {new Date(group.createdAt).toLocaleDateString()}
                     </div>
                   </div>
                   <button
@@ -296,15 +337,18 @@ export function Corpus(): React.JSX.Element {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 24 }}>
                     {group.atoms.map((atom) => {
                       const isSelected = selected.has(atom.id)
+                      const isHighlighted = highlightedAtomId === atom.id
                       return (
                         <button
                           key={atom.id}
+                          data-atom-id={atom.id}
                           onClick={() => toggleAtom(atom.id)}
                           style={{
                             textAlign: 'left', padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
                             border: isSelected ? '1.5px solid var(--accent)' : '1px solid var(--border)',
-                            background: isSelected ? 'var(--bg)' : 'var(--surface)',
-                            transition: 'border-color 150ms ease, background 150ms ease'
+                            background: isHighlighted ? 'var(--surface)' : isSelected ? 'var(--bg)' : 'var(--surface)',
+                            boxShadow: isHighlighted ? '0 0 0 2px var(--accent)' : 'none',
+                            transition: 'border-color 150ms ease, background 150ms ease, box-shadow 150ms ease'
                           }}
                         >
                           <span style={{
@@ -372,6 +416,9 @@ export function Corpus(): React.JSX.Element {
           openDoc(docId)
         }}
       />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

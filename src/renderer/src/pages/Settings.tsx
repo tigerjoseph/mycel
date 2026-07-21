@@ -1,4 +1,5 @@
 import { Fragment, useState, useEffect } from 'react'
+import { FolderOpen } from 'lucide-react'
 import {
   APPEARANCE_OPTIONS,
   applyAppearanceToDocument,
@@ -19,7 +20,7 @@ const SHORTCUTS: { keys: string; action: string }[] = [
   { keys: '⌘1', action: 'Go to To-Do' },
   { keys: '⌘2', action: 'Go to People' },
   { keys: '⌘3', action: 'Go to Create (docs)' },
-  { keys: '⌘4', action: 'Go to Corpus' },
+  { keys: '⌘4', action: 'Go to Library' },
   { keys: '⌘K', action: 'Command palette' },
   { keys: '⌘J', action: 'Switch contact (People)' },
   { keys: '⌘[', action: 'Navigate back' },
@@ -58,6 +59,8 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
   } | null>(null)
   const [updateBusy, setUpdateBusy] = useState(false)
   const [updateMessage, setUpdateMessage] = useState<string | null>(null)
+  const [extInfo, setExtInfo] = useState<{ port: number; token: string } | null>(null)
+  const [extMessage, setExtMessage] = useState<string | null>(null)
 
   const refreshGcalStatus = (): void => {
     window.mycel.gcalGetStatus().then((s) => setGcalConnected(s.connected)).catch(() => {})
@@ -80,6 +83,7 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
       setCounts(info.counts)
     }).catch(() => {})
     window.mycel.getVoiceImportStatus().then(setVoiceStatus).catch(() => {})
+    window.mycel.getLibraryExtensionInfo().then(setExtInfo).catch(() => {})
   }, [isOpen])
 
   const handleAppearance = (id: AppearanceId): void => {
@@ -138,6 +142,25 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
       setGcalMessage(err instanceof Error ? err.message : 'Sync failed')
     } finally {
       setGcalBusy(false)
+    }
+  }
+
+  const handleRevealExtensionFolder = async (): Promise<void> => {
+    try {
+      await window.mycel.openLibraryExtensionFolder()
+    } catch {
+      setExtMessage('Could not open the extension folder')
+    }
+  }
+
+  const handleCopyExtensionToken = async (): Promise<void> => {
+    if (!extInfo) return
+    try {
+      await navigator.clipboard.writeText(extInfo.token)
+      setExtMessage('Connection token copied')
+      setTimeout(() => setExtMessage(null), 2500)
+    } catch {
+      setExtMessage('Could not copy token')
     }
   }
 
@@ -271,7 +294,7 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
             }
           />
           <Hint>
-            Powers atom extraction in Corpus and voice-note imports. Get a key at{' '}
+            Powers insight/quote extraction in Library → Extractions and voice-note imports. Get a key at{' '}
             <a
               href="https://aistudio.google.com/apikey"
               target="_blank"
@@ -319,10 +342,10 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
         </div>
       </Section>
 
-      <Section title="Voice & Corpus">
+      <Section title="Voice & Extractions">
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
-          Local transcription for audio in Corpus and the <code style={{ fontSize: 11 }}>/voice</code> slash
-          command in docs. Gemini key above improves atom extraction.
+          Local transcription for audio in Library → Extractions and the <code style={{ fontSize: 11 }}>/voice</code> slash
+          command in docs. Gemini key above improves insight/quote extraction.
         </p>
         {voiceStatus ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -343,6 +366,48 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
         )}
       </Section>
 
+      <Section title="Browser extension">
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
+          The Mycel Saver Chrome extension sends posts, images, and quotes straight to{' '}
+          <strong>Library → Mindspace</strong>. It only talks to Mycel on this Mac — nothing
+          leaves your machine.
+        </p>
+
+        <IntegrationRow
+          connected={Boolean(extInfo)}
+          label={extInfo ? `Listening on 127.0.0.1:${extInfo.port}` : 'Checking connection…'}
+          action={
+            <button
+              onClick={() => void handleRevealExtensionFolder()}
+              style={{ ...secondaryBtn, display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <FolderOpen size={13} />
+              Reveal extension folder
+            </button>
+          }
+        />
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 6 }}>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+            Connection token {extInfo ? 'active' : 'unavailable'}
+          </span>
+          {extInfo && (
+            <button onClick={() => void handleCopyExtensionToken()} style={secondaryBtn}>
+              Copy token
+            </button>
+          )}
+        </div>
+        {extMessage && <StatusLine>{extMessage}</StatusLine>}
+
+        <Hint>
+          <strong>Mycel must be running</strong> for the extension to save anything. To install: open{' '}
+          <code style={{ fontSize: 11 }}>chrome://extensions</code>, enable{' '}
+          <strong>Developer mode</strong>, click <strong>Load unpacked</strong>, then pick the extension
+          folder above. On Instagram, hover a post and click <strong>+ Mycel</strong> — or press{' '}
+          <kbd style={kbdStyle}>⌘⇧S</kbd> on any page. Full setup steps are in the extension README.
+        </Hint>
+      </Section>
+
       <Section title="Keyboard shortcuts">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {SHORTCUTS.map((s) => (
@@ -356,20 +421,7 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
               }}
             >
               <span style={{ fontSize: 13, color: 'var(--text)' }}>{s.action}</span>
-              <kbd
-                style={{
-                  fontSize: 11,
-                  fontFamily: 'var(--font-ui)',
-                  color: 'var(--text-muted)',
-                  backgroundColor: 'var(--surface)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 4,
-                  padding: '2px 6px',
-                  flexShrink: 0
-                }}
-              >
-                {s.keys}
-              </kbd>
+              <kbd style={{ ...kbdStyle, flexShrink: 0 }}>{s.keys}</kbd>
             </div>
           ))}
         </div>
@@ -655,6 +707,16 @@ const secondaryBtn: React.CSSProperties = {
   fontSize: 12,
   fontFamily: 'var(--font-ui)',
   color: 'var(--text)'
+}
+
+const kbdStyle: React.CSSProperties = {
+  fontSize: 11,
+  fontFamily: 'var(--font-ui)',
+  color: 'var(--text-muted)',
+  backgroundColor: 'var(--surface)',
+  border: '1px solid var(--border)',
+  borderRadius: 4,
+  padding: '2px 6px'
 }
 
 const inputStyle: React.CSSProperties = {

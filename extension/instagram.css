@@ -1,0 +1,38 @@
+.mycel-save-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 9999;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(20, 20, 20, 0.88);
+  color: #fff;
+  font: 600 12px/1 system-ui, -apple-system, sans-serif;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 150ms ease, transform 150ms ease;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+article:hover .mycel-save-btn,
+.mycel-save-btn.mycel-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.mycel-save-btn:hover {
+  background: #000;
+}
+
+.mycel-save-btn.mycel-saving {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.mycel-save-btn.mycel-saved {
+  background: #1a7f37;
+}

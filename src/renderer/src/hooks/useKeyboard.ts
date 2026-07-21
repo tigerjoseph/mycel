@@ -24,10 +24,10 @@ export function useKeyboard(): void {
         e.preventDefault()
         setPage('create')
       }
-      // Cmd+4 → Corpus
+      // Cmd+4 → Library
       if (e.metaKey && e.key === '4') {
         e.preventDefault()
-        setPage('corpus')
+        setPage('library')
       }
       // Cmd+[ → Navigate back
       if (e.metaKey && e.key === '[') {

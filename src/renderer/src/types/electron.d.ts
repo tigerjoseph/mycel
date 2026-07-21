@@ -153,6 +153,16 @@ declare global {
       onCorpusImportProgress(callback: (stage: string) => void): () => void
       deleteMeeting(id: string): Promise<void>
       createDocFromAtoms(input: import('@shared/types').CreateDocFromAtomsInput): Promise<import('@shared/types').Doc>
+
+      // Library
+      getLibraryItems(filterTags?: string[]): Promise<import('@shared/types').LibraryItem[]>
+      getLibraryItem(id: string): Promise<import('@shared/types').LibraryItem | null>
+      saveLibraryItem(payload: import('@shared/types').SaveLibraryPayload): Promise<import('@shared/types').LibraryItem>
+      deleteLibraryItem(id: string): Promise<void>
+      getLibraryExtensionInfo(): Promise<{ port: number; token: string }>
+      openLibraryUrl(url: string): Promise<void>
+      openLibraryExtensionFolder(): Promise<void>
+      onLibraryItemSaved(callback: (item: import('@shared/types').LibraryItem) => void): () => void
     }
   }
 }

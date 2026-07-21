@@ -6,7 +6,7 @@ import type { Contact, Project, Touchpoint } from '@shared/types'
 import {
   followUpAccentColor,
   formatLastContacted,
-  getProjectFollowUpHint
+  getEffectiveFollowUp
 } from '@shared/followUp'
 
 const MEDIA: { id: Touchpoint['medium']; label: string; icon: string }[] = [
@@ -49,7 +49,7 @@ export function ProjectFollowUp({
   const [saving, setSaving] = useState(false)
 
   const hint = contact
-    ? getProjectFollowUpHint(project, contact.lastContactedAt)
+    ? getEffectiveFollowUp(project, contact.lastContactedAt, project.followUpManual)
     : null
 
   const handleLog = useCallback(async () => {

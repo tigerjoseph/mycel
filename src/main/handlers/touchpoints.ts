@@ -38,6 +38,12 @@ export function registerTouchpointHandlers(): void {
       args: [createdAt, contactId]
     })
 
+    // Fresh touchpoint means the auto follow-up hint recalculates from scratch.
+    await db.execute({
+      sql: 'UPDATE projects SET follow_up_manual = NULL WHERE contact_id = ?',
+      args: [contactId]
+    })
+
     return { id, contactId, medium, note, createdAt }
   })
 }

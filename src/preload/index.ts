@@ -169,6 +169,22 @@ const mycelAPI = {
   deleteMeeting: (id: string): Promise<void> => ipcRenderer.invoke('corpus:deleteMeeting', id),
   createDocFromAtoms: (input: unknown): Promise<unknown> =>
     ipcRenderer.invoke('corpus:createDocFromAtoms', input),
+
+  // Library (visual saves from browser extension)
+  getLibraryItems: (filterTags?: string[]): Promise<unknown[]> =>
+    ipcRenderer.invoke('library:getAll', filterTags),
+  getLibraryItem: (id: string): Promise<unknown> => ipcRenderer.invoke('library:get', id),
+  saveLibraryItem: (payload: unknown): Promise<unknown> => ipcRenderer.invoke('library:save', payload),
+  deleteLibraryItem: (id: string): Promise<void> => ipcRenderer.invoke('library:delete', id),
+  getLibraryExtensionInfo: (): Promise<{ port: number; token: string }> =>
+    ipcRenderer.invoke('library:getExtensionInfo'),
+  openLibraryUrl: (url: string): Promise<void> => ipcRenderer.invoke('library:openUrl', url),
+  openLibraryExtensionFolder: (): Promise<void> => ipcRenderer.invoke('library:openExtensionFolder'),
+  onLibraryItemSaved: (callback: (item: unknown) => void): (() => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, item: unknown): void => callback(item)
+    ipcRenderer.on('library:itemSaved', handler)
+    return () => ipcRenderer.removeListener('library:itemSaved', handler)
+  },
 }
 
 contextBridge.exposeInMainWorld('mycel', mycelAPI)

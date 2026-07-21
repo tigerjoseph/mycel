@@ -72,6 +72,27 @@ export function getProjectFollowUpHint(
   }
 }
 
+/**
+ * Hybrid follow-up resolution: combines the automatic hint (last contacted / stage)
+ * with a manual override.
+ *  - manual === 'on'  -> always show (falls back to a generic reason if there's no auto hint)
+ *  - manual === 'off' -> always hide, even if the auto hint would otherwise fire
+ *  - manual == null   -> defer entirely to the auto hint
+ */
+export function getEffectiveFollowUp(
+  project: ProjectForNudge,
+  lastContactedAt: number | null,
+  manual: 'on' | 'off' | null | undefined,
+  now = Date.now()
+): FollowUpHint | null {
+  const autoHint = getProjectFollowUpHint(project, lastContactedAt, now)
+  if (manual === 'off') return null
+  if (manual === 'on') {
+    return autoHint ?? { urgency: 'warn', reason: 'Manually flagged for follow-up' }
+  }
+  return autoHint
+}
+
 export function followUpAccentColor(urgency: FollowUpUrgency): string {
   if (urgency === 'urgent') return 'var(--follow-up-urgent)'
   if (urgency === 'warn') return 'var(--follow-up-warn)'

@@ -64,6 +64,8 @@ export interface Touchpoint {
   createdAt: number
 }
 
+export type FollowUpManual = 'on' | 'off' | null
+
 export interface Project {
   id: string
   contactId: string
@@ -72,6 +74,7 @@ export interface Project {
   valueCents: number | null
   closedAt: number | null
   stageChangedAt: number | null
+  followUpManual: FollowUpManual
   createdAt: number
   updatedAt: number
 }
@@ -114,9 +117,11 @@ export interface TagEntity {
 
 export interface SearchResult {
   id: string
-  type: 'contact' | 'doc' | 'note' | 'project' | 'todo'
+  type: 'contact' | 'doc' | 'note' | 'project' | 'todo' | 'library' | 'atom'
   title: string
   snippet: string
+  /** For 'atom' results: the parent meeting id, used to navigate/expand the right group */
+  parentId?: string
 }
 
 export type AtomKind = 'insight' | 'quote' | 'action' | 'frame'
@@ -142,6 +147,36 @@ export interface Atom {
 
 export type CorpusDocType = 'newsletter' | 'outline'
 
+export type LibraryMediaType = 'image' | 'video' | 'carousel' | 'link' | 'quote' | 'page'
+
+export interface LibraryItem {
+  id: string
+  source: string
+  url: string
+  title: string
+  caption: string
+  mediaType: LibraryMediaType
+  thumbnailPath: string | null
+  mediaPaths: string[]
+  mediaUrls?: string[]
+  thumbnailUrl?: string | null
+  tags: string[]
+  createdAt: number
+  updatedAt: number
+}
+
+export interface SaveLibraryPayload {
+  url: string
+  title?: string
+  caption?: string
+  source?: string
+  mediaType?: LibraryMediaType
+  imageUrls?: string[]
+  videoUrl?: string
+  tags?: string[]
+  selection?: string
+}
+
 export interface CreateDocFromAtomsInput {
   atomIds: string[]
   mode: 'new' | 'append'
@@ -151,7 +186,7 @@ export interface CreateDocFromAtomsInput {
   generateWithGemini?: boolean
 }
 
-export type PageId = 'todo' | 'people' | 'create' | 'corpus'
+export type PageId = 'todo' | 'people' | 'create' | 'library'
 
 export interface BreadcrumbEntry {
   label: string

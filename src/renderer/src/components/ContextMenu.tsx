@@ -8,6 +8,8 @@ export interface ContextMenuItem {
   onClick: () => void
   danger?: boolean
   icon?: React.ReactNode
+  /** When set, renders this item as a checkbox instead of a plain action row. */
+  checked?: boolean
 }
 
 interface ContextMenuProps {
@@ -95,7 +97,29 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps): React.J
           onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--border)' }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
         >
-          {item.icon}
+          {item.checked !== undefined ? (
+            <span
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: 4,
+                border: item.checked ? 'none' : '1.5px solid var(--text-muted)',
+                background: item.checked ? 'var(--accent)' : 'transparent',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              {item.checked && (
+                <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                  <path d="M1 3.5L3.2 5.7L8 1" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </span>
+          ) : (
+            item.icon
+          )}
           {item.label}
         </button>
       ))}

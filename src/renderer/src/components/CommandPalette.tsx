@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { User, FileText, StickyNote, Search, CheckSquare, Hash } from 'lucide-react'
+import { User, FileText, StickyNote, Search, CheckSquare, Hash, Image, Quote } from 'lucide-react'
 import { useUIStore } from '../store/ui'
 import type { Doc, SearchResult, Tag, TagEntity } from '@shared/types'
 import { openDoc } from '../utils/openDoc'
@@ -10,7 +10,9 @@ const typeIcons = {
   doc: FileText,
   note: StickyNote,
   project: FileText,
-  todo: CheckSquare
+  todo: CheckSquare,
+  library: Image,
+  atom: Quote
 } as const
 
 const typeLabels = {
@@ -18,7 +20,9 @@ const typeLabels = {
   doc: 'Doc',
   note: 'Note',
   project: 'Project',
-  todo: 'To-Do'
+  todo: 'To-Do',
+  library: 'Mindspace',
+  atom: 'Extraction'
 } as const
 
 const entityIcons = {
@@ -45,6 +49,11 @@ export function CommandPalette(): React.JSX.Element | null {
   const setActiveDocId = useUIStore((s) => s.setActiveDocId)
   const setDocsView = useUIStore((s) => s.setDocsView)
   const setActiveNoteId = useUIStore((s) => s.setActiveNoteId)
+  const setCRMView = useUIStore((s) => s.setCRMView)
+  const setActiveProjectId = useUIStore((s) => s.setActiveProjectId)
+  const setLibraryView = useUIStore((s) => s.setLibraryView)
+  const setLibraryFocusItemId = useUIStore((s) => s.setLibraryFocusItemId)
+  const setExtractionsFocus = useUIStore((s) => s.setExtractionsFocus)
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
@@ -151,13 +160,39 @@ export function CommandPalette(): React.JSX.Element | null {
           break
         case 'project':
           setPage('people')
+          setCRMView('projects')
+          setActiveProjectId(result.id)
           break
         case 'todo':
           setPage('todo')
           break
+        case 'library':
+          setPage('library')
+          setLibraryView('mindspace')
+          setLibraryFocusItemId(result.id)
+          break
+        case 'atom':
+          setPage('library')
+          setLibraryView('extractions')
+          if (result.parentId) {
+            setExtractionsFocus({ meetingId: result.parentId, atomId: result.id })
+          }
+          break
       }
     },
-    [setOpen, setPage, setActiveContactId, setActiveDocId, setDocsView, setActiveNoteId]
+    [
+      setOpen,
+      setPage,
+      setActiveContactId,
+      setActiveDocId,
+      setDocsView,
+      setActiveNoteId,
+      setCRMView,
+      setActiveProjectId,
+      setLibraryView,
+      setLibraryFocusItemId,
+      setExtractionsFocus
+    ]
   )
 
   const openEntity = useCallback(
@@ -287,7 +322,7 @@ export function CommandPalette(): React.JSX.Element | null {
               <input
                 ref={inputRef}
                 type="text"
-                placeholder={selectedTag ? `Tagged “${selectedTag}”` : 'Search… or type #tag'}
+                placeholder={selectedTag ? `Tagged "${selectedTag}"` : 'Search or type #tag'}
                 value={query}
                 onChange={(e) => {
                   setQuery(e.target.value)

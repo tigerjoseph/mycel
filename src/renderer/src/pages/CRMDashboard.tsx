@@ -153,7 +153,7 @@ export function CRMDashboard(): React.JSX.Element {
 
       {/* Follow Up */}
       <motion.button
-        onClick={() => setCRMView('followups')}
+        onClick={() => setCRMView('contacts')}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ ...spring, delay: 0.05 }}

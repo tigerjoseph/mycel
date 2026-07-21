@@ -33,7 +33,7 @@ export function parseDollarToCents(raw: string): number | null {
   return Math.round(dollars * 100)
 }
 
-export const PIPELINE_STAGES = ['Lead', 'Active', 'Closing'] as const
+export const PIPELINE_STAGES = ['Lead', 'Active'] as const
 export const CLOSED_WON_STAGE = 'Won'
 
 export type RevenuePeriod = 'month' | 'ytd' | 'year' | 'total'

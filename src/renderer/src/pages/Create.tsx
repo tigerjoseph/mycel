@@ -1,95 +1,27 @@
-import { motion } from 'motion/react'
-import { FileText, StickyNote } from 'lucide-react'
-import { spring } from '../styles/animation'
+import { AnimatePresence, motion } from 'motion/react'
 import { useUIStore } from '../store/ui'
+import { pageEnter } from '../styles/animation'
 import { Docs } from './Docs'
 import { Notes } from './Notes'
 
-const CREATE_TABS = [
-  { id: 'docs' as const, label: 'Docs', icon: FileText },
-  { id: 'notes' as const, label: 'Notes', icon: StickyNote }
-]
-
 export function Create(): React.JSX.Element {
   const activeCreateView = useUIStore((s) => s.createView)
-  const setCreateView = useUIStore((s) => s.setCreateView)
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div
-        style={{
-          maxWidth: 680,
-          margin: '0 auto',
-          padding: '32px 24px 0',
-          width: '100%',
-          flexShrink: 0
-        }}
-      >
-        <nav
-          style={{
-            display: 'flex',
-            gap: 4,
-            marginBottom: 28,
-            padding: 4,
-            background: 'var(--surface)',
-            borderRadius: 12,
-            border: '1px solid var(--border)',
-            overflow: 'hidden'
-          }}
-        >
-          {CREATE_TABS.map((tab) => {
-            const isActive = activeCreateView === tab.id
-            const Icon = tab.icon
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setCreateView(tab.id)}
-                style={{
-                  flex: 1,
-                  background: 'none',
-                  border: 'none',
-                  padding: '10px 6px 12px',
-                  cursor: 'pointer',
-                  position: 'relative',
-                  fontSize: 11,
-                  fontFamily: 'var(--font-ui)',
-                  fontWeight: isActive ? 500 : 400,
-                  color: isActive ? 'var(--text)' : 'var(--text-muted)',
-                  transition: 'color 150ms ease',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 4,
-                  borderRadius: 8,
-                  zIndex: 1
-                }}
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId="create-tab-bg"
-                    style={{
-                      position: 'absolute',
-                      top: 2,
-                      right: 2,
-                      bottom: 2,
-                      left: 2,
-                      background: 'var(--bg)',
-                      borderRadius: 7,
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.06)'
-                    }}
-                    transition={spring}
-                  />
-                )}
-                <Icon size={15} style={{ position: 'relative', zIndex: 1 }} />
-                <span style={{ position: 'relative', zIndex: 1 }}>{tab.label}</span>
-              </button>
-            )
-          })}
-        </nav>
-      </div>
-
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 0 }}>
-        {activeCreateView === 'docs' ? <Docs /> : <Notes />}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={activeCreateView}
+            initial={pageEnter.initial}
+            animate={pageEnter.animate}
+            exit={pageEnter.exit}
+            transition={pageEnter.transition}
+            style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}
+          >
+            {activeCreateView === 'docs' ? <Docs /> : <Notes />}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   )

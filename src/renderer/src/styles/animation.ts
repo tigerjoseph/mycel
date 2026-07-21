@@ -8,6 +8,14 @@ export const fadeUp = {
   transition: { type: 'spring' as const, stiffness: 280, damping: 24 }
 }
 
+/** Subtle enter for page / sub-tab switches */
+export const pageEnter = {
+  initial: { opacity: 0, y: 6 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -3 },
+  transition: { duration: 0.18, ease: [0.4, 0, 0.2, 1] as const }
+}
+
 export const fade = {
   initial: { opacity: 0 },
   animate: { opacity: 1 },

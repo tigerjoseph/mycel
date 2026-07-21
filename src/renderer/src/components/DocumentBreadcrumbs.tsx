@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react'
+import { ArrowLeft, ChevronRight } from 'lucide-react'
 
 export interface DocumentBreadcrumbItem {
   label: string
@@ -14,6 +14,11 @@ export function DocumentBreadcrumbs({
   items,
   position = 'overlay'
 }: DocumentBreadcrumbsProps): React.JSX.Element {
+  const backItem = [...items].reverse().find((item) => item.onClick)
+  const currentItem = [...items].reverse().find((item) => !item.onClick)
+
+  if (!backItem && position === 'overlay') return <></>
+
   return (
     <nav
       aria-label="Document location"
@@ -33,86 +38,71 @@ export function DocumentBreadcrumbs({
         display: 'flex',
         alignItems: 'center',
         minWidth: 0,
-        height: 28,
+        height: 30,
         overflow: 'hidden',
         fontSize: 12,
         color: 'var(--text-muted)'
       }}
     >
-      {items.map((item, index) => {
-        const isCurrent = !item.onClick
+      {backItem?.onClick && (
+        <button
+          type="button"
+          onClick={backItem.onClick}
+          aria-label={`Back to ${backItem.label}`}
+          title={`Back to ${backItem.label}`}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            flexShrink: 0,
+            padding: '5px 7px 5px 4px',
+            border: 0,
+            borderRadius: 6,
+            background: 'transparent',
+            color: 'var(--text-muted)',
+            font: 'inherit',
+            cursor: 'pointer',
+            transition: 'color 150ms ease, background 150ms ease'
+          }}
+          onMouseEnter={(event) => {
+            event.currentTarget.style.color = 'var(--text)'
+            event.currentTarget.style.background = 'var(--surface)'
+          }}
+          onMouseLeave={(event) => {
+            event.currentTarget.style.color = 'var(--text-muted)'
+            event.currentTarget.style.background = 'transparent'
+          }}
+        >
+          <ArrowLeft size={14} aria-hidden />
+          <span>Back</span>
+        </button>
+      )}
 
-        return (
-          <div
-            key={`${item.label}-${index}`}
+      {position === 'flow' && currentItem && (
+        <>
+          {backItem && (
+            <ChevronRight
+              size={13}
+              aria-hidden
+              style={{ flexShrink: 0, margin: '0 5px', opacity: 0.55 }}
+            />
+          )}
+          <span
+            aria-current="page"
+            title={currentItem.label}
             style={{
-              display: 'flex',
-              alignItems: 'center',
               minWidth: 0,
-              flexShrink: index === 0 ? 0 : 1
+              maxWidth: 'min(220px, 32vw)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              color: 'var(--text)'
             }}
           >
-            {index > 0 && (
-              <ChevronRight
-                size={13}
-                aria-hidden
-                style={{
-                  flexShrink: 0,
-                  margin: '0 5px',
-                  opacity: 0.55
-                }}
-              />
-            )}
-
-            {item.onClick ? (
-              <button
-                type="button"
-                onClick={item.onClick}
-                title={item.label}
-                style={{
-                  display: 'block',
-                  minWidth: 0,
-                  maxWidth: index === 0 ? 72 : 'min(220px, 32vw)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  padding: '4px 2px',
-                  border: 0,
-                  background: 'transparent',
-                  color: 'var(--text-muted)',
-                  font: 'inherit',
-                  cursor: 'pointer',
-                  transition: 'color 150ms ease'
-                }}
-                onMouseEnter={(event) => {
-                  event.currentTarget.style.color = 'var(--text)'
-                }}
-                onMouseLeave={(event) => {
-                  event.currentTarget.style.color = 'var(--text-muted)'
-                }}
-              >
-                {item.label}
-              </button>
-            ) : (
-              <span
-                aria-current="page"
-                title={item.label}
-                style={{
-                  display: 'block',
-                  minWidth: 0,
-                  maxWidth: 'min(220px, 32vw)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  color: isCurrent ? 'var(--text)' : 'var(--text-muted)'
-                }}
-              >
-                {item.label}
-              </span>
-            )}
-          </div>
-        )
-      })}
+            {currentItem.label}
+          </span>
+        </>
+      )}
     </nav>
   )
 }

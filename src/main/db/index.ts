@@ -76,6 +76,12 @@ export async function initDb(): Promise<void> {
     // column already exists
   }
 
+  try {
+    await db.execute('ALTER TABLE projects ADD COLUMN follow_up_manual TEXT')
+  } catch {
+    // column already exists
+  }
+
   await db.execute(
     `UPDATE projects SET closed_at = updated_at
      WHERE stage = 'Won' AND closed_at IS NULL`
@@ -85,6 +91,8 @@ export async function initDb(): Promise<void> {
     `UPDATE projects SET stage_changed_at = updated_at
      WHERE stage_changed_at IS NULL`
   )
+
+  await db.execute(`UPDATE projects SET stage = 'Active' WHERE stage = 'Closing'`)
 
   await backfillNotePreviews(db)
 }

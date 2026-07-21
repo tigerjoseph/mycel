@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS projects (
   value_cents INTEGER,
   closed_at INTEGER,
   stage_changed_at INTEGER,
+  follow_up_manual TEXT,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -133,4 +134,20 @@ CREATE TABLE IF NOT EXISTS doc_attachments (
   atom_id TEXT NOT NULL,
   created_at INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS library_items (
+  id TEXT PRIMARY KEY,
+  source TEXT NOT NULL DEFAULT 'web',
+  url TEXT NOT NULL,
+  title TEXT NOT NULL DEFAULT '',
+  caption TEXT NOT NULL DEFAULT '',
+  media_type TEXT NOT NULL DEFAULT 'link',
+  thumbnail_path TEXT,
+  media_paths TEXT NOT NULL DEFAULT '[]',
+  tags TEXT NOT NULL DEFAULT '[]',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_library_items_created ON library_items (created_at DESC);
 `

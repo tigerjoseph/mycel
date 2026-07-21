@@ -6,6 +6,7 @@ directories:
   buildResources: build
 
 files:
+  - extension/**
   - '!**/.vscode/*'
   - '!src/*'
   - '!electron.vite.config.{js,ts,mjs,cjs}'
@@ -15,6 +16,7 @@ files:
 
 asarUnpack:
   - resources/**
+  - extension/**
 
 mac:
   category: public.app-category.productivity

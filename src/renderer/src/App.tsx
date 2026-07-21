@@ -14,14 +14,15 @@ import { useKeyboard } from './hooks/useKeyboard'
 import { useProjectStageNudge } from './hooks/useProjectStageNudge'
 import type { PageId } from '@shared/types'
 import { applyAppearanceToDocument } from '@shared/appearance'
+import { pageEnter } from './styles/animation'
 
-const VALID_PAGES = new Set<PageId>(['todo', 'people', 'create', 'corpus'])
+const VALID_PAGES = new Set<PageId>(['todo', 'people', 'create', 'library'])
 
 const PAGE_COMPONENTS: Record<PageId, () => React.JSX.Element> = {
   todo: Todo,
   people: CRM,
   create: Create,
-  corpus: Corpus
+  library: Corpus
 }
 
 async function loadAppearance(): Promise<void> {
@@ -52,9 +53,10 @@ function App(): React.JSX.Element {
   // Restore last tab on mount
   useEffect(() => {
     window.mycel.getSettings().then((s) => {
-      const lastPage = s.lastPage as PageId | undefined
-      if (lastPage && VALID_PAGES.has(lastPage)) {
-        setPage(lastPage)
+      const lastPage = s.lastPage as PageId | 'corpus' | undefined
+      const page = lastPage === 'corpus' ? 'library' : lastPage
+      if (page && VALID_PAGES.has(page)) {
+        setPage(page)
       }
     }).catch(() => {})
   }, [setPage])
@@ -102,21 +104,25 @@ function App(): React.JSX.Element {
     <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg)' }}>
       <TopNav />
       <main style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-        {(() => {
-          const Page = PAGE_COMPONENTS[activePage]
-          return (
-            <div
-              key={activePage}
-              style={{
-                position: 'absolute',
-                inset: 0,
-                overflow: 'auto'
-              }}
-            >
-              <Page />
-            </div>
-          )
-        })()}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={activePage}
+            initial={pageEnter.initial}
+            animate={pageEnter.animate}
+            exit={pageEnter.exit}
+            transition={pageEnter.transition}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              overflow: 'auto'
+            }}
+          >
+            {(() => {
+              const Page = PAGE_COMPONENTS[activePage]
+              return <Page />
+            })()}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* Global overlays */}

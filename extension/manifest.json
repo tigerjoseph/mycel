@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "Mycel Saver",
+  "version": "1.0.0",
+  "description": "Save posts, images, and pages to Mycel — distraction-free.",
+  "permissions": ["storage", "activeTab", "contextMenus"],
+  "host_permissions": [
+    "http://127.0.0.1:17321/*",
+    "https://www.instagram.com/*",
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Save to Mycel",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.instagram.com/*"],
+      "js": ["instagram.js"],
+      "css": ["instagram.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "exclude_matches": ["https://www.instagram.com/*"],
+      "js": ["page.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "save-page": {
+      "suggested_key": { "default": "Ctrl+Shift+S", "mac": "Command+Shift+S" },
+      "description": "Save current page to Mycel"
+    }
+  }
+}

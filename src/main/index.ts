@@ -1,8 +1,11 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { loadProjectEnvEarly, loadProjectEnvUserData } from './loadEnv'
+import { registerLibraryMediaScheme, setupLibraryMediaProtocol } from './library/mediaProtocol'
+import { startLibraryServer, stopLibraryServer } from './library/server'
 
 loadProjectEnvEarly()
+registerLibraryMediaScheme()
 
 // Dev builds resolve to the same userData folder as the shipped app on case-insensitive
 // volumes (mycel ↔ Mycel). Use a separate folder so npm run dev never touches real data.
@@ -73,7 +76,9 @@ app.whenReady().then(async () => {
 
   setApplicationMenu()
   await initDb()
+  setupLibraryMediaProtocol()
   registerHandlers()
+  await startLibraryServer()
   if (await isGcalConnected()) {
     void syncCalendarContacts().catch(() => {})
   }
@@ -89,6 +94,10 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('will-quit', () => {
+  stopLibraryServer()
 })
 
 // Settings opens as in-app modal (works in fullscreen; child windows do not)
