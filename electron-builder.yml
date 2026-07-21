@@ -6,7 +6,6 @@ directories:
   buildResources: build
 
 files:
-  - extension/**
   - '!**/.vscode/*'
   - '!src/*'
   - '!electron.vite.config.{js,ts,mjs,cjs}'
