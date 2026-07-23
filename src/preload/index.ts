@@ -32,6 +32,12 @@ const mycelAPI = {
   upsertNote: (n: unknown): Promise<unknown> => ipcRenderer.invoke('notes:upsert', n),
   deleteNote: (id: string): Promise<void> => ipcRenderer.invoke('notes:delete', id),
 
+  // Content scripts (short-form video)
+  getContentScripts: (): Promise<unknown[]> => ipcRenderer.invoke('contentScripts:getAll'),
+  getContentScript: (id: string): Promise<unknown> => ipcRenderer.invoke('contentScripts:get', id),
+  upsertContentScript: (s: unknown): Promise<unknown> => ipcRenderer.invoke('contentScripts:upsert', s),
+  deleteContentScript: (id: string): Promise<void> => ipcRenderer.invoke('contentScripts:delete', id),
+
   // Links
   getLinks: (entityId: string): Promise<unknown[]> => ipcRenderer.invoke('links:get', entityId),
   upsertLink: (l: unknown): Promise<void> => ipcRenderer.invoke('links:upsert', l),

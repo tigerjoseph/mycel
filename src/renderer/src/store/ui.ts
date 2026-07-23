@@ -22,7 +22,7 @@ interface UIStore {
   activeNoteId: string | null
 
   // Create sub-view (keep-alive; used for save flush)
-  createView: 'docs' | 'notes'
+  createView: 'docs' | 'notes' | 'content'
 
   // Library sub-views
   libraryView: 'extractions' | 'mindspace'
@@ -53,7 +53,7 @@ interface UIStore {
   setActiveFolderId: (id: string | null) => void
   setDocsView: (view: 'home' | 'favorites' | 'list' | 'editor' | 'grid') => void
   setActiveNoteId: (id: string | null) => void
-  setCreateView: (view: 'docs' | 'notes') => void
+  setCreateView: (view: 'docs' | 'notes' | 'content') => void
   setLibraryView: (view: 'extractions' | 'mindspace') => void
   setLibraryFocusItemId: (id: string | null) => void
   setExtractionsFocus: (focus: { meetingId: string; atomId: string } | null) => void

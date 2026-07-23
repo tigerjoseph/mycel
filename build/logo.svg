@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="sphereBody" cx="36%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="30%" stop-color="#FAFAF8"/>
+      <stop offset="58%" stop-color="#ECE9E5"/>
+      <stop offset="82%" stop-color="#D8D4CE"/>
+      <stop offset="100%" stop-color="#BFBAB3"/>
+    </radialGradient>
+    <radialGradient id="sphereShade" cx="60%" cy="72%" r="50%">
+      <stop offset="50%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.16"/>
+    </radialGradient>
+    <radialGradient id="sphereRim" cx="50%" cy="50%" r="50%">
+      <stop offset="84%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.09"/>
+    </radialGradient>
+    <radialGradient id="specular" cx="28%" cy="22%" r="20%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="1"/>
+      <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="cavityAo" cx="50%" cy="52%" r="42%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.2"/>
+      <stop offset="70%" stop-color="#000000" stop-opacity="0.07"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="mFloor" x1="38%" y1="8%" x2="62%" y2="100%">
+      <stop offset="0%" stop-color="#222220"/>
+      <stop offset="50%" stop-color="#0E0E0D"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </linearGradient>
+
+    <clipPath id="ball">
+      <circle cx="512" cy="512" r="420"/>
+    </clipPath>
+    <clipPath id="shadeHalf">
+      <rect x="0" y="510" width="1024" height="514"/>
+    </clipPath>
+
+    <path
+      id="mShape"
+      d="M 292 640 L 292 384 L 412 384 L 512 560 L 612 384 L 732 384 L 732 640 L 632 640 L 632 500 L 552 640 L 472 640 L 392 500 L 392 640 Z"
+    />
+  </defs>
+
+  <circle cx="512" cy="512" r="420" fill="url(#sphereBody)"/>
+  <circle cx="512" cy="512" r="420" fill="url(#sphereShade)"/>
+  <circle cx="512" cy="512" r="420" fill="url(#sphereRim)"/>
+  <circle cx="512" cy="512" r="420" fill="url(#specular)"/>
+
+  <g clip-path="url(#ball)">
+    <!-- Ambient occlusion where sphere is carved -->
+    <ellipse cx="512" cy="522" rx="228" ry="198" fill="url(#cavityAo)"/>
+
+    <!-- Shadow cast down-right (light from top-left) -->
+    <use href="#mShape" fill="#000000" opacity="0.16" transform="translate(3, 5)"/>
+
+    <!-- Bevel highlight: white layer peeking from top-left edge -->
+    <use href="#mShape" fill="#FFFFFF" opacity="0.38" transform="translate(-2.5, -3.5)"/>
+
+    <!-- Solid M -->
+    <use href="#mShape" fill="url(#mFloor)"/>
+
+    <!-- Darken groove floor toward bottom -->
+    <use href="#mShape" fill="#000000" opacity="0.28" clip-path="url(#shadeHalf)"/>
+
+    <!-- Crisp upper lip catch light -->
+    <use
+      href="#mShape"
+      fill="none"
+      stroke="#FFFFFF"
+      stroke-width="3"
+      stroke-linejoin="round"
+      opacity="0.35"
+      transform="translate(-1, -2)"
+    />
+  </g>
+</svg>

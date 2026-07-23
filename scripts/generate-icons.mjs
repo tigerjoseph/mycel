@@ -10,7 +10,7 @@ const require = createRequire(import.meta.url)
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = join(__dirname, '..')
 
-const source = process.argv[2] || join(root, 'src/renderer/src/assets/app-icon.png')
+const source = process.argv[2] || join(root, 'extension/logo.svg')
 const iconsetDir = join(root, 'build/icon.iconset')
 const output = join(root, 'build/icon.icns')
 

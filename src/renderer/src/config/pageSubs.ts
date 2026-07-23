@@ -1,7 +1,7 @@
 import type { PageId } from '@shared/types'
 
 export type PeopleSubView = 'projects' | 'contacts'
-export type CreateSubView = 'docs' | 'notes'
+export type CreateSubView = 'docs' | 'notes' | 'content'
 export type LibrarySubView = 'extractions' | 'mindspace'
 
 export interface PageSubTab {
@@ -16,7 +16,8 @@ export const PAGE_SUBS: Partial<Record<PageId, PageSubTab[]>> = {
   ],
   create: [
     { id: 'docs', label: 'Docs' },
-    { id: 'notes', label: 'Notes' }
+    { id: 'notes', label: 'Notes' },
+    { id: 'content', label: 'Content' }
   ],
   library: [
     { id: 'extractions', label: 'Extractions' },
@@ -44,10 +45,6 @@ export function shouldShowPageSubs(state: {
 }): boolean {
   const subs = PAGE_SUBS[state.activePage]
   if (!subs) return false
-
-  if (state.activePage === 'people' && (state.activeContactId || state.activeProjectId)) {
-    return false
-  }
 
   if (
     state.activePage === 'create' &&

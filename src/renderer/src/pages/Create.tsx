@@ -3,6 +3,7 @@ import { useUIStore } from '../store/ui'
 import { pageEnter } from '../styles/animation'
 import { Docs } from './Docs'
 import { Notes } from './Notes'
+import { ContentTracking } from './ContentTracking'
 
 export function Create(): React.JSX.Element {
   const activeCreateView = useUIStore((s) => s.createView)
@@ -19,7 +20,7 @@ export function Create(): React.JSX.Element {
             transition={pageEnter.transition}
             style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}
           >
-            {activeCreateView === 'docs' ? <Docs /> : <Notes />}
+            {activeCreateView === 'docs' ? <Docs /> : activeCreateView === 'content' ? <ContentTracking /> : <Notes />}
           </motion.div>
         </AnimatePresence>
       </div>

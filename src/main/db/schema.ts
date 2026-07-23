@@ -150,4 +150,17 @@ CREATE TABLE IF NOT EXISTS library_items (
 );
 
 CREATE INDEX IF NOT EXISTS idx_library_items_created ON library_items (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS content_scripts (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL DEFAULT '',
+  body TEXT NOT NULL DEFAULT '',
+  stage TEXT NOT NULL DEFAULT 'Pre-production',
+  position INTEGER NOT NULL DEFAULT 0,
+  project_id TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_content_scripts_stage ON content_scripts (stage, position);
 `

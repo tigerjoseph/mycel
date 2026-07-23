@@ -33,6 +33,12 @@ declare global {
       upsertNote(n: unknown): Promise<import('@shared/types').Note>
       deleteNote(id: string): Promise<void>
 
+      // Content scripts
+      getContentScripts(): Promise<import('@shared/types').ContentScript[]>
+      getContentScript(id: string): Promise<import('@shared/types').ContentScript | null>
+      upsertContentScript(s: unknown): Promise<import('@shared/types').ContentScript>
+      deleteContentScript(id: string): Promise<void>
+
       // Links
       getLinks(entityId: string): Promise<import('@shared/types').Link[]>
       upsertLink(l: unknown): Promise<void>

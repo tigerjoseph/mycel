@@ -94,6 +94,18 @@ export async function initDb(): Promise<void> {
 
   await db.execute(`UPDATE projects SET stage = 'Active' WHERE stage = 'Closing'`)
 
+  await db.execute(
+    `UPDATE content_scripts SET stage = 'Pre-production' WHERE stage IN ('To prep', 'Pre-production')`
+  )
+  await db.execute(
+    `UPDATE content_scripts SET stage = 'Production' WHERE stage IN ('Shooting', 'In Editing')`
+  )
+  await db.execute(`UPDATE content_scripts SET stage = 'Done' WHERE stage = 'Done'`)
+  await db.execute(
+    `UPDATE content_scripts SET stage = 'Pre-production'
+     WHERE stage NOT IN ('Pre-production', 'Production', 'Done')`
+  )
+
   await backfillNotePreviews(db)
 }
 

@@ -27,6 +27,9 @@ export default function TopNav(): React.JSX.Element {
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen)
   const activeCRMView = useUIStore((s) => s.activeCRMView)
   const setCRMView = useUIStore((s) => s.setCRMView)
+  const setActiveContactId = useUIStore((s) => s.setActiveContactId)
+  const setActiveProjectId = useUIStore((s) => s.setActiveProjectId)
+  const clearBreadcrumbs = useUIStore((s) => s.clearBreadcrumbs)
   const createView = useUIStore((s) => s.createView)
   const setCreateView = useUIStore((s) => s.setCreateView)
   const libraryView = useUIStore((s) => s.libraryView)
@@ -46,8 +49,12 @@ export default function TopNav(): React.JSX.Element {
   const activeSubId = getActiveSubId(activePage, { activeCRMView, createView, libraryView })
 
   function setSubTab(id: string): void {
-    if (activePage === 'people') setCRMView(id as PeopleSubView)
-    else if (activePage === 'create') setCreateView(id as CreateSubView)
+    if (activePage === 'people') {
+      setActiveContactId(null)
+      setActiveProjectId(null)
+      clearBreadcrumbs()
+      setCRMView(id as PeopleSubView)
+    } else if (activePage === 'create') setCreateView(id as CreateSubView)
     else if (activePage === 'library') setLibraryView(id as LibrarySubView)
   }
 

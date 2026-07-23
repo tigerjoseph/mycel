@@ -42,3 +42,14 @@ Saved items show up immediately in Mycel under **Library → Mindspace**.
 | `background.js` | Service worker — owns the token, talks to `127.0.0.1:17321`, context menus, shortcut handling |
 | `instagram.js` / `instagram.css` | Content script that injects the **+ Mycel** hover button on Instagram posts |
 | `popup.html` / `popup.js` | Toolbar popup — connection status + "Save this tab" |
+| `logo.svg` / `logo.png` | Brand mark (Motorola-style M + mycelium network) |
+| `icons/` | PNG toolbar icons (regenerate with `node scripts/generate-extension-icons.mjs`) |
+
+Regenerate the app dock icon and extension icons from the same source:
+
+```bash
+node scripts/render-app-icon.mjs          # app-icon.png + build/icon.icns
+node scripts/generate-extension-icons.mjs # extension/icons/*.png
+```
+
+Source of truth: `extension/logo.svg`

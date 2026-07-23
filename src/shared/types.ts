@@ -96,6 +96,17 @@ export interface Todo {
   createdAt: number
 }
 
+export interface ContentScript {
+  id: string
+  title: string
+  body: string
+  stage: string
+  position: number
+  projectId: string | null
+  createdAt: number
+  updatedAt: number
+}
+
 export interface Attachment {
   id: string
   projectId: string
