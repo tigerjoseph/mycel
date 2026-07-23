@@ -68,7 +68,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps): React.J
         padding: 6,
         minWidth: 160,
         zIndex: 10000,
-        boxShadow: '0 4px 12px rgba(0,0,0,0.12)'
+        boxShadow: 'var(--shadow-md)'
       }}
     >
       {items.map((item) => (

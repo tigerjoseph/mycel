@@ -163,7 +163,7 @@ export function NewProjectDialog({
             border: '1px solid var(--border)',
             borderRadius: 14,
             padding: 20,
-            boxShadow: '0 16px 48px rgba(0,0,0,0.12)'
+            boxShadow: 'var(--shadow-modal)',
           }}
         >
         <h2 style={{

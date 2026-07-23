@@ -54,10 +54,24 @@ export function parseLibraryRow(row: Record<string, unknown>): Record<string, un
     mediaType: row.media_type,
     thumbnailPath: row.thumbnail_path,
     mediaPaths: JSON.parse((row.media_paths as string) || '[]'),
+    embedUrl: (row.embed_url as string) || null,
+    remoteMediaUrls: JSON.parse((row.remote_media_urls as string) || '[]'),
     tags: JSON.parse((row.tags as string) || '[]'),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }
+}
+
+function inferEmbedUrl(url: string, embedUrl?: string): string | null {
+  if (embedUrl?.trim()) return embedUrl.trim()
+  const ig = url.match(/instagram\.com\/(p|reel|reels)\/([^/?#]+)/i)
+  if (ig) {
+    const kind = ig[1].toLowerCase() === 'p' ? 'p' : 'reel'
+    return `https://www.instagram.com/${kind}/${ig[2]}/embed/`
+  }
+  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([^&/?#]+)/i)
+  if (yt) return `https://www.youtube.com/embed/${yt[1]}`
+  return null
 }
 
 export async function saveLibraryItem(payload: SaveLibraryPayload): Promise<Record<string, unknown>> {
@@ -72,6 +86,7 @@ export async function saveLibraryItem(payload: SaveLibraryPayload): Promise<Reco
   const source = inferSource(url, payload.source)
   const tags = inferTags(url, payload.tags, source)
   const mediaPaths: string[] = []
+  const remoteMediaUrls: string[] = []
 
   const imageUrls = (payload.imageUrls ?? []).filter(Boolean)
   for (let i = 0; i < imageUrls.length; i++) {
@@ -82,27 +97,35 @@ export async function saveLibraryItem(payload: SaveLibraryPayload): Promise<Reco
       await downloadToFile(imgUrl, file)
       mediaPaths.push(file)
     } catch {
-      // keep going — partial save beats nothing
+      if (imgUrl.startsWith('http')) remoteMediaUrls.push(imgUrl)
     }
   }
 
-  if (payload.videoUrl?.trim()) {
-    const ext = extFromUrl(payload.videoUrl, '.mp4')
+  const videoUrl = payload.videoUrl?.trim()
+  if (videoUrl && !videoUrl.startsWith('blob:')) {
+    const ext = extFromUrl(videoUrl, '.mp4')
     const file = `${dir}/video${ext}`
     try {
-      await downloadToFile(payload.videoUrl.trim(), file)
+      await downloadToFile(videoUrl, file)
       mediaPaths.push(file)
     } catch {
-      // video CDN URLs often expire; link card still useful
+      remoteMediaUrls.push(videoUrl)
     }
   }
+
+  const embedUrl = inferEmbedUrl(url, payload.embedUrl)
 
   let mediaType = payload.mediaType ?? 'link'
   if (payload.selection?.trim()) mediaType = 'quote'
   else if (mediaPaths.length > 1) mediaType = 'carousel'
   else if (mediaPaths.length === 1) {
-    mediaType = mediaPaths[0].includes('video') || payload.videoUrl ? 'video' : 'image'
-  } else if (!payload.imageUrls?.length && !payload.videoUrl) mediaType = 'page'
+    const path = mediaPaths[0]
+    mediaType = /\.(mp4|webm|mov|m4v)(\?|$)/i.test(path) || videoUrl ? 'video' : 'image'
+  } else if (videoUrl || embedUrl || remoteMediaUrls.some((u) => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u))) {
+    mediaType = 'video'
+  } else if (!imageUrls.length) {
+    mediaType = 'page'
+  }
 
   const caption =
     payload.caption?.trim() ||
@@ -115,8 +138,8 @@ export async function saveLibraryItem(payload: SaveLibraryPayload): Promise<Reco
   const db = getDb()
   await db.execute({
     sql: `INSERT INTO library_items
-      (id, source, url, title, caption, media_type, thumbnail_path, media_paths, tags, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, source, url, title, caption, media_type, thumbnail_path, media_paths, embed_url, remote_media_urls, tags, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
       source,
@@ -126,6 +149,8 @@ export async function saveLibraryItem(payload: SaveLibraryPayload): Promise<Reco
       mediaType,
       thumbnailPath,
       JSON.stringify(mediaPaths),
+      embedUrl,
+      JSON.stringify(remoteMediaUrls),
       JSON.stringify(tags),
       now,
       now

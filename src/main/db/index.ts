@@ -26,6 +26,27 @@ async function backupDatabase(dbPath: string): Promise<void> {
   }
 }
 
+async function backfillLibraryEmbeds(client: Client): Promise<void> {
+  const result = await client.execute(
+    `SELECT id, url, media_type FROM library_items
+     WHERE (embed_url IS NULL OR embed_url = '') AND url LIKE '%instagram.com/%'`
+  )
+  for (const row of result.rows) {
+    const url = row.url as string
+    const ig = url.match(/instagram\.com\/(p|reel|reels)\/([^/?#]+)/i)
+    if (!ig) continue
+    const kind = ig[1].toLowerCase() === 'p' ? 'p' : 'reel'
+    const embed = `https://www.instagram.com/${kind}/${ig[2]}/embed/`
+    const mediaType = row.media_type as string
+    const nextType =
+      mediaType === 'link' || mediaType === 'page' ? 'video' : mediaType
+    await client.execute({
+      sql: 'UPDATE library_items SET embed_url = ?, media_type = ? WHERE id = ?',
+      args: [embed, nextType, row.id as string]
+    })
+  }
+}
+
 async function backfillNotePreviews(client: Client): Promise<void> {
   const result = await client.execute(
     `SELECT id, body FROM notes
@@ -107,6 +128,22 @@ export async function initDb(): Promise<void> {
   )
 
   await backfillNotePreviews(db)
+
+  try {
+    await db.execute('ALTER TABLE library_items ADD COLUMN embed_url TEXT')
+  } catch {
+    // column already exists
+  }
+
+  try {
+    await db.execute(
+      "ALTER TABLE library_items ADD COLUMN remote_media_urls TEXT NOT NULL DEFAULT '[]'"
+    )
+  } catch {
+    // column already exists
+  }
+
+  await backfillLibraryEmbeds(db)
 }
 
 export function getDb(): Client {

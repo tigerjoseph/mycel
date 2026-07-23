@@ -74,7 +74,7 @@ export function CRMDashboard(): React.JSX.Element {
     borderRadius: 16,
     padding: 24,
     background: 'var(--surface)',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03)',
+    boxShadow: 'var(--shadow-card)',
     cursor: 'pointer',
     textAlign: 'left' as const,
     display: 'flex',
@@ -138,7 +138,7 @@ export function CRMDashboard(): React.JSX.Element {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ ...spring, delay: 0 }}
-        whileHover={{ scale: 1.02, y: -2, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+        whileHover={{ scale: 1.02, y: -2, boxShadow: 'var(--shadow-card-hover)' }}
         whileTap={{ scale: 0.98 }}
         style={cardStyle}
       >
@@ -157,7 +157,7 @@ export function CRMDashboard(): React.JSX.Element {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ ...spring, delay: 0.05 }}
-        whileHover={{ scale: 1.02, y: -2, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+        whileHover={{ scale: 1.02, y: -2, boxShadow: 'var(--shadow-card-hover)' }}
         whileTap={{ scale: 0.98 }}
         style={cardStyle}
       >
@@ -193,7 +193,7 @@ export function CRMDashboard(): React.JSX.Element {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ ...spring, delay: 0.1 }}
-        whileHover={{ scale: 1.02, y: -2, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+        whileHover={{ scale: 1.02, y: -2, boxShadow: 'var(--shadow-card-hover)' }}
         whileTap={{ scale: 0.98 }}
         style={cardStyle}
       >
@@ -225,7 +225,7 @@ export function CRMDashboard(): React.JSX.Element {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ ...spring, delay: 0.15 }}
-        whileHover={{ scale: 1.02, y: -2, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+        whileHover={{ scale: 1.02, y: -2, boxShadow: 'var(--shadow-card-hover)' }}
         whileTap={{ scale: 0.98 }}
         style={cardStyle}
       >

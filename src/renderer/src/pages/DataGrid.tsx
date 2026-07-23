@@ -535,7 +535,7 @@ export function DataGrid(): React.JSX.Element {
             borderRadius: 6,
             padding: '4px 0',
             zIndex: 100,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+            boxShadow: 'var(--shadow-md)',
             minWidth: 140
           }}
           onMouseDown={(e) => e.stopPropagation()}

@@ -125,6 +125,7 @@ export function ScriptLightbox({
           justifyContent: 'center',
           padding: 24
         }}
+        data-ui-overlay=""
         onClick={() => { void flushSave().then(onClose) }}
       >
         <motion.div
@@ -142,7 +143,7 @@ export function ScriptLightbox({
             background: 'var(--bg)',
             borderRadius: 12,
             border: '1px solid var(--border)',
-            boxShadow: '0 20px 64px rgba(0,0,0,0.18)',
+            boxShadow: 'var(--shadow-modal)',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',

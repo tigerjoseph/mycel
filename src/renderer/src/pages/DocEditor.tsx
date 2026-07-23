@@ -637,7 +637,7 @@ function DocEditorSurface({
                 padding: 6,
                 minWidth: 180,
                 zIndex: 20,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                boxShadow: 'var(--shadow-md)'
               }}>
                 {doc?.folderId && (
                   <button
@@ -738,7 +738,7 @@ function DocEditorSurface({
                 padding: 6,
                 minWidth: 180,
                 zIndex: 20,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                boxShadow: 'var(--shadow-md)'
               }}>
                 {[
                   { label: 'Version history', icon: History, action: openVersionHistory },
@@ -881,7 +881,7 @@ function DocEditorSurface({
               overflowY: 'auto',
               background: 'var(--surface)',
               borderLeft: '1px solid var(--border)',
-              boxShadow: '-12px 0 32px rgba(0, 0, 0, 0.08)'
+              boxShadow: 'var(--shadow-panel)'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>

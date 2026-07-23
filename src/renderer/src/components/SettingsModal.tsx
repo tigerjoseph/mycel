@@ -55,7 +55,7 @@ export function SettingsModal(): React.JSX.Element {
               background: 'var(--bg)',
               border: '1px solid var(--border)',
               borderRadius: 14,
-              boxShadow: '0 16px 48px rgba(0,0,0,0.12)',
+              boxShadow: 'var(--shadow-modal)',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden'

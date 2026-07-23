@@ -199,7 +199,7 @@ function App(): React.JSX.Element {
               fontWeight: 500,
               zIndex: 201,
               cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+              boxShadow: 'var(--shadow-md)',
               maxWidth: 'min(420px, calc(100vw - 32px))',
               textAlign: 'left'
             }}
@@ -230,7 +230,7 @@ function App(): React.JSX.Element {
               background: 'var(--surface)',
               border: '1px solid var(--border)',
               borderRadius: 10,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+              boxShadow: 'var(--shadow-md)',
               zIndex: 200
             }}
           >

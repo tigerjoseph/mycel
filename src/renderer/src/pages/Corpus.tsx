@@ -384,7 +384,7 @@ export function Corpus(): React.JSX.Element {
               position: 'fixed', bottom: 16, left: '50%', transform: 'translateX(-50%)',
               display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px',
               background: 'var(--text)', color: 'var(--bg)', borderRadius: 10, zIndex: 100,
-              boxShadow: '0 8px 24px rgba(0,0,0,0.15)'
+              boxShadow: 'var(--shadow-lg)',
             }}
           >
             <span style={{ fontSize: 13, fontFamily: 'var(--font-ui)', fontWeight: 500 }}>

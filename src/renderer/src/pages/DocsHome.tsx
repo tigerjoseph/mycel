@@ -228,7 +228,7 @@ export function DocsHome(): React.JSX.Element {
                 padding: 8,
                 minWidth: 240,
                 zIndex: 20,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                boxShadow: 'var(--shadow-md)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 4

@@ -65,10 +65,13 @@
   --text-muted: #9A9189;
   --accent: #3D5A3E;
   --border: rgba(0, 0, 0, 0.07);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-card-hover: 0 6px 16px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.02), 0 4px 16px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.03), 0 12px 32px rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.02), 0 8px 28px rgba(0, 0, 0, 0.05);
+  --shadow-card-hover: 0 2px 8px rgba(0, 0, 0, 0.03), 0 20px 48px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.04), 0 24px 56px rgba(0, 0, 0, 0.09);
+  --shadow-modal: 0 8px 24px rgba(0, 0, 0, 0.05), 0 32px 80px rgba(0, 0, 0, 0.12);
+  --shadow-panel: -8px 0 32px rgba(0, 0, 0, 0.04), -24px 0 64px rgba(0, 0, 0, 0.06);
   --won: #2E7D32;
   --won-bg: rgba(46, 125, 50, 0.1);
   --won-border: rgba(46, 125, 50, 0.28);
@@ -97,10 +100,13 @@
   --text-muted: #6B6560;
   --accent: #6B9E6E;
   --border: rgba(255, 255, 255, 0.07);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45);
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.35);
-  --shadow-card-hover: 0 8px 20px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.18), 0 8px 24px rgba(0, 0, 0, 0.22);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.2), 0 16px 40px rgba(0, 0, 0, 0.28);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.2), 0 12px 36px rgba(0, 0, 0, 0.26);
+  --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.22), 0 24px 56px rgba(0, 0, 0, 0.32);
+  --shadow-lg: 0 6px 20px rgba(0, 0, 0, 0.25), 0 28px 64px rgba(0, 0, 0, 0.35);
+  --shadow-modal: 0 12px 32px rgba(0, 0, 0, 0.3), 0 40px 96px rgba(0, 0, 0, 0.4);
+  --shadow-panel: -8px 0 32px rgba(0, 0, 0, 0.2), -24px 0 72px rgba(0, 0, 0, 0.28);
   --won: #6BBF6E;
   --won-bg: rgba(107, 191, 110, 0.12);
   --won-border: rgba(107, 191, 110, 0.3);
@@ -126,10 +132,13 @@
   --text-muted: #5C5C5C;
   --accent: #000000;
   --border: rgba(0, 0, 0, 0.12);
-  --shadow-sm: 0 1px 0 rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 6px 0 rgba(0, 0, 0, 0.12);
-  --shadow-card: 0 2px 0 rgba(0, 0, 0, 0.1);
-  --shadow-card-hover: 0 4px 0 rgba(0, 0, 0, 0.16);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 6px 20px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.05), 0 16px 36px rgba(0, 0, 0, 0.08);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 10px 32px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 3px 12px rgba(0, 0, 0, 0.05), 0 22px 52px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 4px 14px rgba(0, 0, 0, 0.06), 0 28px 60px rgba(0, 0, 0, 0.11);
+  --shadow-modal: 0 8px 28px rgba(0, 0, 0, 0.07), 0 36px 88px rgba(0, 0, 0, 0.14);
+  --shadow-panel: -8px 0 32px rgba(0, 0, 0, 0.05), -24px 0 68px rgba(0, 0, 0, 0.08);
   --stage-lead: #666666;
   --stage-lead-bg: rgba(102, 102, 102, 0.1);
   --stage-lead-border: rgba(102, 102, 102, 0.25);
@@ -147,10 +156,13 @@
   --text-muted: #8A8A8A;
   --accent: #FFFFFF;
   --border: rgba(255, 255, 255, 0.14);
-  --shadow-sm: 0 1px 0 rgba(255, 255, 255, 0.06);
-  --shadow-md: 0 6px 0 rgba(255, 255, 255, 0.08);
-  --shadow-card: 0 2px 0 rgba(255, 255, 255, 0.08);
-  --shadow-card-hover: 0 4px 0 rgba(255, 255, 255, 0.12);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.38), 0 18px 44px rgba(0, 0, 0, 0.45);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.35), 0 14px 40px rgba(0, 0, 0, 0.42);
+  --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.38), 0 26px 60px rgba(0, 0, 0, 0.48);
+  --shadow-lg: 0 6px 20px rgba(0, 0, 0, 0.4), 0 30px 68px rgba(0, 0, 0, 0.5);
+  --shadow-modal: 0 12px 36px rgba(0, 0, 0, 0.45), 0 44px 100px rgba(0, 0, 0, 0.55);
+  --shadow-panel: -8px 0 36px rgba(0, 0, 0, 0.35), -24px 0 76px rgba(0, 0, 0, 0.42);
   --stage-lead: #8A8A8A;
   --stage-active: #FB923C;
 }
@@ -227,7 +239,35 @@ main {
 /* --- Squishy Buttons -------------------------------------- */
 
 button {
-  transition: transform 80ms ease, color 150ms ease, background 150ms ease, border-color 150ms ease, opacity 150ms ease;
+  transition: transform 80ms ease, color 150ms ease, background 150ms ease, border-color 150ms ease, opacity 150ms ease, box-shadow 180ms ease;
+}
+
+/* Soft elevation for surfaced controls (border + fill) */
+button[style*='border: 1px solid']:not([style*='background: none']):not([style*='background:none']) {
+  box-shadow: var(--shadow-sm);
+}
+
+button[style*='border: 1px solid']:not([style*='background: none']):not([style*='background:none']):hover:not(:disabled) {
+  box-shadow: var(--shadow-md);
+}
+
+button.mycel-elevated,
+.mycel-elevated {
+  box-shadow: var(--shadow-sm);
+}
+
+button.mycel-elevated:hover:not(:disabled),
+.mycel-elevated:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.mycel-card {
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 180ms ease, transform 180ms ease;
+}
+
+.mycel-card:hover {
+  box-shadow: var(--shadow-card-hover);
 }
 
 button:active:not(:disabled) {

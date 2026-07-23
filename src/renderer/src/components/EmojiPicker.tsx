@@ -79,7 +79,7 @@ export function EmojiPicker({ currentIcon, onSelect, children }: EmojiPickerProp
               borderRadius: 12,
               width: 280,
               zIndex: 50,
-              boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+              boxShadow: 'var(--shadow-md)',
               overflow: 'hidden'
             }}
           >

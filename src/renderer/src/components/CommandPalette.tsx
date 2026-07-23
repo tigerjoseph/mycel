@@ -299,7 +299,7 @@ export function CommandPalette(): React.JSX.Element | null {
               maxHeight: 400,
               backgroundColor: 'var(--surface)',
               borderRadius: 12,
-              boxShadow: '0 16px 48px rgba(0, 0, 0, 0.2)',
+              boxShadow: 'var(--shadow-modal)',
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column'

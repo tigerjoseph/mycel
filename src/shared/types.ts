@@ -171,6 +171,8 @@ export interface LibraryItem {
   mediaPaths: string[]
   mediaUrls?: string[]
   thumbnailUrl?: string | null
+  embedUrl?: string | null
+  remoteMediaUrls?: string[]
   tags: string[]
   createdAt: number
   updatedAt: number
@@ -184,6 +186,7 @@ export interface SaveLibraryPayload {
   mediaType?: LibraryMediaType
   imageUrls?: string[]
   videoUrl?: string
+  embedUrl?: string
   tags?: string[]
   selection?: string
 }

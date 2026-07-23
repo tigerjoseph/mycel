@@ -14,7 +14,7 @@
   transform: translateY(4px);
   transition: opacity 150ms ease, transform 150ms ease;
   pointer-events: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), 0 12px 32px rgba(0, 0, 0, 0.2);
 }
 
 article:hover .mycel-save-btn,

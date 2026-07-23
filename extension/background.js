@@ -55,6 +55,12 @@ async function saveToMycel(payload, retried = false) {
 function setupContextMenus() {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
+      id: 'mycel-save-instagram',
+      title: 'Save to Mycel',
+      contexts: ['page', 'link', 'image', 'video'],
+      documentUrlPatterns: ['https://www.instagram.com/*']
+    })
+    chrome.contextMenus.create({
       id: 'mycel-save-image',
       title: 'Save image to Mycel',
       contexts: ['image']
@@ -67,6 +73,8 @@ function setupContextMenus() {
   })
 }
 
+setupContextMenus()
+
 chrome.runtime.onInstalled.addListener(() => {
   setupContextMenus()
 })
@@ -74,6 +82,13 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onStartup.addListener(() => {
   setupContextMenus()
 })
+
+async function saveInstagramPost(tab, extra = {}) {
+  if (!tab?.id) throw new Error('No active tab')
+  const res = await chrome.tabs.sendMessage(tab.id, { type: 'SAVE_INSTAGRAM_POST', ...extra })
+  if (res?.ok) return res
+  throw new Error(res?.error || 'Could not find Instagram post — try hovering the post first')
+}
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'SAVE') {
@@ -124,7 +139,30 @@ chrome.commands.onCommand.addListener((command) => {
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (!tab?.url) return
 
+  if (info.menuItemId === 'mycel-save-instagram') {
+    try {
+      await saveInstagramPost(tab, {
+        linkUrl: info.linkUrl || info.pageUrl,
+        imageUrl: info.srcUrl
+      })
+    } catch (err) {
+      console.error('[Mycel]', err.message)
+    }
+    return
+  }
+
   if (info.menuItemId === 'mycel-save-image' && info.srcUrl) {
+    if (/instagram\.com/i.test(tab.url || '')) {
+      try {
+        await saveInstagramPost(tab, {
+          imageUrl: info.srcUrl,
+          linkUrl: info.linkUrl || info.pageUrl
+        })
+        return
+      } catch {
+        // fall through to raw image save
+      }
+    }
     try {
       await saveToMycel({
         url: info.srcUrl,
@@ -134,7 +172,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         title: tab.title || 'Image'
       })
     } catch (err) {
-      console.error(err)
+      console.error('[Mycel]', err.message)
     }
     return
   }

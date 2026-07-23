@@ -36,7 +36,7 @@ function TagContextMenu({ x, y, tag, onDelete, onClose }: {
         position: 'fixed', left: x, top: y, zIndex: 100,
         background: 'var(--surface)', border: '1px solid var(--border)',
         borderRadius: 8, padding: 4, minWidth: 140,
-        boxShadow: '0 4px 16px rgba(0,0,0,0.1)'
+        boxShadow: 'var(--shadow-md)',
       }}
     >
       <button

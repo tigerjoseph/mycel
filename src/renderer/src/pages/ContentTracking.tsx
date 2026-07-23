@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { FileText, Plus } from 'lucide-react'
+import { FileText, GripVertical, Plus } from 'lucide-react'
 import {
   DndContext,
   closestCenter,
+  PointerSensor,
   useDraggable,
-  useDroppable
+  useDroppable,
+  useSensor,
+  useSensors
 } from '@dnd-kit/core'
 import type { DragEndEvent } from '@dnd-kit/core'
 import { fadeUp } from '../styles/animation'
@@ -36,7 +39,7 @@ function DraggableCard({
         backgroundColor: 'var(--bg)',
         borderRadius: 6,
         border: '1px solid var(--border)',
-        cursor: 'grab',
+        cursor: 'pointer',
         opacity: isDragging ? 0.55 : 1,
         transform: transform
           ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
@@ -46,13 +49,32 @@ function DraggableCard({
         zIndex: isDragging ? 10 : undefined,
         position: isDragging ? 'relative' : undefined
       }}
-      {...listeners}
-      {...attributes}
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, minWidth: 0 }}>
+        <button
+          type="button"
+          aria-label="Drag to reorder"
+          {...listeners}
+          {...attributes}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            flexShrink: 0,
+            marginTop: 1,
+            padding: 0,
+            border: 'none',
+            background: 'transparent',
+            cursor: isDragging ? 'grabbing' : 'grab',
+            color: 'var(--text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            touchAction: 'none'
+          }}
+        >
+          <GripVertical size={12} />
+        </button>
         <FileText size={13} style={{ flexShrink: 0, marginTop: 1, color: 'var(--text-muted)' }} />
         <span
           style={{
@@ -180,6 +202,9 @@ export function ContentTracking(): React.JSX.Element {
   const [scripts, setScripts] = useState<ContentScript[]>([])
   const [loading, setLoading] = useState(true)
   const [openScript, setOpenScript] = useState<ContentScript | null>(null)
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  )
 
   const load = useCallback(async () => {
     try {
@@ -301,7 +326,7 @@ export function ContentTracking(): React.JSX.Element {
         </div>
 
         <div style={{ display: 'flex', gap: 8, flex: 1, minHeight: 0, overflowX: 'auto', paddingBottom: 8 }}>
-          <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             {CONTENT_STAGES.map((stage) => (
               <DroppableColumn
                 key={stage}

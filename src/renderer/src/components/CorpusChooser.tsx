@@ -97,7 +97,7 @@ export function CorpusChooser({
           width: 'min(420px, calc(100vw - 32px))',
           background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: 14, padding: 20, zIndex: 201,
-          boxShadow: '0 16px 48px rgba(0,0,0,0.12)'
+          boxShadow: 'var(--shadow-modal)',
         }}
       >
         <h2 style={{

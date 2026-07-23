@@ -7,7 +7,27 @@ function bestImage(article) {
 
 function videoUrl(article) {
   const video = article.querySelector('video')
-  return video?.src || video?.querySelector('source')?.src || null
+  const src = video?.src || video?.querySelector('source')?.src
+  if (src && src.startsWith('http') && !src.startsWith('blob:')) return src
+  return null
+}
+
+function videoPoster(article) {
+  const video = article.querySelector('video')
+  const poster = video?.getAttribute('poster')
+  if (poster && poster.startsWith('http')) return poster
+  return null
+}
+
+function hasVideo(article) {
+  return Boolean(article.querySelector('video'))
+}
+
+function embedUrlFromPost(url) {
+  const match = url.match(/instagram\.com\/(p|reel|reels)\/([^/?#]+)/i)
+  if (!match) return null
+  const kind = match[1].toLowerCase() === 'p' ? 'p' : 'reel'
+  return `https://www.instagram.com/${kind}/${match[2]}/embed/`
 }
 
 function caption(article) {
@@ -29,15 +49,71 @@ function postUrl(article) {
   return new URL(link.getAttribute('href'), window.location.origin).href
 }
 
+let lastContextArticle = null
+
+document.addEventListener(
+  'contextmenu',
+  (e) => {
+    lastContextArticle = e.target.closest('article')
+  },
+  true
+)
+
+function findArticleFromLink(linkUrl) {
+  if (!linkUrl) return null
+  try {
+    const path = new URL(linkUrl, window.location.origin).pathname
+    const match = path.match(/\/(p|reel|reels)\/([^/]+)/)
+    if (!match) return null
+    const id = match[2]
+    for (const article of document.querySelectorAll('article')) {
+      if (article.querySelector(`a[href*="/${id}"]`)) return article
+    }
+  } catch {
+    // ignore
+  }
+  return null
+}
+
+function articleForSave({ linkUrl, imageUrl } = {}) {
+  if (lastContextArticle?.isConnected) return lastContextArticle
+
+  const pageMatch = window.location.pathname.match(/\/(p|reel|reels)\/([^/]+)/)
+  if (pageMatch) {
+    const onPage = document.querySelector('article')
+    if (onPage) return onPage
+  }
+
+  const fromLink = findArticleFromLink(linkUrl || window.location.href)
+  if (fromLink) return fromLink
+  if (imageUrl) {
+    for (const article of document.querySelectorAll('article')) {
+      const imgs = [...article.querySelectorAll('img')]
+      if (imgs.some((img) => img.src === imageUrl || imageUrl.startsWith(img.src.split('?')[0]))) {
+        return article
+      }
+    }
+  }
+  return document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2)?.closest('article') || document.querySelector('article')
+}
+
 function buildPayload(article) {
+  const url = postUrl(article)
+  const images = bestImage(article)
+  const poster = videoPoster(article)
+  if (poster && !images.includes(poster)) images.unshift(poster)
+
   const payload = {
-    url: postUrl(article),
+    url,
     caption: caption(article),
-    imageUrls: bestImage(article),
+    imageUrls: images,
     videoUrl: videoUrl(article),
+    embedUrl: embedUrlFromPost(url),
     source: 'instagram',
     tags: []
   }
+
+  if (hasVideo(article)) payload.mediaType = 'video'
 
   const profile = window.location.pathname.match(/^\/([^/]+)\/?$/)
   if (profile && !['p', 'reel', 'reels', 'stories', 'explore'].includes(profile[1])) {
@@ -103,12 +179,31 @@ const observer = new MutationObserver(() => scan())
 observer.observe(document.body, { childList: true, subtree: true })
 scan()
 
+function saveArticle(article, sendResponse) {
+  if (!article) {
+    sendResponse({ ok: false, error: 'No Instagram post here — right-click on a post in the feed' })
+    return
+  }
+  chrome.runtime.sendMessage({ type: 'SAVE', payload: buildPayload(article) }, (res) => {
+    if (chrome.runtime.lastError) {
+      sendResponse({ ok: false, error: chrome.runtime.lastError.message })
+      return
+    }
+    sendResponse(res)
+  })
+}
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.type === 'SAVE_INSTAGRAM_POST') {
+    saveArticle(articleForSave(msg), sendResponse)
+    return true
+  }
+
   if (msg.type !== 'SAVE_PAGE') return
 
   const article = document.querySelector('article:hover') || document.querySelector('article')
   if (article) {
-    chrome.runtime.sendMessage({ type: 'SAVE', payload: buildPayload(article) }, sendResponse)
+    saveArticle(article, sendResponse)
     return true
   }
 

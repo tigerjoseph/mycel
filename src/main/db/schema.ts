@@ -144,6 +144,8 @@ CREATE TABLE IF NOT EXISTS library_items (
   media_type TEXT NOT NULL DEFAULT 'link',
   thumbnail_path TEXT,
   media_paths TEXT NOT NULL DEFAULT '[]',
+  embed_url TEXT,
+  remote_media_urls TEXT NOT NULL DEFAULT '[]',
   tags TEXT NOT NULL DEFAULT '[]',
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
