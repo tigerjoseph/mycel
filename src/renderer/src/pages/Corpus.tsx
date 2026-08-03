@@ -55,9 +55,9 @@ export function Corpus(): React.JSX.Element {
     setMeetings(m)
     setAtoms(a)
     setExpanded((prev) => {
-      const next = new Set(prev)
-      for (const meeting of m) next.add(meeting.id)
-      return next
+      if (prev.size > 0) return prev
+      if (m.length === 0) return prev
+      return new Set([m[0].id])
     })
   }, [])
 

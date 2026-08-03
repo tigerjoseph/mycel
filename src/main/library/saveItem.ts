@@ -31,16 +31,20 @@ async function downloadToFile(url: string, dest: string): Promise<void> {
 function inferSource(url: string, source?: string): string {
   if (source?.trim()) return source.trim().toLowerCase()
   if (/instagram\.com/i.test(url)) return 'instagram'
+  if (/youtube\.com|youtu\.be/i.test(url)) return 'youtube'
   return 'web'
 }
 
 function inferTags(url: string, tags: string[] | undefined, source: string): string[] {
   const set = new Set((tags ?? []).map((t) => t.trim().toLowerCase()).filter(Boolean))
   if (source === 'instagram') set.add('instagram')
+  if (source === 'youtube') set.add('youtube')
   const profile = url.match(/instagram\.com\/([^/?#]+)/i)
   if (profile && !['p', 'reel', 'reels', 'stories'].includes(profile[1])) {
     set.add(profile[1].toLowerCase())
   }
+  const channel = url.match(/youtube\.com\/@([^/?#]+)/i)
+  if (channel) set.add(channel[1].toLowerCase())
   return [...set]
 }
 

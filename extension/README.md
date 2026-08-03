@@ -22,6 +22,7 @@ Chrome extensions distributed outside the Web Store must be loaded manually in d
 ## Using it
 
 - **Instagram**: open instagram.com, hover any post and click the **+ Mycel** button that appears in the corner. Images, video, caption, and the profile name are captured automatically and tagged.
+- **YouTube**: hover any video thumbnail (home, search, channel, Shorts) and click **+ Mycel**, or use the fixed button on a watch/Shorts page. Title, channel, thumbnail, and embed playback are saved.
 - **Any page**: click the toolbar icon, or press `⌘⇧S` (`Ctrl+Shift+S` on Windows/Linux), to save the current tab.
 - **Images**: right-click any image → **Save image to Mycel**.
 - **Selected text**: select text on any page, right-click → **Save quote to Mycel**.
@@ -40,7 +41,8 @@ Saved items show up immediately in Mycel under **Library → Mindspace**.
 |------|---------|
 | `manifest.json` | Extension manifest (MV3) — permissions, content scripts, commands |
 | `background.js` | Service worker — owns the token, talks to `127.0.0.1:17321`, context menus, shortcut handling |
-| `instagram.js` / `instagram.css` | Content script that injects the **+ Mycel** hover button on Instagram posts |
+| `instagram.js` / `instagram.css` | Content script that injects the **+ Mycel** hover button on Instagram posts and profile grids |
+| `youtube.js` | Content script for YouTube — hover save on video cards + watch/Shorts pages |
 | `popup.html` / `popup.js` | Toolbar popup — connection status + "Save this tab" |
 | `logo.svg` / `logo.png` | Brand mark (Motorola-style M + mycelium network) |
 | `icons/` | PNG toolbar icons (regenerate with `node scripts/generate-extension-icons.mjs`) |

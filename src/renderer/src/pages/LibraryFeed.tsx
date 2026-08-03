@@ -75,11 +75,19 @@ export function LibraryFeed(): React.JSX.Element {
   useEffect(() => {
     const el = viewportRef.current
     if (!el) return
+    let raf = 0
     const ro = new ResizeObserver(([entry]) => {
-      setViewportW(entry.contentRect.width)
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        const w = Math.round(entry.contentRect.width)
+        setViewportW((prev) => (prev === w ? prev : w))
+      })
     })
     ro.observe(el)
-    return () => ro.disconnect()
+    return () => {
+      cancelAnimationFrame(raf)
+      ro.disconnect()
+    }
   }, [])
 
   const allTags = useMemo(() => {
@@ -186,15 +194,9 @@ export function LibraryFeed(): React.JSX.Element {
                 padding: `4px ${FADE}px ${FADE + 24}px`
               }}
             >
-              <AnimatePresence initial={false}>
-                {filtered.map((item) => (
-                  <motion.article
+              {filtered.map((item) => (
+                  <article
                     key={item.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.96 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.96 }}
-                    transition={spring}
                     onClick={() => setSelected(item)}
                     style={{
                       breakInside: 'avoid',
@@ -236,9 +238,8 @@ export function LibraryFeed(): React.JSX.Element {
                         </p>
                       </div>
                     )}
-                  </motion.article>
+                  </article>
                 ))}
-              </AnimatePresence>
             </div>
           </MindspaceCanvas>
           <EdgeFades omni={omni} />
@@ -387,7 +388,8 @@ function EmptyState({
       <ol style={{ margin: '10px 0 0', padding: '0 0 0 18px', fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>
         <li>Keep Mycel open — the extension talks to it on your Mac.</li>
         <li>Install the Mycel browser extension (see Settings → Browser extension).</li>
-        <li>On Instagram, hover a post and click <strong>+ Mycel</strong>.</li>
+        <li>On Instagram, hover a post (feed or profile grid) and click <strong>+ Mycel</strong>.</li>
+        <li>On YouTube, hover a video thumbnail or use <strong>+ Mycel</strong> on a watch page.</li>
       </ol>
       <button
         type="button"
@@ -466,7 +468,7 @@ function PinCardMedia({ item }: { item: LibraryItemView }): React.JSX.Element {
     )
   }
 
-  if (isVideoItem(item) && (item.embedUrl || remoteVideo) && urls.length === 0) {
+  if (isVideoItem(item)) {
     return (
       <div style={{ position: 'relative', aspectRatio: item.embedUrl ? '9 / 16' : aspect, background: '#111' }}>
         {poster && (
@@ -482,38 +484,7 @@ function PinCardMedia({ item }: { item: LibraryItemView }): React.JSX.Element {
     )
   }
 
-  const isVideo = (url: string): boolean => isVideoItem(item) || url.includes('/video')
-  const url = urls[0]
-
-  if (url && isVideo(url)) {
-    return (
-      <div style={{ position: 'relative', aspectRatio: aspect, background: '#111' }}>
-        <video
-          src={url}
-          controls
-          playsInline
-          style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
-          onClick={(e) => e.stopPropagation()}
-        />
-      </div>
-    )
-  }
-
-  if (remoteVideo && urls.length === 0) {
-    return (
-      <div style={{ position: 'relative', aspectRatio: aspect, background: '#111' }}>
-        {poster && (
-          <img
-            src={poster}
-            alt=""
-            style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
-            loading="lazy"
-          />
-        )}
-        <VideoPlayBadge />
-      </div>
-    )
-  }
+  const url = urls[0] || poster
 
   return (
     <div style={{ position: 'relative', aspectRatio: aspect, background: '#111' }}>
@@ -523,7 +494,6 @@ function PinCardMedia({ item }: { item: LibraryItemView }): React.JSX.Element {
         style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
         loading="lazy"
       />
-      {isVideoItem(item) && <VideoPlayBadge />}
       {urls.length > 1 && (
         <span style={{
           position: 'absolute',

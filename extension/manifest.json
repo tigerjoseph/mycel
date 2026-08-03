@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Mycel Saver",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Save posts, images, and pages to Mycel — distraction-free.",
   "icons": {
     "16": "icons/icon-16.png",
@@ -13,6 +13,8 @@
   "host_permissions": [
     "http://127.0.0.1:17321/*",
     "https://www.instagram.com/*",
+    "https://www.youtube.com/*",
+    "https://youtu.be/*",
     "<all_urls>"
   ],
   "background": {
@@ -35,8 +37,18 @@
       "run_at": "document_idle"
     },
     {
+      "matches": ["https://www.youtube.com/*", "https://youtu.be/*"],
+      "js": ["youtube.js"],
+      "css": ["instagram.css"],
+      "run_at": "document_idle"
+    },
+    {
       "matches": ["<all_urls>"],
-      "exclude_matches": ["https://www.instagram.com/*"],
+      "exclude_matches": [
+        "https://www.instagram.com/*",
+        "https://www.youtube.com/*",
+        "https://youtu.be/*"
+      ],
       "js": ["page.js"],
       "run_at": "document_idle"
     }

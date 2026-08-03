@@ -30,6 +30,24 @@ function embedUrlFromPost(url) {
   return `https://www.instagram.com/${kind}/${match[2]}/embed/`
 }
 
+const IG_RESERVED = new Set(['p', 'reel', 'reels', 'stories', 'explore', 'accounts', 'direct', 'tv'])
+
+function profileTagFromPage() {
+  const profile = window.location.pathname.match(/^\/([^/]+)\/?$/)
+  if (profile && !IG_RESERVED.has(profile[1].toLowerCase())) {
+    return profile[1].toLowerCase()
+  }
+  return null
+}
+
+function profileTagFromUrl(url) {
+  const match = url.match(/instagram\.com\/([^/]+)\/(p|reel|reels)\//i)
+  if (match && !IG_RESERVED.has(match[1].toLowerCase())) {
+    return match[1].toLowerCase()
+  }
+  return null
+}
+
 function caption(article) {
   const candidates = [
     ...article.querySelectorAll('h1'),
@@ -69,6 +87,29 @@ function findArticleFromLink(linkUrl) {
     for (const article of document.querySelectorAll('article')) {
       if (article.querySelector(`a[href*="/${id}"]`)) return article
     }
+    // Post dialog / modal may use role=dialog
+    const dialog = document.querySelector('div[role="dialog"]')
+    if (dialog) {
+      const dialogArticle = dialog.querySelector('article')
+      if (dialogArticle?.querySelector(`a[href*="/${id}"]`)) return dialogArticle
+    }
+  } catch {
+    // ignore
+  }
+  return null
+}
+
+function findGridLinkFromUrl(linkUrl) {
+  if (!linkUrl) return null
+  try {
+    const path = new URL(linkUrl, window.location.origin).pathname
+    const match = path.match(/\/(p|reel|reels)\/([^/]+)/)
+    if (!match) return null
+    const id = match[2]
+    for (const link of document.querySelectorAll('a[href*="/p/"], a[href*="/reel/"]')) {
+      if (link.closest('article')) continue
+      if (link.getAttribute('href')?.includes(id)) return link
+    }
   } catch {
     // ignore
   }
@@ -80,7 +121,7 @@ function articleForSave({ linkUrl, imageUrl } = {}) {
 
   const pageMatch = window.location.pathname.match(/\/(p|reel|reels)\/([^/]+)/)
   if (pageMatch) {
-    const onPage = document.querySelector('article')
+    const onPage = document.querySelector('div[role="dialog"] article') || document.querySelector('article')
     if (onPage) return onPage
   }
 
@@ -94,7 +135,7 @@ function articleForSave({ linkUrl, imageUrl } = {}) {
       }
     }
   }
-  return document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2)?.closest('article') || document.querySelector('article')
+  return document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2)?.closest('article') || document.querySelector('div[role="dialog"] article') || document.querySelector('article')
 }
 
 function buildPayload(article) {
@@ -110,15 +151,37 @@ function buildPayload(article) {
     videoUrl: videoUrl(article),
     embedUrl: embedUrlFromPost(url),
     source: 'instagram',
-    tags: []
+    tags: ['instagram']
   }
 
   if (hasVideo(article)) payload.mediaType = 'video'
 
-  const profile = window.location.pathname.match(/^\/([^/]+)\/?$/)
-  if (profile && !['p', 'reel', 'reels', 'stories', 'explore'].includes(profile[1])) {
-    payload.tags.push(profile[1].toLowerCase())
+  const pageTag = profileTagFromPage() || profileTagFromUrl(url)
+  if (pageTag) payload.tags.push(pageTag)
+
+  return payload
+}
+
+function buildPayloadFromLink(link) {
+  const url = new URL(link.getAttribute('href'), window.location.origin).href
+  const images = []
+  const img = link.querySelector('img')
+  if (img?.src && !img.src.startsWith('data:') && img.src.includes('cdninstagram')) {
+    images.push(img.src)
   }
+
+  const payload = {
+    url,
+    caption: '',
+    imageUrls: images,
+    embedUrl: embedUrlFromPost(url),
+    source: 'instagram',
+    tags: ['instagram'],
+    mediaType: images.length ? 'image' : 'page'
+  }
+
+  const pageTag = profileTagFromPage() || profileTagFromUrl(url)
+  if (pageTag) payload.tags.push(pageTag)
 
   return payload
 }
@@ -126,6 +189,7 @@ function buildPayload(article) {
 function attachSaveButton(article) {
   if (article.dataset.mycelBound) return
   article.dataset.mycelBound = '1'
+  article.classList.add('mycel-target')
   article.style.position = 'relative'
 
   const btn = document.createElement('button')
@@ -171,11 +235,89 @@ function attachSaveButton(article) {
   })
 }
 
-function scan() {
-  document.querySelectorAll('article').forEach(attachSaveButton)
+function attachGridSaveButton(link) {
+  if (link.dataset.mycelGridBound) return
+  if (link.closest('article')) return
+  link.dataset.mycelGridBound = '1'
+
+  const container = link.closest('div') || link
+  container.classList.add('mycel-target')
+  if (getComputedStyle(container).position === 'static') {
+    container.style.position = 'relative'
+  }
+
+  const btn = document.createElement('button')
+  btn.type = 'button'
+  btn.className = 'mycel-save-btn'
+  btn.textContent = '+ Mycel'
+  container.appendChild(btn)
+
+  container.addEventListener('mouseenter', () => btn.classList.add('mycel-visible'))
+  container.addEventListener('mouseleave', () => btn.classList.remove('mycel-visible'))
+
+  btn.addEventListener('click', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (btn.classList.contains('mycel-saving')) return
+
+    btn.classList.add('mycel-saving')
+    btn.textContent = 'Saving…'
+
+    const payload = buildPayloadFromLink(link)
+
+    chrome.runtime.sendMessage({ type: 'SAVE', payload }, (res) => {
+      btn.classList.remove('mycel-saving')
+      if (chrome.runtime.lastError) {
+        btn.textContent = 'Open Mycel first'
+        setTimeout(() => { btn.textContent = '+ Mycel' }, 2500)
+        return
+      }
+      if (res?.ok) {
+        btn.classList.add('mycel-saved')
+        btn.textContent = 'Saved ✓'
+        setTimeout(() => {
+          btn.classList.remove('mycel-saved', 'mycel-visible')
+          btn.textContent = '+ Mycel'
+        }, 1600)
+      } else {
+        btn.textContent = res?.error?.slice(0, 28) || 'Failed'
+        setTimeout(() => {
+          btn.textContent = '+ Mycel'
+        }, 2500)
+      }
+    })
+  })
 }
 
-const observer = new MutationObserver(() => scan())
+function scan() {
+  document.querySelectorAll('article').forEach(attachSaveButton)
+  document.querySelectorAll('a[href*="/p/"], a[href*="/reel/"]').forEach(attachGridSaveButton)
+}
+
+function scanAddedNodes(records) {
+  for (const record of records) {
+    for (const node of record.addedNodes) {
+      if (node.nodeType !== Node.ELEMENT_NODE) continue
+      const el = node
+      if (el.matches?.('article')) attachSaveButton(el)
+      el.querySelectorAll?.('article').forEach(attachSaveButton)
+      if (el.matches?.('a[href*="/p/"], a[href*="/reel/"]')) attachGridSaveButton(el)
+      el.querySelectorAll?.('a[href*="/p/"], a[href*="/reel/"]').forEach(attachGridSaveButton)
+    }
+  }
+}
+
+let scanTimer = null
+function scheduleScan(records) {
+  if (records?.length) scanAddedNodes(records)
+  if (scanTimer) return
+  scanTimer = setTimeout(() => {
+    scanTimer = null
+    scan()
+  }, 200)
+}
+
+const observer = new MutationObserver((records) => scheduleScan(records))
 observer.observe(document.body, { childList: true, subtree: true })
 scan()
 
@@ -193,17 +335,50 @@ function saveArticle(article, sendResponse) {
   })
 }
 
+function saveFromLink(link, sendResponse) {
+  if (!link) {
+    sendResponse({ ok: false, error: 'No Instagram post here — try a profile grid post or open the post first' })
+    return
+  }
+  chrome.runtime.sendMessage({ type: 'SAVE', payload: buildPayloadFromLink(link) }, (res) => {
+    if (chrome.runtime.lastError) {
+      sendResponse({ ok: false, error: chrome.runtime.lastError.message })
+      return
+    }
+    sendResponse(res)
+  })
+}
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'SAVE_INSTAGRAM_POST') {
-    saveArticle(articleForSave(msg), sendResponse)
+    const article = articleForSave(msg)
+    if (article) {
+      saveArticle(article, sendResponse)
+      return true
+    }
+    const gridLink = findGridLinkFromUrl(msg.linkUrl || window.location.href)
+    if (gridLink) {
+      saveFromLink(gridLink, sendResponse)
+      return true
+    }
+    saveArticle(null, sendResponse)
     return true
   }
 
   if (msg.type !== 'SAVE_PAGE') return
 
-  const article = document.querySelector('article:hover') || document.querySelector('article')
+  const article = document.querySelector('div[role="dialog"] article:hover') ||
+    document.querySelector('article:hover') ||
+    document.querySelector('div[role="dialog"] article') ||
+    document.querySelector('article')
   if (article) {
     saveArticle(article, sendResponse)
+    return true
+  }
+
+  const gridLink = document.querySelector('a[href*="/p/"]:hover, a[href*="/reel/"]:hover')
+  if (gridLink && !gridLink.closest('article')) {
+    saveFromLink(gridLink, sendResponse)
     return true
   }
 

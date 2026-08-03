@@ -403,7 +403,7 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
           <strong>Mycel must be running</strong> for the extension to save anything. To install: open{' '}
           <code style={{ fontSize: 11 }}>chrome://extensions</code>, enable{' '}
           <strong>Developer mode</strong>, click <strong>Load unpacked</strong>, then pick the extension
-          folder above. On Instagram, hover a post and click <strong>+ Mycel</strong> — or press{' '}
+          folder above. On Instagram, hover a post and click <strong>+ Mycel</strong>. On YouTube, hover a video or use the button on a watch page — or press{' '}
           <kbd style={kbdStyle}>⌘⇧S</kbd> on any page. Full setup steps are in the extension README.
         </Hint>
       </Section>

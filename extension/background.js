@@ -61,6 +61,12 @@ function setupContextMenus() {
       documentUrlPatterns: ['https://www.instagram.com/*']
     })
     chrome.contextMenus.create({
+      id: 'mycel-save-youtube',
+      title: 'Save to Mycel',
+      contexts: ['page', 'link', 'image', 'video'],
+      documentUrlPatterns: ['https://www.youtube.com/*', 'https://youtu.be/*']
+    })
+    chrome.contextMenus.create({
       id: 'mycel-save-image',
       title: 'Save image to Mycel',
       contexts: ['image']
@@ -88,6 +94,13 @@ async function saveInstagramPost(tab, extra = {}) {
   const res = await chrome.tabs.sendMessage(tab.id, { type: 'SAVE_INSTAGRAM_POST', ...extra })
   if (res?.ok) return res
   throw new Error(res?.error || 'Could not find Instagram post — try hovering the post first')
+}
+
+async function saveYouTubeVideo(tab) {
+  if (!tab?.id) throw new Error('No active tab')
+  const res = await chrome.tabs.sendMessage(tab.id, { type: 'SAVE_YOUTUBE_VIDEO' })
+  if (res?.ok) return res
+  throw new Error(res?.error || 'Could not find YouTube video — try hovering a video thumbnail first')
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -145,6 +158,15 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         linkUrl: info.linkUrl || info.pageUrl,
         imageUrl: info.srcUrl
       })
+    } catch (err) {
+      console.error('[Mycel]', err.message)
+    }
+    return
+  }
+
+  if (info.menuItemId === 'mycel-save-youtube') {
+    try {
+      await saveYouTubeVideo(tab)
     } catch (err) {
       console.error('[Mycel]', err.message)
     }

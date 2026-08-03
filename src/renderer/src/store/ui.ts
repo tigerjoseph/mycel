@@ -67,6 +67,9 @@ interface UIStore {
   clearProjectNudge: () => void
 }
 
+let copyFeedbackTimer: ReturnType<typeof setTimeout> | null = null
+let projectNudgeTimer: ReturnType<typeof setTimeout> | null = null
+
 export const useUIStore = create<UIStore>((set) => ({
   activePage: 'todo',
   commandPaletteOpen: false,
@@ -125,17 +128,21 @@ export const useUIStore = create<UIStore>((set) => ({
     settingsOpen: false
   }),
   showCopyFeedback: (message = 'Copied') => {
+    if (copyFeedbackTimer) clearTimeout(copyFeedbackTimer)
     set({ copyFeedback: message })
-    setTimeout(() => {
+    copyFeedbackTimer = setTimeout(() => {
       set((state) => (state.copyFeedback === message ? { copyFeedback: null } : state))
+      copyFeedbackTimer = null
     }, 2000)
   },
   showProjectNudge: (nudge) => {
+    if (projectNudgeTimer) clearTimeout(projectNudgeTimer)
     set({ projectNudge: nudge })
-    setTimeout(() => {
+    projectNudgeTimer = setTimeout(() => {
       set((state) =>
         state.projectNudge?.projectId === nudge.projectId ? { projectNudge: null } : state
       )
+      projectNudgeTimer = null
     }, 10000)
   },
   clearProjectNudge: () => set({ projectNudge: null }),

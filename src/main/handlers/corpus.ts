@@ -111,7 +111,9 @@ async function saveMeetingWithAtoms(
 export function registerCorpusHandlers(): void {
   ipcMain.handle('corpus:getMeetings', async () => {
     const db = getDb()
-    const result = await db.execute('SELECT * FROM meetings ORDER BY created_at DESC')
+    const result = await db.execute(
+      'SELECT id, title, source, source_path, created_at, updated_at FROM meetings ORDER BY created_at DESC'
+    )
     return result.rows.map((row) => parseMeetingRow(row as unknown as Record<string, unknown>))
   })
 

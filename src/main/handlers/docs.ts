@@ -6,7 +6,7 @@ function parseDocRow(row: Record<string, unknown>): Record<string, unknown> {
   return {
     id: row.id,
     title: row.title,
-    body: row.body,
+    body: (row.body as string) ?? '',
     type: row.type,
     folderId: row.folder_id as string | null,
     icon: row.icon,
@@ -41,17 +41,20 @@ function parseDocVersionRow(row: Record<string, unknown>): Record<string, unknow
   }
 }
 
+const DOC_LIST_COLUMNS =
+  'id, title, type, folder_id, icon, cover_image, is_template, is_favorite, favorite_order, tags, created_at, updated_at'
+
 export function registerDocHandlers(): void {
   ipcMain.handle('docs:getAll', async (_e, folderId?: string) => {
     const db = getDb()
     let result
     if (folderId) {
       result = await db.execute({
-        sql: 'SELECT * FROM docs WHERE folder_id = ? ORDER BY updated_at DESC',
+        sql: `SELECT ${DOC_LIST_COLUMNS} FROM docs WHERE folder_id = ? ORDER BY updated_at DESC`,
         args: [folderId]
       })
     } else {
-      result = await db.execute('SELECT * FROM docs ORDER BY updated_at DESC')
+      result = await db.execute(`SELECT ${DOC_LIST_COLUMNS} FROM docs ORDER BY updated_at DESC`)
     }
     return result.rows.map((row) => parseDocRow(row as unknown as Record<string, unknown>))
   })
@@ -322,7 +325,7 @@ export function registerDocHandlers(): void {
   ipcMain.handle('docs:getFavorites', async () => {
     const db = getDb()
     const result = await db.execute(
-      'SELECT * FROM docs WHERE is_favorite = 1 ORDER BY favorite_order'
+      `SELECT ${DOC_LIST_COLUMNS} FROM docs WHERE is_favorite = 1 ORDER BY favorite_order`
     )
     return result.rows.map((row) => parseDocRow(row as unknown as Record<string, unknown>))
   })
