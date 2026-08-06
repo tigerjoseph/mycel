@@ -4,7 +4,6 @@ import { Plus, Trash2 } from 'lucide-react'
 import { useUIStore } from '../store/ui'
 import { useDocsStore } from '../store/docs'
 import { DocumentBreadcrumbs } from '../components/DocumentBreadcrumbs'
-import { findCachedDoc } from '../utils/docCache'
 import { useFlushOnLeave } from '../hooks/useFlushOnLeave'
 import type { Doc } from '@shared/types'
 
@@ -35,9 +34,8 @@ export function DataGrid(): React.JSX.Element {
   const setActiveFolderId = useUIStore((s) => s.setActiveFolderId)
   const folders = useDocsStore((s) => s.folders)
   const activeFolderId = useUIStore((s) => s.activeFolderId)
-  const [doc, setDoc] = useState<Doc | null>(() =>
-    activeDocId ? findCachedDoc(activeDocId) ?? null : null
-  )
+  const [doc, setDoc] = useState<Doc | null>(null)
+  const [loaded, setLoaded] = useState(false)
   const [title, setTitle] = useState('')
   const [grid, setGrid] = useState<GridData>({ columns: [], rows: [] })
   const [loadError, setLoadError] = useState(false)
@@ -63,24 +61,17 @@ export function DataGrid(): React.JSX.Element {
 
   const folder = folders.find((f) => f.id === (doc?.folderId ?? activeFolderId))
 
-  // Load doc on mount
+  // Load doc on mount — always fetch full body; list rows omit body.
   useEffect(() => {
     isMountedRef.current = true
     if (!activeDocId) {
       setDoc(null)
+      setLoaded(false)
       return
     }
     let cancelled = false
     const requestedId = activeDocId
-
-    const cached = findCachedDoc(activeDocId)
-    if (cached) {
-      const parsed = parseGridData(cached.body)
-      setDoc(cached)
-      setTitle(cached.title)
-      setLoadError(!parsed)
-      if (parsed) setGrid(parsed)
-    }
+    setLoaded(false)
 
     void window.mycel.getDoc(activeDocId).then((d) => {
       if (cancelled || !isMountedRef.current || d?.id !== requestedId) return
@@ -91,6 +82,7 @@ export function DataGrid(): React.JSX.Element {
         setLoadError(!parsed)
         if (parsed) setGrid(parsed)
       }
+      setLoaded(true)
     })
     return () => {
       cancelled = true
@@ -128,7 +120,7 @@ export function DataGrid(): React.JSX.Element {
     (updates: Partial<Doc>): Promise<void> => {
       saveQueueRef.current = saveQueueRef.current.catch(() => {}).then(async () => {
         const current = docRef.current
-        if (!current || loadError) return
+        if (!current || loadError || !loaded) return
         const updated = {
           ...current,
           title: titleRef.current,
@@ -160,7 +152,7 @@ export function DataGrid(): React.JSX.Element {
       })
       return saveQueueRef.current
     },
-    [loadError, showSaved]
+    [loadError, loaded, showSaved]
   )
 
   const debouncedSave = useCallback(
@@ -182,11 +174,11 @@ export function DataGrid(): React.JSX.Element {
       clearTimeout(saveTimerRef.current)
       saveTimerRef.current = null
     }
-    if (!doc || loadError) return
+    if (!doc || loadError || !loaded) return
     const pending = pendingUpdatesRef.current
     pendingUpdatesRef.current = {}
     await saveDoc(pending)
-  }, [doc, loadError, saveDoc])
+  }, [doc, loadError, loaded, saveDoc])
 
   useFlushOnLeave(flushSave, { watchCreateView: true })
 
@@ -344,6 +336,12 @@ export function DataGrid(): React.JSX.Element {
         position: 'relative'
       }}
     >
+      {!loaded ? (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-ui)', fontSize: 13 }}>
+          Loading…
+        </div>
+      ) : (
+      <>
       <DocumentBreadcrumbs
         items={[
           { label: 'Docs', onClick: () => setDocsView('home') },
@@ -571,6 +569,8 @@ export function DataGrid(): React.JSX.Element {
             Delete {contextMenu.type}
           </button>
         </div>
+      )}
+      </>
       )}
     </div>
   )

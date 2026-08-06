@@ -29,7 +29,6 @@ import { TagPicker } from '../components/TagPicker'
 import { DocumentBreadcrumbs } from '../components/DocumentBreadcrumbs'
 import { useFlushOnLeave } from '../hooks/useFlushOnLeave'
 import { useCopyFeedback } from '../hooks/useCopyFeedback'
-import { findCachedDoc } from '../utils/docCache'
 import { htmlToMarkdown } from '../utils/htmlToMarkdown'
 import { copyForSubstack } from '../utils/substackExport'
 import {
@@ -88,28 +87,29 @@ function DocEditorShell(): React.JSX.Element {
 
 export function DocEditor(): React.JSX.Element {
   const activeDocId = useUIStore((s) => s.activeDocId)
-  const [doc, setDoc] = useState<Doc | null>(() =>
-    activeDocId ? findCachedDoc(activeDocId) ?? null : null
-  )
+  const [doc, setDoc] = useState<Doc | null>(null)
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     if (!activeDocId) {
       setDoc(null)
+      setLoaded(false)
       return
     }
-    const cached = findCachedDoc(activeDocId)
-    if (cached) setDoc(cached)
 
     let cancelled = false
+    setLoaded(false)
     void window.mycel.getDoc(activeDocId).then((d) => {
-      if (!cancelled && d) setDoc(d as Doc)
+      if (cancelled) return
+      if (d) setDoc(d as Doc)
+      setLoaded(true)
     })
     return () => {
       cancelled = true
     }
   }, [activeDocId])
 
-  if (!doc || doc.id !== activeDocId) {
+  if (!loaded || !doc || doc.id !== activeDocId) {
     return <DocEditorShell />
   }
 

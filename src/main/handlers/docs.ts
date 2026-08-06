@@ -20,6 +20,23 @@ function parseDocRow(row: Record<string, unknown>): Record<string, unknown> {
   }
 }
 
+function parseDocListRow(row: Record<string, unknown>): Record<string, unknown> {
+  return {
+    id: row.id,
+    title: row.title,
+    type: row.type,
+    folderId: row.folder_id as string | null,
+    icon: row.icon,
+    coverImage: row.cover_image as string | null,
+    isTemplate: Boolean(row.is_template),
+    isFavorite: Boolean(row.is_favorite),
+    favoriteOrder: row.favorite_order as number | null,
+    tags: JSON.parse((row.tags as string) || '[]'),
+    createdAt: row.created_at as number,
+    updatedAt: row.updated_at as number
+  }
+}
+
 function parseDocVersionRow(row: Record<string, unknown>): Record<string, unknown> {
   return {
     versionId: row.id,
@@ -56,7 +73,7 @@ export function registerDocHandlers(): void {
     } else {
       result = await db.execute(`SELECT ${DOC_LIST_COLUMNS} FROM docs ORDER BY updated_at DESC`)
     }
-    return result.rows.map((row) => parseDocRow(row as unknown as Record<string, unknown>))
+    return result.rows.map((row) => parseDocListRow(row as unknown as Record<string, unknown>))
   })
 
   ipcMain.handle('docs:get', async (_e, id: string) => {
@@ -71,7 +88,7 @@ export function registerDocHandlers(): void {
     const now = Date.now()
     const id = (doc.id as string) || nanoid()
     const title = (doc.title as string) || ''
-    const body = (doc.body as string) || ''
+    const bodyProvided = Object.prototype.hasOwnProperty.call(doc, 'body')
     const type = (doc.type as string) || 'doc'
     const folderId = (doc.folderId ?? doc.folder_id ?? null) as string | null
     const icon = (doc.icon as string) ?? null
@@ -84,6 +101,7 @@ export function registerDocHandlers(): void {
     const updatedAt = now
     const tx = await db.transaction('write')
     let createdAt = (doc.createdAt ?? doc.created_at ?? now) as number
+    let body = ''
 
     try {
       const existingResult = await tx.execute({
@@ -91,6 +109,17 @@ export function registerDocHandlers(): void {
         args: [id]
       })
       const existing = existingResult.rows[0] as unknown as Record<string, unknown> | undefined
+
+      body = bodyProvided ? ((doc.body as string) || '') : ((existing?.body as string) || '')
+      // Guard against accidental wipe when a list row (no body) was used as the save source.
+      if (
+        existing &&
+        body === '' &&
+        typeof existing.body === 'string' &&
+        existing.body.length > 0
+      ) {
+        body = existing.body
+      }
 
       if (
         existing &&
@@ -327,7 +356,7 @@ export function registerDocHandlers(): void {
     const result = await db.execute(
       `SELECT ${DOC_LIST_COLUMNS} FROM docs WHERE is_favorite = 1 ORDER BY favorite_order`
     )
-    return result.rows.map((row) => parseDocRow(row as unknown as Record<string, unknown>))
+    return result.rows.map((row) => parseDocListRow(row as unknown as Record<string, unknown>))
   })
 
   ipcMain.handle('docs:setFavorite', async (_e, id: string, isFavorite: boolean) => {
