@@ -51,7 +51,7 @@ export function CommandPalette(): React.JSX.Element | null {
   const setActiveNoteId = useUIStore((s) => s.setActiveNoteId)
   const setCRMView = useUIStore((s) => s.setCRMView)
   const setActiveProjectId = useUIStore((s) => s.setActiveProjectId)
-  const setLibraryView = useUIStore((s) => s.setLibraryView)
+  const setCreateView = useUIStore((s) => s.setCreateView)
   const setLibraryFocusItemId = useUIStore((s) => s.setLibraryFocusItemId)
   const setExtractionsFocus = useUIStore((s) => s.setExtractionsFocus)
 
@@ -156,6 +156,7 @@ export function CommandPalette(): React.JSX.Element | null {
           break
         case 'note':
           setPage('create')
+          setCreateView('notes')
           setActiveNoteId(result.id)
           break
         case 'project':
@@ -168,12 +169,11 @@ export function CommandPalette(): React.JSX.Element | null {
           break
         case 'library':
           setPage('library')
-          setLibraryView('mindspace')
           setLibraryFocusItemId(result.id)
           break
         case 'atom':
-          setPage('library')
-          setLibraryView('extractions')
+          setPage('create')
+          setCreateView('extractions')
           if (result.parentId) {
             setExtractionsFocus({ meetingId: result.parentId, atomId: result.id })
           }
@@ -189,7 +189,7 @@ export function CommandPalette(): React.JSX.Element | null {
       setActiveNoteId,
       setCRMView,
       setActiveProjectId,
-      setLibraryView,
+      setCreateView,
       setLibraryFocusItemId,
       setExtractionsFocus
     ]
@@ -211,11 +211,12 @@ export function CommandPalette(): React.JSX.Element | null {
           break
         case 'note':
           setPage('create')
+          setCreateView('notes')
           setActiveNoteId(entity.id)
           break
       }
     },
-    [setOpen, setPage, setActiveContactId, setActiveDocId, setDocsView, setActiveNoteId]
+    [setOpen, setPage, setActiveContactId, setActiveDocId, setDocsView, setActiveNoteId, setCreateView]
   )
 
   const activeCount = selectedTag

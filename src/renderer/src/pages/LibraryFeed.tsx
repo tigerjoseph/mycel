@@ -60,7 +60,7 @@ export function LibraryFeed(): React.JSX.Element {
     window.mycel.getLibraryExtensionInfo().then(setExtInfo).catch(() => {})
     const unsub = window.mycel.onLibraryItemSaved((item) => {
       setItems((prev) => [item as LibraryItemView, ...prev.filter((i) => i.id !== (item as LibraryItem).id)])
-      showCopyFeedback('Saved to Library')
+      showCopyFeedback('Saved to Mindspace')
     })
     return unsub
   }, [load, showCopyFeedback])

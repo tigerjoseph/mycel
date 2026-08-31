@@ -20,7 +20,7 @@ const SHORTCUTS: { keys: string; action: string }[] = [
   { keys: '⌘1', action: 'Go to To-Do' },
   { keys: '⌘2', action: 'Go to People' },
   { keys: '⌘3', action: 'Go to Create (docs)' },
-  { keys: '⌘4', action: 'Go to Library' },
+  { keys: '⌘4', action: 'Go to Mindspace' },
   { keys: '⌘K', action: 'Command palette' },
   { keys: '⌘J', action: 'Switch contact (People)' },
   { keys: '⌘[', action: 'Navigate back' },
@@ -294,7 +294,7 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
             }
           />
           <Hint>
-            Powers insight/quote extraction in Library → Extractions and voice-note imports. Get a key at{' '}
+            Powers insight/quote extraction in Create → Extractions and voice-note imports. Get a key at{' '}
             <a
               href="https://aistudio.google.com/apikey"
               target="_blank"
@@ -344,7 +344,7 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
 
       <Section title="Voice & Extractions">
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
-          Local transcription for audio in Library → Extractions and the <code style={{ fontSize: 11 }}>/voice</code> slash
+          Local transcription for audio in Create → Extractions and the <code style={{ fontSize: 11 }}>/voice</code> slash
           command in docs. Gemini key above improves insight/quote extraction.
         </p>
         {voiceStatus ? (
@@ -369,7 +369,7 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
       <Section title="Browser extension">
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
           The Mycel Saver Chrome extension sends posts, images, and quotes straight to{' '}
-          <strong>Library → Mindspace</strong>. It only talks to Mycel on this Mac — nothing
+          <strong>Mindspace</strong>. It only talks to Mycel on this Mac — nothing
           leaves your machine.
         </p>
 

@@ -12,6 +12,18 @@ import { spring } from '../styles/animation'
 import { FloatingToolbar } from './FloatingToolbar'
 import type { ContentScript } from '@shared/types'
 
+function scriptSummary(script: ContentScript): ContentScript {
+  return {
+    id: script.id,
+    title: script.title,
+    stage: script.stage,
+    position: script.position,
+    projectId: script.projectId,
+    createdAt: script.createdAt,
+    updatedAt: script.updatedAt
+  }
+}
+
 type ReadSize = 'normal' | 'large' | 'xlarge'
 const READ_SIZES: ReadSize[] = ['normal', 'large', 'xlarge']
 
@@ -51,7 +63,7 @@ export function ScriptLightbox({
       body: bodyRef.current,
       updatedAt: Date.now()
     })) as ContentScript
-    onSaved(saved)
+    onSaved(scriptSummary(saved))
   }, [onSaved])
 
   const scheduleSave = useCallback(() => {

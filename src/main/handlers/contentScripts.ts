@@ -16,13 +16,27 @@ function parseRow(row: Record<string, unknown>): Record<string, unknown> {
   }
 }
 
+function parseListRow(row: Record<string, unknown>): Record<string, unknown> {
+  return {
+    id: row.id,
+    title: row.title,
+    stage: row.stage,
+    position: row.position,
+    projectId: row.project_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  }
+}
+
+const LIST_COLUMNS = 'id, title, stage, position, project_id, created_at, updated_at'
+
 export function registerContentScriptHandlers(): void {
   ipcMain.handle('contentScripts:getAll', async () => {
     const db = getDb()
     const result = await db.execute(
-      'SELECT * FROM content_scripts ORDER BY stage, position ASC, updated_at DESC'
+      `SELECT ${LIST_COLUMNS} FROM content_scripts ORDER BY stage, position ASC, updated_at DESC`
     )
-    return result.rows.map((row) => parseRow(row as unknown as Record<string, unknown>))
+    return result.rows.map((row) => parseListRow(row as unknown as Record<string, unknown>))
   })
 
   ipcMain.handle('contentScripts:get', async (_e, id: string) => {
@@ -37,7 +51,8 @@ export function registerContentScriptHandlers(): void {
     const now = Date.now()
     const id = (script.id as string) || nanoid()
     const title = (script.title as string) || ''
-    let body = (script.body as string) || ''
+    const bodyProvided = Object.prototype.hasOwnProperty.call(script, 'body')
+    let body = bodyProvided ? ((script.body as string) || '') : ''
     const stage = normalizeContentStage((script.stage as string) || 'Pre-production')
     const position = (script.position as number) ?? 0
     const projectId = (script.projectId as string | null) ?? null
@@ -45,7 +60,7 @@ export function registerContentScriptHandlers(): void {
     const updatedAt = now
 
     const incomingEmpty = !body.trim()
-    if (incomingEmpty && script.id) {
+    if (!bodyProvided || incomingEmpty) {
       const existing = await db.execute({ sql: 'SELECT body FROM content_scripts WHERE id = ?', args: [id] })
       if (existing.rows.length > 0) {
         const stored = (existing.rows[0].body as string) || ''

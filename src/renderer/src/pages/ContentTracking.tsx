@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'motion/react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FileText, GripVertical, Plus } from 'lucide-react'
 import {
   DndContext,
@@ -11,29 +10,40 @@ import {
   useSensors
 } from '@dnd-kit/core'
 import type { DragEndEvent } from '@dnd-kit/core'
-import { fadeUp } from '../styles/animation'
 import { ScriptLightbox } from '../components/ScriptLightbox'
 import { CONTENT_STAGES, getContentStageColor, isContentStage } from '@shared/contentScripts'
 import type { ContentScript } from '@shared/types'
 
 type Stage = (typeof CONTENT_STAGES)[number]
 
-function DraggableCard({
+function scriptSummary(script: ContentScript): ContentScript {
+  return {
+    id: script.id,
+    title: script.title,
+    stage: script.stage,
+    position: script.position,
+    projectId: script.projectId,
+    createdAt: script.createdAt,
+    updatedAt: script.updatedAt
+  }
+}
+
+const DraggableCard = memo(function DraggableCard({
   script,
   onClick
 }: {
   script: ContentScript
-  onClick: () => void
+  onClick: (id: string) => void
 }): React.JSX.Element {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: script.id,
-    data: { script }
+    data: { scriptId: script.id }
   })
-  const [hovered, setHovered] = useState(false)
 
   return (
     <div
       ref={setNodeRef}
+      className="mycel-card"
       style={{
         padding: '8px 9px',
         backgroundColor: 'var(--bg)',
@@ -45,13 +55,12 @@ function DraggableCard({
           ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
           : undefined,
         transition: isDragging ? undefined : 'box-shadow 150ms ease',
-        boxShadow: isDragging ? 'var(--shadow-md)' : hovered ? 'var(--shadow-card-hover)' : 'var(--shadow-card)',
+        boxShadow: isDragging ? 'var(--shadow-md)' : undefined,
         zIndex: isDragging ? 10 : undefined,
-        position: isDragging ? 'relative' : undefined
+        position: isDragging ? 'relative' : undefined,
+        willChange: isDragging ? 'transform' : undefined
       }}
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onClick={() => onClick(script.id)}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, minWidth: 0 }}>
         <button
@@ -96,9 +105,9 @@ function DraggableCard({
       </div>
     </div>
   )
-}
+})
 
-function DroppableColumn({
+const DroppableColumn = memo(function DroppableColumn({
   stage,
   scripts,
   onCardClick,
@@ -106,7 +115,7 @@ function DroppableColumn({
 }: {
   stage: Stage
   scripts: ContentScript[]
-  onCardClick: (script: ContentScript) => void
+  onCardClick: (id: string) => void
   onNew: (stage: Stage) => void
 }): React.JSX.Element {
   const { setNodeRef, isOver } = useDroppable({ id: stage })
@@ -162,7 +171,7 @@ function DroppableColumn({
       </div>
 
       {scripts.map((script) => (
-        <DraggableCard key={script.id} script={script} onClick={() => onCardClick(script)} />
+        <DraggableCard key={script.id} script={script} onClick={onCardClick} />
       ))}
 
       <button
@@ -196,73 +205,91 @@ function DroppableColumn({
       </button>
     </div>
   )
-}
+})
 
 export function ContentTracking(): React.JSX.Element {
   const [scripts, setScripts] = useState<ContentScript[]>([])
   const [loading, setLoading] = useState(true)
   const [openScript, setOpenScript] = useState<ContentScript | null>(null)
+  const scriptsRef = useRef(scripts)
+  scriptsRef.current = scripts
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   )
 
-  const load = useCallback(async () => {
-    try {
-      const rows = (await window.mycel.getContentScripts()) as ContentScript[]
-      setScripts(rows)
-    } finally {
-      setLoading(false)
+  useEffect(() => {
+    let cancelled = false
+    void window.mycel.getContentScripts().then((rows) => {
+      if (!cancelled) {
+        setScripts(rows as ContentScript[])
+        setLoading(false)
+      }
+    })
+    return () => {
+      cancelled = true
     }
   }, [])
 
-  useEffect(() => {
-    void load()
-  }, [load])
+  const scriptsByStage = useMemo(() => {
+    const grouped = Object.fromEntries(CONTENT_STAGES.map((stage) => [stage, [] as ContentScript[]])) as Record<
+      Stage,
+      ContentScript[]
+    >
+    for (const script of scripts) {
+      if (isContentStage(script.stage)) grouped[script.stage].push(script)
+    }
+    return grouped
+  }, [scripts])
 
-  const handleDragEnd = useCallback(
-    async (event: DragEndEvent) => {
-      const { active, over } = event
-      if (!over) return
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over) return
 
-      const newStage = over.id as string
-      if (!isContentStage(newStage)) return
+    const newStage = over.id as string
+    if (!isContentStage(newStage)) return
 
-      const scriptId = active.id as string
-      const script = scripts.find((s) => s.id === scriptId)
-      if (!script || script.stage === newStage) return
+    const scriptId = active.id as string
+    const script = scriptsRef.current.find((s) => s.id === scriptId)
+    if (!script || script.stage === newStage) return
 
-      const updated = { ...script, stage: newStage, updatedAt: Date.now() }
-      setScripts((prev) => prev.map((s) => (s.id === scriptId ? updated : s)))
+    const updated = { ...script, stage: newStage, updatedAt: Date.now() }
+    setScripts((prev) => prev.map((s) => (s.id === scriptId ? updated : s)))
 
-      try {
-        await window.mycel.upsertContentScript(updated)
-      } catch {
-        setScripts((prev) => prev.map((s) => (s.id === scriptId ? script : s)))
-      }
-    },
-    [scripts]
-  )
+    try {
+      await window.mycel.upsertContentScript(updated)
+    } catch {
+      setScripts((prev) => prev.map((s) => (s.id === scriptId ? script : s)))
+    }
+  }, [])
 
   const handleNew = useCallback(async (stage: Stage) => {
     const now = Date.now()
+    const position = scriptsRef.current.filter((s) => s.stage === stage).length
     const created = (await window.mycel.upsertContentScript({
       title: '',
       body: '<p></p>',
       stage,
-      position: scripts.filter((s) => s.stage === stage).length,
+      position,
       projectId: null,
       createdAt: now,
       updatedAt: now
     })) as ContentScript
-    setScripts((prev) => [...prev, created])
+    setScripts((prev) => [...prev, scriptSummary(created)])
     setOpenScript(created)
-  }, [scripts])
+  }, [])
+
+  const handleCardClick = useCallback(async (id: string) => {
+    const full = (await window.mycel.getContentScript(id)) as ContentScript | null
+    if (full) setOpenScript(full)
+  }, [])
 
   const handleSaved = useCallback((saved: ContentScript) => {
+    const summary = scriptSummary(saved)
     setScripts((prev) => {
-      const exists = prev.some((s) => s.id === saved.id)
-      if (exists) return prev.map((s) => (s.id === saved.id ? saved : s))
-      return [...prev, saved]
+      const exists = prev.some((s) => s.id === summary.id)
+      if (exists) return prev.map((s) => (s.id === summary.id ? summary : s))
+      return [...prev, summary]
     })
     setOpenScript((cur) => (cur?.id === saved.id ? saved : cur))
   }, [])
@@ -275,15 +302,15 @@ export function ContentTracking(): React.JSX.Element {
 
   if (loading) {
     return (
-      <motion.div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 320 }} {...fadeUp}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 320 }}>
         <span style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--text-muted)' }}>Loading…</span>
-      </motion.div>
+      </div>
     )
   }
 
   return (
     <>
-      <motion.div {...fadeUp} style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '4px 20px 24px' }}>
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '4px 20px 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <div>
             <h2
@@ -331,26 +358,24 @@ export function ContentTracking(): React.JSX.Element {
               <DroppableColumn
                 key={stage}
                 stage={stage}
-                scripts={scripts.filter((s) => s.stage === stage)}
-                onCardClick={setOpenScript}
+                scripts={scriptsByStage[stage]}
+                onCardClick={handleCardClick}
                 onNew={handleNew}
               />
             ))}
           </DndContext>
         </div>
-      </motion.div>
+      </div>
 
-      <AnimatePresence>
-        {openScript && (
-          <ScriptLightbox
-            key={openScript.id}
-            script={openScript}
-            onClose={() => setOpenScript(null)}
-            onSaved={handleSaved}
-            onDelete={() => void handleDelete(openScript.id)}
-          />
-        )}
-      </AnimatePresence>
+      {openScript && (
+        <ScriptLightbox
+          key={openScript.id}
+          script={openScript}
+          onClose={() => setOpenScript(null)}
+          onSaved={handleSaved}
+          onDelete={() => void handleDelete(openScript.id)}
+        />
+      )}
     </>
   )
 }

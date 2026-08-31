@@ -99,7 +99,7 @@ export interface Todo {
 export interface ContentScript {
   id: string
   title: string
-  body: string
+  body?: string
   stage: string
   position: number
   projectId: string | null

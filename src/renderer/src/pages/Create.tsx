@@ -1,9 +1,16 @@
-import { AnimatePresence, motion } from 'motion/react'
 import { useUIStore } from '../store/ui'
-import { pageEnter } from '../styles/animation'
 import { Docs } from './Docs'
 import { Notes } from './Notes'
 import { ContentTracking } from './ContentTracking'
+import { Extractions } from './Extractions'
+
+const subViewStyle = (active: boolean): React.CSSProperties => ({
+  display: active ? 'flex' : 'none',
+  flexDirection: 'column',
+  position: 'absolute',
+  inset: 0,
+  overflow: 'hidden'
+})
 
 export function Create(): React.JSX.Element {
   const activeCreateView = useUIStore((s) => s.createView)
@@ -11,18 +18,18 @@ export function Create(): React.JSX.Element {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 0 }}>
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={activeCreateView}
-            initial={pageEnter.initial}
-            animate={pageEnter.animate}
-            exit={pageEnter.exit}
-            transition={pageEnter.transition}
-            style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}
-          >
-            {activeCreateView === 'docs' ? <Docs /> : activeCreateView === 'content' ? <ContentTracking /> : <Notes />}
-          </motion.div>
-        </AnimatePresence>
+        <div style={subViewStyle(activeCreateView === 'docs')}>
+          <Docs />
+        </div>
+        <div style={subViewStyle(activeCreateView === 'notes')}>
+          <Notes />
+        </div>
+        <div style={subViewStyle(activeCreateView === 'content')}>
+          <ContentTracking />
+        </div>
+        <div style={subViewStyle(activeCreateView === 'extractions')}>
+          <Extractions />
+        </div>
       </div>
     </div>
   )

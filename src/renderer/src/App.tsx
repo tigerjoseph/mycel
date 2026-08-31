@@ -5,7 +5,7 @@ import { AppToasts } from './components/AppToasts'
 import { Todo } from './pages/Todo'
 import { CRM } from './pages/CRM'
 import { Create } from './pages/Create'
-import { Corpus } from './pages/Corpus'
+import { LibraryFeed } from './pages/LibraryFeed'
 import { CommandPalette } from './components/CommandPalette'
 import { LogTouchpoint } from './components/LogTouchpoint'
 import { ContactSwitcher } from './components/ContactSwitcher'
@@ -22,7 +22,7 @@ const PAGE_COMPONENTS: Record<PageId, () => React.JSX.Element> = {
   todo: Todo,
   people: CRM,
   create: Create,
-  library: Corpus
+  library: LibraryFeed
 }
 
 async function loadAppearance(): Promise<void> {

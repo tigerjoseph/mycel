@@ -1,9 +1,8 @@
 import { Upload, FileText, Trash2, ChevronDown, ChevronRight, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { fadeUp, pageEnter } from '../styles/animation'
+import { fadeUp } from '../styles/animation'
 import { CorpusChooser } from '../components/CorpusChooser'
-import { LibraryFeed } from './LibraryFeed'
 import { useUIStore } from '../store/ui'
 import type { Atom, AtomKind, Meeting } from '@shared/types'
 
@@ -23,8 +22,7 @@ const KIND_COLORS: Record<AtomKind, string> = {
 
 type MeetingGroup = Meeting & { atoms: Atom[] }
 
-export function Corpus(): React.JSX.Element {
-  const libraryView = useUIStore((s) => s.libraryView)
+export function Extractions(): React.JSX.Element {
   const showCopyFeedback = useUIStore((s) => s.showCopyFeedback)
   const setPage = useUIStore((s) => s.setPage)
   const setCreateView = useUIStore((s) => s.setCreateView)
@@ -70,7 +68,7 @@ export function Corpus(): React.JSX.Element {
 
   // Jump to and highlight an atom requested from search (Cmd+K)
   useEffect(() => {
-    if (!extractionsFocus || libraryView !== 'extractions') return
+    if (!extractionsFocus) return
     const { meetingId, atomId } = extractionsFocus
     setExpanded((prev) => new Set(prev).add(meetingId))
     setHighlightedAtomId(atomId)
@@ -83,7 +81,7 @@ export function Corpus(): React.JSX.Element {
       clearTimeout(timer)
       clearTimeout(clear)
     }
-  }, [extractionsFocus, libraryView, setExtractionsFocus])
+  }, [extractionsFocus, setExtractionsFocus])
 
   const groups = useMemo<MeetingGroup[]>(() => {
     const byMeeting = new Map<string, Atom[]>()
@@ -172,31 +170,12 @@ export function Corpus(): React.JSX.Element {
   }, [setPage, setCreateView, setActiveDocId, setDocsView])
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-      <AnimatePresence mode="wait" initial={false}>
-        {libraryView === 'mindspace' ? (
-          <motion.div
-            key="mindspace"
-            initial={pageEnter.initial}
-            animate={pageEnter.animate}
-            exit={pageEnter.exit}
-            transition={pageEnter.transition}
-            style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-          >
-            <LibraryFeed />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="extractions"
-            initial={pageEnter.initial}
-            animate={pageEnter.animate}
-            exit={pageEnter.exit}
-            transition={pageEnter.transition}
-            style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-          >
+    <div
+      style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+    >
       {dragOver && (
         <div style={{
           position: 'absolute', inset: 0, zIndex: 50,
@@ -416,9 +395,6 @@ export function Corpus(): React.JSX.Element {
           openDoc(docId)
         }}
       />
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   )
 }

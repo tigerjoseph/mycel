@@ -1,11 +1,14 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Plus } from 'lucide-react'
+import { MoreHorizontal, Plus } from 'lucide-react'
 import {
   DndContext,
   closestCenter,
+  PointerSensor,
   useDraggable,
-  useDroppable
+  useDroppable,
+  useSensor,
+  useSensors
 } from '@dnd-kit/core'
 import type { DragEndEvent } from '@dnd-kit/core'
 import { fadeUp } from '../styles/animation'
@@ -37,12 +40,14 @@ interface BoardProject extends Project {
 
 function DraggableCard({
   project,
+  menuOpen,
   onClick,
-  onContextMenu
+  onOpenMenu
 }: {
   project: BoardProject
+  menuOpen: boolean
   onClick: () => void
-  onContextMenu: (e: React.MouseEvent) => void
+  onOpenMenu: (x: number, y: number) => void
 }): React.JSX.Element {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: project.id,
@@ -58,7 +63,7 @@ function DraggableCard({
     borderRadius: 6,
     border: '1px solid var(--border)',
     borderLeft: followUp ? `3px solid ${followUpAccentColor(followUp.urgency)}` : '1px solid var(--border)',
-    cursor: 'grab',
+    cursor: isDragging ? 'grabbing' : 'grab',
     opacity: isDragging ? 0.55 : 1,
     transform: transform
       ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
@@ -66,7 +71,14 @@ function DraggableCard({
     transition: isDragging ? undefined : 'box-shadow 150ms ease, border-color 150ms ease',
     boxShadow: isDragging ? 'var(--shadow-md)' : hovered ? 'var(--shadow-card-hover)' : 'var(--shadow-card)',
     zIndex: isDragging ? 10 : undefined,
-    position: isDragging ? ('relative' as const) : undefined
+    position: 'relative'
+  }
+
+  function openMenuFromButton(e: React.MouseEvent<HTMLButtonElement>): void {
+    e.preventDefault()
+    e.stopPropagation()
+    const rect = e.currentTarget.getBoundingClientRect()
+    onOpenMenu(rect.left, rect.bottom + 4)
   }
 
   return (
@@ -76,7 +88,10 @@ function DraggableCard({
       {...listeners}
       {...attributes}
       onClick={onClick}
-      onContextMenu={onContextMenu}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        onOpenMenu(e.clientX, e.clientY)
+      }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -91,6 +106,7 @@ function DraggableCard({
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
             minWidth: 0,
+            flex: 1,
             letterSpacing: '-0.01em'
           }}
         >
@@ -116,6 +132,39 @@ function DraggableCard({
             Follow up
           </span>
         )}
+        <button
+          type="button"
+          aria-label="Project options"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={openMenuFromButton}
+          style={{
+            flexShrink: 0,
+            width: 28,
+            height: 28,
+            margin: '-6px -4px -6px 0',
+            padding: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: menuOpen ? 'var(--border)' : 'transparent',
+            border: 'none',
+            borderRadius: 6,
+            cursor: 'pointer',
+            color: hovered || menuOpen ? 'var(--text)' : 'var(--text-muted)',
+            transition: 'background 120ms ease, color 120ms ease'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--border)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = menuOpen ? 'var(--border)' : 'transparent'
+          }}
+        >
+          <MoreHorizontal size={14} />
+        </button>
       </div>
       <div
         style={{
@@ -143,13 +192,15 @@ function DraggableCard({
 function DroppableColumn({
   stage,
   projects,
+  openMenuProjectId,
   onCardClick,
-  onCardContextMenu
+  onOpenMenu
 }: {
   stage: Stage
   projects: BoardProject[]
+  openMenuProjectId: string | null
   onCardClick: (project: BoardProject) => void
-  onCardContextMenu: (e: React.MouseEvent, project: BoardProject) => void
+  onOpenMenu: (x: number, y: number, project: BoardProject) => void
 }): React.JSX.Element {
   const { setNodeRef, isOver } = useDroppable({ id: stage })
   const columnColor = getStageColumnColor(stage)
@@ -197,8 +248,9 @@ function DroppableColumn({
         <DraggableCard
           key={project.id}
           project={project}
+          menuOpen={openMenuProjectId === project.id}
           onClick={() => onCardClick(project)}
-          onContextMenu={(e) => onCardContextMenu(e, project)}
+          onOpenMenu={(x, y) => onOpenMenu(x, y, project)}
         />
       ))}
     </div>
@@ -217,6 +269,10 @@ export function BoardView(): React.JSX.Element {
   const [revenuePeriod, setRevenuePeriod] = useState<RevenuePeriod>('ytd')
   const [newProjectOpen, setNewProjectOpen] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; projectId: string } | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  )
 
   const loadProjects = useCallback((): void => {
     window.mycel
@@ -290,9 +346,10 @@ export function BoardView(): React.JSX.Element {
     [setActiveContactId, setActiveProjectId, pushBreadcrumb]
   )
 
-  const handleCardContextMenu = useCallback((e: React.MouseEvent, project: BoardProject) => {
-    e.preventDefault()
-    setContextMenu({ x: e.clientX, y: e.clientY, projectId: project.id })
+  const handleOpenMenu = useCallback((x: number, y: number, project: BoardProject) => {
+    setContextMenu((prev) =>
+      prev?.projectId === project.id ? null : { x, y, projectId: project.id }
+    )
   }, [])
 
   const handleToggleFollowUp = useCallback(async (project: BoardProject) => {
@@ -548,14 +605,15 @@ export function BoardView(): React.JSX.Element {
             minHeight: 240
           }}
         >
-          <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             {STAGES.map((stage) => (
               <DroppableColumn
                 key={stage}
                 stage={stage}
                 projects={projects.filter((p) => p.stage === stage)}
+                openMenuProjectId={contextMenu?.projectId ?? null}
                 onCardClick={handleCardClick}
-                onCardContextMenu={handleCardContextMenu}
+                onOpenMenu={handleOpenMenu}
               />
             ))}
           </DndContext>

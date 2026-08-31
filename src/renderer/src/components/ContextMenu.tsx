@@ -43,9 +43,12 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps): React.J
     const handleKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
     }
-    document.addEventListener('mousedown', handleClick)
+    const id = window.setTimeout(() => {
+      document.addEventListener('mousedown', handleClick)
+    }, 0)
     document.addEventListener('keydown', handleKey)
     return () => {
+      window.clearTimeout(id)
       document.removeEventListener('mousedown', handleClick)
       document.removeEventListener('keydown', handleKey)
     }
@@ -84,11 +87,12 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps): React.J
             alignItems: 'center',
             gap: 8,
             width: '100%',
-            padding: '7px 10px',
+            padding: '9px 12px',
+            minHeight: 32,
             background: 'none',
             border: 'none',
             cursor: 'pointer',
-            fontSize: 12,
+            fontSize: 13,
             fontFamily: 'var(--font-ui)',
             color: item.danger ? '#D93025' : 'var(--text)',
             borderRadius: 6,

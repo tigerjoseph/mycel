@@ -24,7 +24,7 @@ export function useKeyboard(): void {
         e.preventDefault()
         setPage('create')
       }
-      // Cmd+4 → Library
+      // Cmd+4 → Mindspace
       if (e.metaKey && e.key === '4') {
         e.preventDefault()
         setPage('library')

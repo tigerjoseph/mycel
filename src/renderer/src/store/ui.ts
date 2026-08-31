@@ -22,10 +22,7 @@ interface UIStore {
   activeNoteId: string | null
 
   // Create sub-view (keep-alive; used for save flush)
-  createView: 'docs' | 'notes' | 'content'
-
-  // Library sub-views
-  libraryView: 'extractions' | 'mindspace'
+  createView: 'docs' | 'notes' | 'content' | 'extractions'
 
   // Focus requests from search — jump to and highlight a specific item
   libraryFocusItemId: string | null
@@ -53,8 +50,7 @@ interface UIStore {
   setActiveFolderId: (id: string | null) => void
   setDocsView: (view: 'home' | 'favorites' | 'list' | 'editor' | 'grid') => void
   setActiveNoteId: (id: string | null) => void
-  setCreateView: (view: 'docs' | 'notes' | 'content') => void
-  setLibraryView: (view: 'extractions' | 'mindspace') => void
+  setCreateView: (view: 'docs' | 'notes' | 'content' | 'extractions') => void
   setLibraryFocusItemId: (id: string | null) => void
   setExtractionsFocus: (focus: { meetingId: string; atomId: string } | null) => void
   pushBreadcrumb: (entry: BreadcrumbEntry) => void
@@ -84,7 +80,6 @@ export const useUIStore = create<UIStore>((set) => ({
   docsView: 'home',
   activeNoteId: null,
   createView: 'docs',
-  libraryView: 'extractions',
   libraryFocusItemId: null,
   extractionsFocus: null,
   breadcrumbs: [],
@@ -107,7 +102,6 @@ export const useUIStore = create<UIStore>((set) => ({
   setDocsView: (view) => set({ docsView: view }),
   setActiveNoteId: (id) => set({ activeNoteId: id }),
   setCreateView: (view) => set({ createView: view }),
-  setLibraryView: (view) => set({ libraryView: view }),
   setLibraryFocusItemId: (id) => set({ libraryFocusItemId: id }),
   setExtractionsFocus: (focus) => set({ extractionsFocus: focus }),
   pushBreadcrumb: (entry) => set((state) => ({

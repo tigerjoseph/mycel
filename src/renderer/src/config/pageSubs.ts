@@ -1,8 +1,7 @@
 import type { PageId } from '@shared/types'
 
 export type PeopleSubView = 'projects' | 'contacts'
-export type CreateSubView = 'docs' | 'notes' | 'content'
-export type LibrarySubView = 'extractions' | 'mindspace'
+export type CreateSubView = 'docs' | 'notes' | 'content' | 'extractions'
 
 export interface PageSubTab {
   id: string
@@ -17,22 +16,17 @@ export const PAGE_SUBS: Partial<Record<PageId, PageSubTab[]>> = {
   create: [
     { id: 'docs', label: 'Docs' },
     { id: 'notes', label: 'Notes' },
-    { id: 'content', label: 'Content' }
-  ],
-  library: [
-    { id: 'extractions', label: 'Extractions' },
-    { id: 'mindspace', label: 'Mindspace' }
+    { id: 'content', label: 'Content' },
+    { id: 'extractions', label: 'Extractions' }
   ]
 }
 
 export function getActiveSubId(page: PageId, state: {
   activeCRMView: PeopleSubView
   createView: CreateSubView
-  libraryView: LibrarySubView
 }): string | null {
   if (page === 'people') return state.activeCRMView
   if (page === 'create') return state.createView
-  if (page === 'library') return state.libraryView
   return null
 }
 

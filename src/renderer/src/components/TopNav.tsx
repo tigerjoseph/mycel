@@ -7,7 +7,6 @@ import {
   PAGE_SUBS,
   shouldShowPageSubs,
   type CreateSubView,
-  type LibrarySubView,
   type PeopleSubView
 } from '../config/pageSubs'
 
@@ -15,7 +14,7 @@ const tabs: { id: PageId; label: string }[] = [
   { id: 'todo', label: 'To-Do' },
   { id: 'people', label: 'People' },
   { id: 'create', label: 'Create' },
-  { id: 'library', label: 'Library' }
+  { id: 'library', label: 'Mindspace' }
 ]
 
 const heightEase = { duration: 0.22, ease: [0.4, 0, 0.2, 1] as const }
@@ -32,8 +31,6 @@ export default function TopNav(): React.JSX.Element {
   const clearBreadcrumbs = useUIStore((s) => s.clearBreadcrumbs)
   const createView = useUIStore((s) => s.createView)
   const setCreateView = useUIStore((s) => s.setCreateView)
-  const libraryView = useUIStore((s) => s.libraryView)
-  const setLibraryView = useUIStore((s) => s.setLibraryView)
   const activeContactId = useUIStore((s) => s.activeContactId)
   const activeProjectId = useUIStore((s) => s.activeProjectId)
   const docsView = useUIStore((s) => s.docsView)
@@ -46,7 +43,7 @@ export default function TopNav(): React.JSX.Element {
     docsView
   })
   const subTabs = showSubs ? PAGE_SUBS[activePage] : undefined
-  const activeSubId = getActiveSubId(activePage, { activeCRMView, createView, libraryView })
+  const activeSubId = getActiveSubId(activePage, { activeCRMView, createView })
 
   function setSubTab(id: string): void {
     if (activePage === 'people') {
@@ -55,7 +52,6 @@ export default function TopNav(): React.JSX.Element {
       clearBreadcrumbs()
       setCRMView(id as PeopleSubView)
     } else if (activePage === 'create') setCreateView(id as CreateSubView)
-    else if (activePage === 'library') setLibraryView(id as LibrarySubView)
   }
 
   return (
@@ -169,9 +165,9 @@ export default function TopNav(): React.JSX.Element {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 36,
-            paddingTop: 18,
-            paddingBottom: 10,
+            gap: 20,
+            paddingTop: 10,
+            paddingBottom: 4,
             flexShrink: 0
           }}
         >
@@ -185,7 +181,7 @@ export default function TopNav(): React.JSX.Element {
                   WebkitAppRegion: 'no-drag',
                   background: 'none',
                   border: 'none',
-                  padding: 0,
+                  padding: '8px 14px',
                   cursor: 'pointer',
                   fontSize: 18,
                   fontFamily: 'var(--font-heading)',
