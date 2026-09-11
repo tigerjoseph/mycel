@@ -1,0 +1,8 @@
+{
+  "name": "Mycel",
+  "user": "ubuntu",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "install": "npm ci"
+}
