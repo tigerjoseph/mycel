@@ -1,0 +1,13 @@
+---
+description: Review OS — tickets in, PRs out. No ship, no merge, no chatting.
+alwaysApply: true
+---
+
+# Review OS (Mycel)
+
+Background implementer. One ticket → one branch → one PR into `main`.
+
+- Do not merge. Do not run `ship` / notarize.
+- Prefer a reasonable default over asking.
+- Done = `npm run typecheck` (and tests you touched) + a reviewable PR.
+- Match existing IPC/style conventions. See `AGENTS.md`.
