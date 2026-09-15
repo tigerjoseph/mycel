@@ -192,6 +192,9 @@ CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL DEFAULT '',
   kind TEXT NOT NULL DEFAULT 'work',
+  source TEXT NOT NULL DEFAULT 'work',
+  meeting_id TEXT,
+  transcript_ref TEXT,
   contact_id TEXT,
   project_id TEXT,
   started_at INTEGER,
@@ -201,6 +204,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_created ON sessions (created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_meeting_id ON sessions (meeting_id);
 
 CREATE TABLE IF NOT EXISTS corpus_insights (
   id TEXT PRIMARY KEY,
@@ -212,11 +216,13 @@ CREATE TABLE IF NOT EXISTS corpus_insights (
   embedding TEXT,
   dump_id TEXT,
   session_id TEXT,
+  provenance TEXT NOT NULL DEFAULT '{}',
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_corpus_insights_created ON corpus_insights (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_corpus_insights_session ON corpus_insights (session_id);
 
 CREATE TABLE IF NOT EXISTS corpus_threads (
   id TEXT PRIMARY KEY,

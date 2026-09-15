@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pin, VolumeX, Plus } from 'lucide-react'
-import { insightTextError } from '@shared/contentEngine'
-import type { CorpusInsight, CorpusThread, CorpusThreadStatus, CreateInsightInput } from '@shared/types'
+import { insightTextError, isMeetingInsightOrigin } from '@shared/contentEngine'
+import type { CorpusInsight, CorpusThread, CorpusThreadStatus, CreateInsightInput, WorkSession } from '@shared/types'
 import { format } from 'date-fns'
+import { useUIStore } from '../store/ui'
 
 type CorpusPane = 'insights' | 'patterns' | 'inbox'
 
@@ -72,8 +73,13 @@ export function Corpus(): React.JSX.Element {
 }
 
 function InsightsPane(): React.JSX.Element {
+  const corpusFocusSessionId = useUIStore((s) => s.corpusFocusSessionId)
+  const setCorpusFocusSessionId = useUIStore((s) => s.setCorpusFocusSessionId)
+  const createView = useUIStore((s) => s.createView)
   const [insights, setInsights] = useState<CorpusInsight[]>([])
+  const [sessions, setSessions] = useState<WorkSession[]>([])
   const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState<'all' | 'manual' | 'meeting'>('all')
   const [formOpen, setFormOpen] = useState(false)
   const [text, setText] = useState('')
   const [soWhat, setSoWhat] = useState('')
@@ -83,14 +89,43 @@ function InsightsPane(): React.JSX.Element {
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
-    const rows = await window.mycel.getInsights()
+    const [rows, meetingSessions] = await Promise.all([
+      window.mycel.getInsights(),
+      window.mycel.getSessions()
+    ])
     setInsights(rows)
+    setSessions(meetingSessions)
     setLoading(false)
   }, [])
 
   useEffect(() => {
     load().catch(() => setLoading(false))
   }, [load])
+
+  useEffect(() => {
+    if (createView === 'corpus') load().catch(() => {})
+  }, [createView, load])
+
+  useEffect(() => {
+    if (corpusFocusSessionId) setFilter('meeting')
+  }, [corpusFocusSessionId])
+
+  const sessionTitle = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const session of sessions) {
+      map.set(session.id, session.title || 'Untitled session')
+    }
+    return map
+  }, [sessions])
+
+  const visible = useMemo(() => {
+    return insights.filter((insight) => {
+      if (corpusFocusSessionId && insight.sessionId !== corpusFocusSessionId) return false
+      if (filter === 'manual') return insight.origin === 'manual'
+      if (filter === 'meeting') return isMeetingInsightOrigin(insight.origin) || Boolean(insight.sessionId)
+      return true
+    })
+  }, [insights, filter, corpusFocusSessionId])
 
   const resetForm = (): void => {
     setText('')
@@ -129,7 +164,39 @@ function InsightsPane(): React.JSX.Element {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {([
+            { id: 'all', label: 'All' },
+            { id: 'manual', label: 'Manual' },
+            { id: 'meeting', label: 'From meetings' }
+          ] as const).map((tab) => {
+            const active = filter === tab.id
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setFilter(tab.id)
+                  if (tab.id !== 'meeting') setCorpusFocusSessionId(null)
+                }}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 8,
+                  border: '1px solid var(--border)',
+                  background: active ? 'var(--surface)' : 'transparent',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-ui)',
+                  fontSize: 11,
+                  fontWeight: active ? 600 : 500,
+                  color: active ? 'var(--text)' : 'var(--text-muted)'
+                }}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
+        </div>
         <button
           type="button"
           onClick={() => {
@@ -216,11 +283,15 @@ function InsightsPane(): React.JSX.Element {
 
       {loading ? (
         <EmptyLine>Loading…</EmptyLine>
-      ) : insights.length === 0 ? (
-        <EmptyLine>No insights yet. Add one by hand — extractors come later.</EmptyLine>
+      ) : visible.length === 0 ? (
+        <EmptyLine>
+          {filter === 'meeting'
+            ? 'No meeting-sourced insights yet. Import a transcript in Extractions.'
+            : 'No insights yet. Add one by hand — extractors come later.'}
+        </EmptyLine>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {insights.map((insight) => (
+          {visible.map((insight) => (
             <article
               key={insight.id}
               style={{
@@ -261,11 +332,15 @@ function InsightsPane(): React.JSX.Element {
                   marginTop: 8,
                   fontFamily: 'var(--font-ui)',
                   fontSize: 11,
-                  color: 'var(--text-muted)'
+                  color: 'var(--text-muted)',
+                  flexWrap: 'wrap'
                 }}
               >
-                {insight.origin === 'manual' && <span>Manual</span>}
-                {insight.source && <span>{insight.source}</span>}
+                <span>{originLabel(insight.origin)}</span>
+                {insight.sessionId && sessionTitle.get(insight.sessionId) && (
+                  <span>{sessionTitle.get(insight.sessionId)}</span>
+                )}
+                {insight.source && insight.source !== 'meeting' && <span>{insight.source}</span>}
                 {insight.pillar && <span>{insight.pillar}</span>}
                 <span>{format(insight.createdAt, 'MMM d')}</span>
               </div>
@@ -398,6 +473,14 @@ function InboxPane(): React.JSX.Element {
   return (
     <EmptyLine>Inbox is empty. Raw dumps and capture land here in a later phase.</EmptyLine>
   )
+}
+
+function originLabel(origin: CorpusInsight['origin']): string {
+  if (origin === 'manual') return 'Manual'
+  if (origin === 'auto') return 'Meeting'
+  if (origin === 'hybrid') return 'Meeting'
+  if (origin === 'session') return 'Meeting'
+  return origin
 }
 
 function StatusChip({ status }: { status: CorpusThreadStatus }): React.JSX.Element {

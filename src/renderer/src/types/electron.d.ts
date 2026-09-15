@@ -161,7 +161,7 @@ declare global {
       createDocFromAtoms(input: import('@shared/types').CreateDocFromAtomsInput): Promise<import('@shared/types').Doc>
 
       // Content Engine corpus
-      getInsights(): Promise<import('@shared/types').CorpusInsight[]>
+      getInsights(filter?: import('@shared/types').InsightListFilter): Promise<import('@shared/types').CorpusInsight[]>
       createInsight(input: import('@shared/types').CreateInsightInput): Promise<import('@shared/types').CorpusInsight>
       updateInsight(
         id: string,
@@ -176,6 +176,11 @@ declare global {
       createDump(input: import('@shared/types').CreateDumpInput): Promise<import('@shared/types').Dump>
       getSessions(): Promise<import('@shared/types').WorkSession[]>
       createSession(input: import('@shared/types').CreateSessionInput): Promise<import('@shared/types').WorkSession>
+      updateSession(
+        id: string,
+        patch: import('@shared/types').UpdateSessionInput
+      ): Promise<import('@shared/types').WorkSession>
+      ensureMeetingSessions(): Promise<import('@shared/types').WorkSession[]>
 
       // Library
       getLibraryItems(filterTags?: string[]): Promise<import('@shared/types').LibraryItem[]>

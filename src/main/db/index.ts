@@ -149,6 +149,44 @@ export async function initDb(): Promise<void> {
     // column already exists
   }
 
+  try {
+    await db.execute("ALTER TABLE sessions ADD COLUMN source TEXT NOT NULL DEFAULT 'work'")
+  } catch {
+    // column already exists
+  }
+
+  try {
+    await db.execute('ALTER TABLE sessions ADD COLUMN meeting_id TEXT')
+  } catch {
+    // column already exists
+  }
+
+  try {
+    await db.execute('ALTER TABLE sessions ADD COLUMN transcript_ref TEXT')
+  } catch {
+    // column already exists
+  }
+
+  try {
+    await db.execute("ALTER TABLE corpus_insights ADD COLUMN provenance TEXT NOT NULL DEFAULT '{}'")
+  } catch {
+    // column already exists
+  }
+
+  try {
+    await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_meeting_id ON sessions (meeting_id)')
+  } catch {
+    // index already exists or duplicate meeting_id rows
+  }
+
+  try {
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_corpus_insights_session ON corpus_insights (session_id)'
+    )
+  } catch {
+    // index already exists
+  }
+
   await backfillLibraryEmbeds(db)
 }
 

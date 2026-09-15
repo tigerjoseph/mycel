@@ -218,7 +218,12 @@ export interface CreateDocFromAtomsInput {
   generateWithGemini?: boolean
 }
 
-export type InsightOrigin = 'manual' | 'extract' | 'dump' | 'session'
+export type InsightOrigin = 'manual' | 'extract' | 'dump' | 'session' | 'auto' | 'hybrid'
+
+export interface InsightProvenance {
+  sessionId?: string
+  meetingId?: string
+}
 
 export interface CorpusInsight {
   id: string
@@ -230,6 +235,7 @@ export interface CorpusInsight {
   embedding: number[] | null
   dumpId: string | null
   sessionId: string | null
+  provenance: InsightProvenance
   createdAt: number
   updatedAt: number
 }
@@ -242,6 +248,11 @@ export interface CreateInsightInput {
   origin?: InsightOrigin
   dumpId?: string | null
   sessionId?: string | null
+  provenance?: InsightProvenance
+}
+
+export interface InsightListFilter {
+  sessionId?: string
 }
 
 export interface UpdateInsightInput {
@@ -283,11 +294,15 @@ export interface CreateDumpInput {
 }
 
 export type SessionKind = 'work' | 'meeting'
+export type SessionSource = 'work' | 'meeting' | 'manual'
 
 export interface WorkSession {
   id: string
   title: string
   kind: SessionKind
+  source: SessionSource
+  meetingId: string | null
+  transcriptRef: string | null
   contactId: string | null
   projectId: string | null
   startedAt: number | null
@@ -299,10 +314,19 @@ export interface WorkSession {
 export interface CreateSessionInput {
   title?: string
   kind?: SessionKind
+  source?: SessionSource
+  meetingId?: string | null
+  transcriptRef?: string | null
   contactId?: string | null
   projectId?: string | null
   startedAt?: number | null
   endedAt?: number | null
+}
+
+export interface UpdateSessionInput {
+  title?: string
+  contactId?: string | null
+  projectId?: string | null
 }
 
 export interface ActivityEvent {

@@ -177,7 +177,7 @@ const mycelAPI = {
     ipcRenderer.invoke('corpus:createDocFromAtoms', input),
 
   // Content Engine corpus (insights / patterns) — distinct from meetings/atoms
-  getInsights: (): Promise<unknown[]> => ipcRenderer.invoke('insights:getAll'),
+  getInsights: (filter?: unknown): Promise<unknown[]> => ipcRenderer.invoke('insights:getAll', filter),
   createInsight: (input: unknown): Promise<unknown> => ipcRenderer.invoke('insights:create', input),
   updateInsight: (id: string, patch: unknown): Promise<unknown> =>
     ipcRenderer.invoke('insights:update', id, patch),
@@ -188,6 +188,9 @@ const mycelAPI = {
   createDump: (input: unknown): Promise<unknown> => ipcRenderer.invoke('dumps:create', input),
   getSessions: (): Promise<unknown[]> => ipcRenderer.invoke('sessions:getAll'),
   createSession: (input: unknown): Promise<unknown> => ipcRenderer.invoke('sessions:create', input),
+  updateSession: (id: string, patch: unknown): Promise<unknown> =>
+    ipcRenderer.invoke('sessions:update', id, patch),
+  ensureMeetingSessions: (): Promise<unknown[]> => ipcRenderer.invoke('sessions:ensureForMeetings'),
 
   // Library (visual saves from browser extension)
   getLibraryItems: (filterTags?: string[]): Promise<unknown[]> =>

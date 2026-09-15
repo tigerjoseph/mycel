@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fadeUp } from '../styles/animation'
 import { CorpusChooser } from '../components/CorpusChooser'
 import { useUIStore } from '../store/ui'
-import type { Atom, AtomKind, Meeting } from '@shared/types'
+import type { Atom, AtomKind, Contact, CorpusInsight, Meeting, WorkSession } from '@shared/types'
 
 const KIND_LABELS: Record<AtomKind, string> = {
   frame: 'Frame',
@@ -28,12 +28,17 @@ export function Extractions(): React.JSX.Element {
   const setCreateView = useUIStore((s) => s.setCreateView)
   const setActiveDocId = useUIStore((s) => s.setActiveDocId)
   const setDocsView = useUIStore((s) => s.setDocsView)
+  const setCorpusFocusSessionId = useUIStore((s) => s.setCorpusFocusSessionId)
   const activeDocId = useUIStore((s) => s.activeDocId)
   const extractionsFocus = useUIStore((s) => s.extractionsFocus)
   const setExtractionsFocus = useUIStore((s) => s.setExtractionsFocus)
 
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [atoms, setAtoms] = useState<Atom[]>([])
+  const [sessions, setSessions] = useState<WorkSession[]>([])
+  const [insights, setInsights] = useState<CorpusInsight[]>([])
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [projects, setProjects] = useState<{ id: string; name: string; contactId: string }[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [highlightedAtomId, setHighlightedAtomId] = useState<string | null>(null)
@@ -46,12 +51,20 @@ export function Extractions(): React.JSX.Element {
   const [hasGoogleKey, setHasGoogleKey] = useState(false)
 
   const load = useCallback(async () => {
-    const [m, a] = await Promise.all([
+    const [m, a, meetingSessions, corpusInsights, contactRows, projectRows] = await Promise.all([
       window.mycel.getMeetings(),
-      window.mycel.getAtoms()
+      window.mycel.getAtoms(),
+      window.mycel.ensureMeetingSessions(),
+      window.mycel.getInsights(),
+      window.mycel.getContacts().catch(() => [] as Contact[]),
+      window.mycel.getAllProjects().catch(() => [] as { id: string; name: string; contactId: string }[])
     ])
     setMeetings(m)
     setAtoms(a)
+    setSessions(meetingSessions)
+    setInsights(corpusInsights)
+    setContacts(contactRows)
+    setProjects(projectRows)
     setExpanded((prev) => {
       if (prev.size > 0) return prev
       if (m.length === 0) return prev
@@ -82,6 +95,23 @@ export function Extractions(): React.JSX.Element {
       clearTimeout(clear)
     }
   }, [extractionsFocus, setExtractionsFocus])
+
+  const sessionByMeeting = useMemo(() => {
+    const map = new Map<string, WorkSession>()
+    for (const session of sessions) {
+      if (session.meetingId) map.set(session.meetingId, session)
+    }
+    return map
+  }, [sessions])
+
+  const insightCountBySession = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const insight of insights) {
+      if (!insight.sessionId) continue
+      map.set(insight.sessionId, (map.get(insight.sessionId) ?? 0) + 1)
+    }
+    return map
+  }, [insights])
 
   const groups = useMemo<MeetingGroup[]>(() => {
     const byMeeting = new Map<string, Atom[]>()
@@ -168,6 +198,16 @@ export function Extractions(): React.JSX.Element {
     setActiveDocId(docId)
     setDocsView('editor')
   }, [setPage, setCreateView, setActiveDocId, setDocsView])
+
+  const openCorpus = useCallback((sessionId: string) => {
+    setCreateView('corpus')
+    setCorpusFocusSessionId(sessionId)
+  }, [setCreateView, setCorpusFocusSessionId])
+
+  const handleLinkSession = useCallback(async (session: WorkSession, patch: { contactId?: string | null; projectId?: string | null }) => {
+    const updated = await window.mycel.updateSession(session.id, patch)
+    setSessions((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
+  }, [])
 
   return (
     <div
@@ -286,7 +326,10 @@ export function Extractions(): React.JSX.Element {
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {groups.map((group) => (
+            {groups.map((group) => {
+              const session = sessionByMeeting.get(group.id)
+              const corpusCount = session ? (insightCountBySession.get(session.id) ?? 0) : 0
+              return (
               <section key={group.id}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                   <button
@@ -300,7 +343,12 @@ export function Extractions(): React.JSX.Element {
                       {group.title || 'Untitled'}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-ui)', marginTop: 2 }}>
-                      {group.atoms.length} {group.atoms.length === 1 ? 'extraction' : 'extractions'} · {new Date(group.createdAt).toLocaleDateString()}
+                      {group.atoms.length} {group.atoms.length === 1 ? 'extraction' : 'extractions'}
+                      {session && (
+                        <> · {corpusCount} corpus {corpusCount === 1 ? 'insight' : 'insights'}</>
+                      )}
+                      {' · '}
+                      {new Date(group.createdAt).toLocaleDateString()}
                     </div>
                   </div>
                   <button
@@ -314,6 +362,16 @@ export function Extractions(): React.JSX.Element {
 
                 {expanded.has(group.id) && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 24 }}>
+                    {session && (
+                      <MeetingSessionRow
+                        session={session}
+                        insightCount={corpusCount}
+                        contacts={contacts}
+                        projects={projects}
+                        onLink={handleLinkSession}
+                        onOpenCorpus={openCorpus}
+                      />
+                    )}
                     {group.atoms.map((atom) => {
                       const isSelected = selected.has(atom.id)
                       const isHighlighted = highlightedAtomId === atom.id
@@ -348,7 +406,8 @@ export function Extractions(): React.JSX.Element {
                   </div>
                 )}
               </section>
-            ))}
+              )
+            })}
           </div>
         </motion.div>
       </div>
@@ -397,6 +456,102 @@ export function Extractions(): React.JSX.Element {
       />
     </div>
   )
+}
+
+function MeetingSessionRow({
+  session,
+  insightCount,
+  contacts,
+  projects,
+  onLink,
+  onOpenCorpus
+}: {
+  session: WorkSession
+  insightCount: number
+  contacts: Contact[]
+  projects: { id: string; name: string; contactId: string }[]
+  onLink: (session: WorkSession, patch: { contactId?: string | null; projectId?: string | null }) => Promise<void>
+  onOpenCorpus: (sessionId: string) => void
+}): React.JSX.Element {
+  const linkedProjects = session.contactId
+    ? projects.filter((p) => p.contactId === session.contactId)
+    : []
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        gap: 8,
+        padding: '8px 10px',
+        borderRadius: 8,
+        border: '1px solid var(--border)',
+        background: 'var(--bg)',
+        marginBottom: 4
+      }}
+    >
+      <span style={{ fontFamily: 'var(--font-ui)', fontSize: 11, color: 'var(--text-muted)' }}>
+        Session · {insightCount} {insightCount === 1 ? 'insight' : 'insights'}
+      </span>
+      <select
+        aria-label="Link contact"
+        value={session.contactId ?? ''}
+        onChange={(e) => {
+          const contactId = e.target.value || null
+          void onLink(session, { contactId, projectId: null })
+        }}
+        style={selectStyle}
+      >
+        <option value="">Contact…</option>
+        {contacts.map((c) => (
+          <option key={c.id} value={c.id}>{c.name || 'Untitled'}</option>
+        ))}
+      </select>
+      <select
+        aria-label="Link project"
+        value={session.projectId ?? ''}
+        disabled={!session.contactId}
+        onChange={(e) => {
+          void onLink(session, { projectId: e.target.value || null })
+        }}
+        style={{ ...selectStyle, opacity: session.contactId ? 1 : 0.6 }}
+      >
+        <option value="">Project…</option>
+        {linkedProjects.map((p) => (
+          <option key={p.id} value={p.id}>{p.name || 'Untitled'}</option>
+        ))}
+      </select>
+      <button
+        type="button"
+        onClick={() => onOpenCorpus(session.id)}
+        style={{
+          marginLeft: 'auto',
+          padding: '4px 8px',
+          borderRadius: 6,
+          border: '1px solid var(--border)',
+          background: 'var(--surface)',
+          cursor: 'pointer',
+          fontFamily: 'var(--font-ui)',
+          fontSize: 11,
+          color: 'var(--text)'
+        }}
+      >
+        View in Corpus
+      </button>
+    </div>
+  )
+}
+
+const selectStyle: React.CSSProperties = {
+  maxWidth: 160,
+  padding: '4px 6px',
+  borderRadius: 6,
+  border: '1px solid var(--border)',
+  background: 'var(--surface)',
+  fontFamily: 'var(--font-ui)',
+  fontSize: 11,
+  color: 'var(--text)'
 }
 
 const actionBtnStyle: React.CSSProperties = {

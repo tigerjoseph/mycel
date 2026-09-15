@@ -19,3 +19,9 @@ export function insightTextError(text: string): string | null {
 
 export const POST_STATUSES = ['draft', 'review', 'scheduled', 'published'] as const
 export const CORPUS_THREAD_STATUSES = ['emerging', 'active', 'pinned', 'muted'] as const
+export const MEETING_INSIGHT_ORIGINS = ['auto', 'hybrid', 'session'] as const
+export const INSIGHT_INTENTS = ['teach', 'entertain', 'discover', 'frame'] as const
+
+export function isMeetingInsightOrigin(origin: string): boolean {
+  return (MEETING_INSIGHT_ORIGINS as readonly string[]).includes(origin)
+}

@@ -28,6 +28,7 @@ interface UIStore {
   // Focus requests from search — jump to and highlight a specific item
   libraryFocusItemId: string | null
   extractionsFocus: { meetingId: string; atomId: string } | null
+  corpusFocusSessionId: string | null
 
   // Breadcrumbs
   breadcrumbs: BreadcrumbEntry[]
@@ -54,6 +55,7 @@ interface UIStore {
   setCreateView: (view: CreateSubView) => void
   setLibraryFocusItemId: (id: string | null) => void
   setExtractionsFocus: (focus: { meetingId: string; atomId: string } | null) => void
+  setCorpusFocusSessionId: (id: string | null) => void
   pushBreadcrumb: (entry: BreadcrumbEntry) => void
   popBreadcrumb: () => void
   setBreadcrumbs: (entries: BreadcrumbEntry[]) => void
@@ -83,6 +85,7 @@ export const useUIStore = create<UIStore>((set) => ({
   createView: 'docs',
   libraryFocusItemId: null,
   extractionsFocus: null,
+  corpusFocusSessionId: null,
   breadcrumbs: [],
   copyFeedback: null,
   projectNudge: null,
@@ -105,6 +108,7 @@ export const useUIStore = create<UIStore>((set) => ({
   setCreateView: (view) => set({ createView: view }),
   setLibraryFocusItemId: (id) => set({ libraryFocusItemId: id }),
   setExtractionsFocus: (focus) => set({ extractionsFocus: focus }),
+  setCorpusFocusSessionId: (id) => set({ corpusFocusSessionId: id }),
   pushBreadcrumb: (entry) => set((state) => ({
     breadcrumbs: [...state.breadcrumbs, entry]
   })),
