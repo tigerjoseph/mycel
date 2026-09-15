@@ -24,7 +24,7 @@ export function useFlushOnLeave(
   useEffect(() => {
     if (!options?.watchCreateView) return
     if (activePage !== 'create') return
-    if (prevCreateViewRef.current === 'docs' && createView === 'notes') {
+    if (prevCreateViewRef.current === 'docs' && createView !== 'docs') {
       void flushRef.current()
     }
     prevCreateViewRef.current = createView

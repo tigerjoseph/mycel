@@ -1,6 +1,22 @@
 import { ipcMain } from 'electron'
 import { nanoid } from 'nanoid'
 import { getDb } from '../db'
+import type { PostMeta } from '@shared/types'
+
+function parsePostMeta(value: unknown): PostMeta {
+  if (value == null || value === '') return {}
+  if (typeof value === 'object' && !Array.isArray(value)) return value as PostMeta
+  if (typeof value !== 'string') return {}
+  try {
+    const parsed = JSON.parse(value) as unknown
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as PostMeta
+    }
+  } catch {
+    // ignore
+  }
+  return {}
+}
 
 function parseDocRow(row: Record<string, unknown>): Record<string, unknown> {
   return {
@@ -15,6 +31,7 @@ function parseDocRow(row: Record<string, unknown>): Record<string, unknown> {
     isFavorite: Boolean(row.is_favorite),
     favoriteOrder: row.favorite_order as number | null,
     tags: JSON.parse((row.tags as string) || '[]'),
+    postMeta: parsePostMeta(row.post_meta),
     createdAt: row.created_at as number,
     updatedAt: row.updated_at as number
   }
@@ -32,6 +49,7 @@ function parseDocListRow(row: Record<string, unknown>): Record<string, unknown> 
     isFavorite: Boolean(row.is_favorite),
     favoriteOrder: row.favorite_order as number | null,
     tags: JSON.parse((row.tags as string) || '[]'),
+    postMeta: parsePostMeta(row.post_meta),
     createdAt: row.created_at as number,
     updatedAt: row.updated_at as number
   }
@@ -59,7 +77,7 @@ function parseDocVersionRow(row: Record<string, unknown>): Record<string, unknow
 }
 
 const DOC_LIST_COLUMNS =
-  'id, title, type, folder_id, icon, cover_image, is_template, is_favorite, favorite_order, tags, created_at, updated_at'
+  'id, title, type, folder_id, icon, cover_image, is_template, is_favorite, favorite_order, tags, post_meta, created_at, updated_at'
 
 export function registerDocHandlers(): void {
   ipcMain.handle('docs:getAll', async (_e, folderId?: string) => {
@@ -102,6 +120,7 @@ export function registerDocHandlers(): void {
     const tx = await db.transaction('write')
     let createdAt = (doc.createdAt ?? doc.created_at ?? now) as number
     let body = ''
+    let postMeta: PostMeta = {}
 
     try {
       const existingResult = await tx.execute({
@@ -120,6 +139,14 @@ export function registerDocHandlers(): void {
       ) {
         body = existing.body
       }
+
+      const postMetaProvided =
+        Object.prototype.hasOwnProperty.call(doc, 'postMeta') ||
+        Object.prototype.hasOwnProperty.call(doc, 'post_meta')
+      postMeta = postMetaProvided
+        ? parsePostMeta(doc.postMeta ?? doc.post_meta)
+        : parsePostMeta(existing?.post_meta)
+      const postMetaJson = JSON.stringify(postMeta)
 
       if (
         existing &&
@@ -162,8 +189,8 @@ export function registerDocHandlers(): void {
       await tx.execute({
         sql: `INSERT INTO docs
               (id, title, body, type, folder_id, icon, cover_image, is_template,
-               is_favorite, favorite_order, tags, created_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               is_favorite, favorite_order, tags, post_meta, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
               ON CONFLICT(id) DO UPDATE SET
                 title = excluded.title,
                 body = excluded.body,
@@ -175,10 +202,11 @@ export function registerDocHandlers(): void {
                 is_favorite = excluded.is_favorite,
                 favorite_order = excluded.favorite_order,
                 tags = excluded.tags,
+                post_meta = excluded.post_meta,
                 updated_at = excluded.updated_at`,
         args: [
           id, title, body, type, folderId, icon, coverImage, isTemplate,
-          isFavorite, favoriteOrder, tags, createdAt, updatedAt
+          isFavorite, favoriteOrder, tags, postMetaJson, createdAt, updatedAt
         ]
       })
       await tx.execute({
@@ -204,7 +232,9 @@ export function registerDocHandlers(): void {
       folderId, icon, coverImage,
       isTemplate: Boolean(isTemplate), isFavorite: Boolean(isFavorite),
       favoriteOrder,
-      tags: doc.tags || [], createdAt, updatedAt
+      tags: doc.tags || [],
+      postMeta,
+      createdAt, updatedAt
     }
   })
 

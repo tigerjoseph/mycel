@@ -3,6 +3,8 @@ import { Docs } from './Docs'
 import { Notes } from './Notes'
 import { ContentTracking } from './ContentTracking'
 import { Extractions } from './Extractions'
+import { Corpus } from './Corpus'
+import { ContentCalendar } from './ContentCalendar'
 
 const subViewStyle = (active: boolean): React.CSSProperties => ({
   display: active ? 'flex' : 'none',
@@ -29,6 +31,12 @@ export function Create(): React.JSX.Element {
         </div>
         <div style={subViewStyle(activeCreateView === 'extractions')}>
           <Extractions />
+        </div>
+        <div style={subViewStyle(activeCreateView === 'corpus')}>
+          <Corpus />
+        </div>
+        <div style={subViewStyle(activeCreateView === 'calendar')}>
+          <ContentCalendar />
         </div>
       </div>
     </div>

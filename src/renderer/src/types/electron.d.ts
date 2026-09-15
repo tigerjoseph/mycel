@@ -160,6 +160,23 @@ declare global {
       deleteMeeting(id: string): Promise<void>
       createDocFromAtoms(input: import('@shared/types').CreateDocFromAtomsInput): Promise<import('@shared/types').Doc>
 
+      // Content Engine corpus
+      getInsights(): Promise<import('@shared/types').CorpusInsight[]>
+      createInsight(input: import('@shared/types').CreateInsightInput): Promise<import('@shared/types').CorpusInsight>
+      updateInsight(
+        id: string,
+        patch: import('@shared/types').UpdateInsightInput
+      ): Promise<import('@shared/types').CorpusInsight>
+      getCorpusThreads(): Promise<import('@shared/types').CorpusThread[]>
+      setCorpusThreadStatus(
+        id: string,
+        status: import('@shared/types').CorpusThreadStatus
+      ): Promise<import('@shared/types').CorpusThread>
+      getDumps(): Promise<import('@shared/types').Dump[]>
+      createDump(input: import('@shared/types').CreateDumpInput): Promise<import('@shared/types').Dump>
+      getSessions(): Promise<import('@shared/types').WorkSession[]>
+      createSession(input: import('@shared/types').CreateSessionInput): Promise<import('@shared/types').WorkSession>
+
       // Library
       getLibraryItems(filterTags?: string[]): Promise<import('@shared/types').LibraryItem[]>
       getLibraryItem(id: string): Promise<import('@shared/types').LibraryItem | null>

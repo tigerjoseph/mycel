@@ -176,6 +176,19 @@ const mycelAPI = {
   createDocFromAtoms: (input: unknown): Promise<unknown> =>
     ipcRenderer.invoke('corpus:createDocFromAtoms', input),
 
+  // Content Engine corpus (insights / patterns) — distinct from meetings/atoms
+  getInsights: (): Promise<unknown[]> => ipcRenderer.invoke('insights:getAll'),
+  createInsight: (input: unknown): Promise<unknown> => ipcRenderer.invoke('insights:create', input),
+  updateInsight: (id: string, patch: unknown): Promise<unknown> =>
+    ipcRenderer.invoke('insights:update', id, patch),
+  getCorpusThreads: (): Promise<unknown[]> => ipcRenderer.invoke('threads:getAll'),
+  setCorpusThreadStatus: (id: string, status: string): Promise<unknown> =>
+    ipcRenderer.invoke('threads:setStatus', id, status),
+  getDumps: (): Promise<unknown[]> => ipcRenderer.invoke('dumps:getAll'),
+  createDump: (input: unknown): Promise<unknown> => ipcRenderer.invoke('dumps:create', input),
+  getSessions: (): Promise<unknown[]> => ipcRenderer.invoke('sessions:getAll'),
+  createSession: (input: unknown): Promise<unknown> => ipcRenderer.invoke('sessions:create', input),
+
   // Library (visual saves from browser extension)
   getLibraryItems: (filterTags?: string[]): Promise<unknown[]> =>
     ipcRenderer.invoke('library:getAll', filterTags),

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { PageId, BreadcrumbEntry } from '@shared/types'
+import type { CreateSubView } from '../config/pageSubs'
 
 interface UIStore {
   activePage: PageId
@@ -22,7 +23,7 @@ interface UIStore {
   activeNoteId: string | null
 
   // Create sub-view (keep-alive; used for save flush)
-  createView: 'docs' | 'notes' | 'content' | 'extractions'
+  createView: CreateSubView
 
   // Focus requests from search — jump to and highlight a specific item
   libraryFocusItemId: string | null
@@ -50,7 +51,7 @@ interface UIStore {
   setActiveFolderId: (id: string | null) => void
   setDocsView: (view: 'home' | 'favorites' | 'list' | 'editor' | 'grid') => void
   setActiveNoteId: (id: string | null) => void
-  setCreateView: (view: 'docs' | 'notes' | 'content' | 'extractions') => void
+  setCreateView: (view: CreateSubView) => void
   setLibraryFocusItemId: (id: string | null) => void
   setExtractionsFocus: (focus: { meetingId: string; atomId: string } | null) => void
   pushBreadcrumb: (entry: BreadcrumbEntry) => void

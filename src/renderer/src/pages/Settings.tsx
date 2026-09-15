@@ -408,6 +408,26 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
         </Hint>
       </Section>
 
+      <Section title="Identity, voice & capture">
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
+          Content engine placeholders. Identity, voice kit, and capture stay off until a later phase.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <ActionButton disabled onClick={() => {}}>
+            Identity
+            <ComingSoonBadge />
+          </ActionButton>
+          <ActionButton disabled onClick={() => {}}>
+            Voice kit
+            <ComingSoonBadge />
+          </ActionButton>
+          <ActionButton disabled onClick={() => {}}>
+            Capture
+            <ComingSoonBadge />
+          </ActionButton>
+        </div>
+      </Section>
+
       <Section title="Keyboard shortcuts">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {SHORTCUTS.map((s) => (

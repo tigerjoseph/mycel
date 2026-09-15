@@ -14,11 +14,28 @@ export interface Folder {
   createdAt: number
 }
 
+export type DocType = 'note' | 'doc' | 'post' | 'grid'
+
+export type PostChannel = 'linkedin' | 'newsletter'
+export type PostStatus = 'draft' | 'review' | 'scheduled' | 'published'
+export type PostIntent = 'teach' | 'entertain' | 'discover' | 'frame'
+
+export interface PostMeta {
+  channel?: PostChannel
+  source?: string
+  status?: PostStatus
+  scheduledFor?: number | null
+  publishedAt?: number | null
+  insightIds?: string[]
+  threadId?: string | null
+  intent?: PostIntent
+}
+
 export interface Doc {
   id: string
   title: string
   body: string
-  type: 'doc' | 'grid'
+  type: DocType
   folderId: string | null
   icon: string | null
   coverImage: string | null
@@ -26,6 +43,7 @@ export interface Doc {
   isFavorite: boolean
   favoriteOrder: number | null
   tags: string[]
+  postMeta?: PostMeta
   createdAt: number
   updatedAt: number
 }
@@ -198,6 +216,102 @@ export interface CreateDocFromAtomsInput {
   docType: CorpusDocType
   title?: string
   generateWithGemini?: boolean
+}
+
+export type InsightOrigin = 'manual' | 'extract' | 'dump' | 'session'
+
+export interface CorpusInsight {
+  id: string
+  text: string
+  soWhat: string | null
+  source: string | null
+  pillar: string | null
+  origin: InsightOrigin
+  embedding: number[] | null
+  dumpId: string | null
+  sessionId: string | null
+  createdAt: number
+  updatedAt: number
+}
+
+export interface CreateInsightInput {
+  text: string
+  soWhat?: string | null
+  source?: string | null
+  pillar?: string | null
+  origin?: InsightOrigin
+  dumpId?: string | null
+  sessionId?: string | null
+}
+
+export interface UpdateInsightInput {
+  text?: string
+  soWhat?: string | null
+  source?: string | null
+  pillar?: string | null
+}
+
+export type CorpusThreadStatus = 'emerging' | 'active' | 'pinned' | 'muted'
+
+export interface CorpusThread {
+  id: string
+  title: string
+  meaning: string
+  centroidEmbedding: number[] | null
+  meaningScore: number
+  status: CorpusThreadStatus
+  evidenceCount: number
+  sourceDiversity: number
+  createdAt: number
+  updatedAt: number
+}
+
+export type DumpSource = 'manual' | 'paste' | 'file' | 'telegram'
+
+export interface Dump {
+  id: string
+  source: DumpSource
+  payload: string
+  metadata: Record<string, unknown>
+  createdAt: number
+}
+
+export interface CreateDumpInput {
+  source?: DumpSource
+  payload: string
+  metadata?: Record<string, unknown>
+}
+
+export type SessionKind = 'work' | 'meeting'
+
+export interface WorkSession {
+  id: string
+  title: string
+  kind: SessionKind
+  contactId: string | null
+  projectId: string | null
+  startedAt: number | null
+  endedAt: number | null
+  createdAt: number
+  updatedAt: number
+}
+
+export interface CreateSessionInput {
+  title?: string
+  kind?: SessionKind
+  contactId?: string | null
+  projectId?: string | null
+  startedAt?: number | null
+  endedAt?: number | null
+}
+
+export interface ActivityEvent {
+  id: string
+  kind: string
+  payload: Record<string, unknown>
+  capturedAt: number
+  expiresAt: number | null
+  createdAt: number
 }
 
 export type PageId = 'todo' | 'people' | 'create' | 'library'

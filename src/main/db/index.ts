@@ -143,6 +143,12 @@ export async function initDb(): Promise<void> {
     // column already exists
   }
 
+  try {
+    await db.execute("ALTER TABLE docs ADD COLUMN post_meta TEXT NOT NULL DEFAULT '{}'")
+  } catch {
+    // column already exists
+  }
+
   await backfillLibraryEmbeds(db)
 }
 
