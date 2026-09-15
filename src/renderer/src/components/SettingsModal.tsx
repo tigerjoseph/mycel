@@ -50,8 +50,8 @@ export function SettingsModal(): React.JSX.Element {
             transition={springGentle}
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: 'min(520px, calc(100vw - 48px))',
-              maxHeight: 'min(680px, calc(100vh - 48px))',
+              width: 'min(600px, calc(100vw - 48px))',
+              maxHeight: 'min(780px, calc(100vh - 48px))',
               background: 'var(--bg)',
               border: '1px solid var(--border)',
               borderRadius: 14,
