@@ -3,13 +3,18 @@ import { nanoid } from 'nanoid'
 import { getDb } from '../db'
 import { getEmbedder } from '../engine/embedder'
 import {
+  attachInsightToThread,
+  applyThreadStatus,
+  findNearDuplicate,
+  listDecoratedThreads
+} from '../engine/clusterThreads'
+import {
   ensureSessionsForExistingMeetings,
   parseInsightRow,
   parseSessionRow
 } from '../engine/ingestMeeting'
 import { insightTextError } from '@shared/contentEngine'
 import type {
-  CorpusThread,
   CorpusThreadStatus,
   CreateDumpInput,
   CreateInsightInput,
@@ -40,37 +45,10 @@ function parseJsonObject(value: unknown): Record<string, unknown> {
   return {}
 }
 
-function parseEmbedding(value: unknown): number[] | null {
-  if (value == null || value === '') return null
-  try {
-    const parsed = typeof value === 'string' ? (JSON.parse(value) as unknown) : value
-    if (!Array.isArray(parsed)) return null
-    const nums = parsed.map(Number).filter((n) => Number.isFinite(n))
-    return nums.length > 0 ? nums : null
-  } catch {
-    return null
-  }
-}
-
 function optionalText(value: unknown): string | null {
   if (value == null) return null
   const text = String(value).trim()
   return text.length > 0 ? text : null
-}
-
-function parseThreadRow(row: Record<string, unknown>): CorpusThread {
-  return {
-    id: row.id as string,
-    title: (row.title as string) || '',
-    meaning: (row.meaning as string) || '',
-    centroidEmbedding: parseEmbedding(row.centroid_embedding),
-    meaningScore: Number(row.meaning_score ?? 0),
-    status: ((row.status as string) || 'emerging') as CorpusThreadStatus,
-    evidenceCount: Number(row.evidence_count ?? 0),
-    sourceDiversity: Number(row.source_diversity ?? 0),
-    createdAt: row.created_at as number,
-    updatedAt: row.updated_at as number
-  }
 }
 
 function parseDumpRow(row: Record<string, unknown>): Dump {
@@ -93,10 +71,16 @@ export function registerContentEngineHandlers(): void {
     const db = getDb()
     const result = filter?.sessionId
       ? await db.execute({
-          sql: 'SELECT * FROM corpus_insights WHERE session_id = ? ORDER BY created_at DESC',
+          sql: `SELECT * FROM corpus_insights
+                WHERE session_id = ? AND (duplicate_of IS NULL OR duplicate_of = '')
+                ORDER BY created_at DESC`,
           args: [filter.sessionId]
         })
-      : await db.execute('SELECT * FROM corpus_insights ORDER BY created_at DESC')
+      : await db.execute(
+          `SELECT * FROM corpus_insights
+           WHERE (duplicate_of IS NULL OR duplicate_of = '')
+           ORDER BY created_at DESC`
+        )
     return result.rows.map((row) => parseInsightRow(row as unknown as Record<string, unknown>))
   })
 
@@ -118,7 +102,19 @@ export function registerContentEngineHandlers(): void {
       ...(input.provenance ?? {}),
       sessionId: input.provenance?.sessionId ?? sessionId ?? undefined
     }
-    const embedding = await embedText(text)
+    const embeddingVec = await getEmbedder().embed(text)
+    const dup = await findNearDuplicate(embeddingVec, now, text)
+    if (dup) {
+      try {
+        await attachInsightToThread(dup.id)
+      } catch (err) {
+        console.error('Content Engine cluster attach failed:', err)
+      }
+      const existing = await db.execute({ sql: 'SELECT * FROM corpus_insights WHERE id = ?', args: [dup.id] })
+      return parseInsightRow(existing.rows[0] as unknown as Record<string, unknown>)
+    }
+
+    const embedding = JSON.stringify(embeddingVec)
 
     await db.execute({
       sql: `INSERT INTO corpus_insights
@@ -130,20 +126,14 @@ export function registerContentEngineHandlers(): void {
       ]
     })
 
-    return parseInsightRow({
-      id,
-      text,
-      so_what: soWhat,
-      source,
-      pillar,
-      origin,
-      embedding,
-      dump_id: dumpId,
-      session_id: sessionId,
-      provenance: JSON.stringify(provenance),
-      created_at: now,
-      updated_at: now
-    })
+    try {
+      await attachInsightToThread(id)
+    } catch (err) {
+      console.error('Content Engine cluster attach failed:', err)
+    }
+
+    const saved = await db.execute({ sql: 'SELECT * FROM corpus_insights WHERE id = ?', args: [id] })
+    return parseInsightRow(saved.rows[0] as unknown as Record<string, unknown>)
   })
 
   ipcMain.handle('insights:update', async (_e, id: string, patch: UpdateInsightInput) => {
@@ -180,43 +170,26 @@ export function registerContentEngineHandlers(): void {
       args: [nextText, soWhat, source, pillar, embedding, now, id]
     })
 
-    return parseInsightRow({
-      ...row,
-      text: nextText,
-      so_what: soWhat,
-      source,
-      pillar,
-      embedding,
-      updated_at: now
-    })
+    try {
+      await attachInsightToThread(id)
+    } catch (err) {
+      console.error('Content Engine cluster attach failed:', err)
+    }
+
+    const saved = await db.execute({ sql: 'SELECT * FROM corpus_insights WHERE id = ?', args: [id] })
+    return parseInsightRow(saved.rows[0] as unknown as Record<string, unknown>)
   })
 
   ipcMain.handle('threads:getAll', async () => {
-    const db = getDb()
-    const result = await db.execute(
-      `SELECT * FROM corpus_threads
-       ORDER BY CASE status
-         WHEN 'pinned' THEN 0
-         WHEN 'active' THEN 1
-         WHEN 'emerging' THEN 2
-         ELSE 3
-       END, updated_at DESC`
-    )
-    return result.rows.map((row) => parseThreadRow(row as unknown as Record<string, unknown>))
+    return listDecoratedThreads()
   })
 
   ipcMain.handle('threads:setStatus', async (_e, id: string, status: CorpusThreadStatus) => {
     if (!id) throw new Error('Thread id is required')
     if (!THREAD_STATUSES.has(status)) throw new Error('Invalid thread status')
-    const db = getDb()
-    const now = Date.now()
-    const result = await db.execute({
-      sql: 'UPDATE corpus_threads SET status = ?, updated_at = ? WHERE id = ?',
-      args: [status, now, id]
-    })
-    if (result.rowsAffected === 0) throw new Error('Thread not found')
-    const row = await db.execute({ sql: 'SELECT * FROM corpus_threads WHERE id = ?', args: [id] })
-    return parseThreadRow(row.rows[0] as unknown as Record<string, unknown>)
+    const updated = await applyThreadStatus(id, status)
+    if (!updated) throw new Error('Thread not found')
+    return updated
   })
 
   ipcMain.handle('dumps:getAll', async () => {

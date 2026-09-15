@@ -235,6 +235,8 @@ export interface CorpusInsight {
   embedding: number[] | null
   dumpId: string | null
   sessionId: string | null
+  threadId: string | null
+  duplicateOf: string | null
   provenance: InsightProvenance
   createdAt: number
   updatedAt: number
@@ -273,6 +275,9 @@ export interface CorpusThread {
   status: CorpusThreadStatus
   evidenceCount: number
   sourceDiversity: number
+  surfaced: boolean
+  eligibleForDraft: boolean
+  insights: CorpusInsight[]
   createdAt: number
   updatedAt: number
 }

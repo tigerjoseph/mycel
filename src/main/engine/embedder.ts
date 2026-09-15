@@ -1,33 +1,48 @@
-/** Local embedding interface. Phase 0 ships a deterministic stub so insights can store a vector without cloud keys. */
+/** Local embedding interface. Deterministic stub — no cloud keys required at boot. */
+
+import { contentTokens } from '@shared/contentEngine'
 
 export interface Embedder {
   embed(text: string): Promise<number[]>
 }
 
-export const STUB_EMBEDDING_DIM = 64
+export const STUB_EMBEDDING_DIM = 256
 
-function hashChar(code: number, salt: number): number {
-  const x = Math.sin(code * 12.9898 + salt * 78.233) * 43758.5453
-  return x - Math.floor(x)
+function hashToken(token: string): number {
+  let h = 2166136261
+  for (let i = 0; i < token.length; i++) {
+    h ^= token.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
 }
 
-/** Deterministic, no-network embedder. Same text always yields the same unit vector. */
+function l2Normalize(vec: number[]): number[] {
+  let mag = 0
+  for (const n of vec) mag += n * n
+  mag = Math.sqrt(mag) || 1
+  return vec.map((n) => n / mag)
+}
+
+/**
+ * Deterministic, no-network embedder. Hashed unigrams + bigrams of content tokens.
+ * Character features are omitted — they collapse unrelated English into similar vectors.
+ */
 export class StubEmbedder implements Embedder {
   async embed(text: string): Promise<number[]> {
-    const input = text.trim().toLowerCase()
+    const tokens = contentTokens(text)
     const vec = new Array<number>(STUB_EMBEDDING_DIM).fill(0)
-    if (!input) return vec
+    if (tokens.length === 0) return vec
 
-    for (let i = 0; i < input.length; i++) {
-      const code = input.charCodeAt(i)
-      vec[i % STUB_EMBEDDING_DIM] += hashChar(code, i)
-      vec[(code + i) % STUB_EMBEDDING_DIM] += hashChar(code, i + 17)
+    for (let t = 0; t < tokens.length; t++) {
+      const token = tokens[t]
+      vec[hashToken(token) % STUB_EMBEDDING_DIM] += 2
+      if (t + 1 < tokens.length) {
+        vec[hashToken(`${token}_${tokens[t + 1]}`) % STUB_EMBEDDING_DIM] += 2.4
+      }
     }
 
-    let mag = 0
-    for (const n of vec) mag += n * n
-    mag = Math.sqrt(mag) || 1
-    return vec.map((n) => n / mag)
+    return l2Normalize(vec)
   }
 }
 

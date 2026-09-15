@@ -187,6 +187,32 @@ export async function initDb(): Promise<void> {
     // index already exists
   }
 
+  try {
+    await db.execute('ALTER TABLE corpus_insights ADD COLUMN thread_id TEXT')
+  } catch {
+    // column already exists
+  }
+
+  try {
+    await db.execute('ALTER TABLE corpus_insights ADD COLUMN duplicate_of TEXT')
+  } catch {
+    // column already exists
+  }
+
+  try {
+    await db.execute('ALTER TABLE corpus_threads ADD COLUMN titled_once INTEGER NOT NULL DEFAULT 0')
+  } catch {
+    // column already exists
+  }
+
+  try {
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_corpus_insights_thread ON corpus_insights (thread_id)'
+    )
+  } catch {
+    // index already exists
+  }
+
   await backfillLibraryEmbeds(db)
 }
 

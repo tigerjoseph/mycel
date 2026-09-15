@@ -71,6 +71,8 @@ export function parseInsightRow(row: Record<string, unknown>): CorpusInsight {
     embedding: parseEmbedding(row.embedding),
     dumpId: (row.dump_id as string | null) ?? null,
     sessionId,
+    threadId: (row.thread_id as string | null) ?? null,
+    duplicateOf: (row.duplicate_of as string | null) ?? null,
     provenance: {
       ...provenance,
       sessionId: provenance.sessionId ?? sessionId ?? undefined
@@ -78,11 +80,6 @@ export function parseInsightRow(row: Record<string, unknown>): CorpusInsight {
     createdAt: row.created_at as number,
     updatedAt: row.updated_at as number
   }
-}
-
-async function embedText(text: string): Promise<string> {
-  const embedding = await getEmbedder().embed(text)
-  return JSON.stringify(embedding)
 }
 
 export async function getSessionByMeetingId(meetingId: string): Promise<WorkSession | null> {
@@ -178,12 +175,17 @@ async function insertInsight(params: {
 }): Promise<CorpusInsight> {
   const db = getDb()
   const now = Date.now()
+  const embeddingVec = await getEmbedder().embed(params.text)
+  const { findNearDuplicate } = await import('./clusterThreads')
+  const dup = await findNearDuplicate(embeddingVec, now, params.text)
+  if (dup) return dup
+
   const id = nanoid()
   const provenance: InsightProvenance = {
     sessionId: params.sessionId,
     meetingId: params.meetingId
   }
-  const embedding = await embedText(params.text)
+  const embedding = JSON.stringify(embeddingVec)
   await db.execute({
     sql: `INSERT INTO corpus_insights
           (id, text, so_what, source, pillar, origin, embedding, dump_id, session_id, provenance, created_at, updated_at)
@@ -212,6 +214,8 @@ async function insertInsight(params: {
     embedding,
     dump_id: null,
     session_id: params.sessionId,
+    thread_id: null,
+    duplicate_of: null,
     provenance: JSON.stringify(provenance),
     created_at: now,
     updated_at: now
@@ -247,7 +251,21 @@ export async function ingestMeetingIntoCorpus(
         })
       )
     }
-    return { session, insights }
+    const { attachInsightToThread } = await import('./clusterThreads')
+    const kept: CorpusInsight[] = []
+    const seen = new Set<string>()
+    for (const insight of insights) {
+      if (seen.has(insight.id)) continue
+      seen.add(insight.id)
+      try {
+        await attachInsightToThread(insight.id)
+        kept.push(insight)
+      } catch (err) {
+        console.error('Content Engine cluster attach failed:', err)
+        kept.push(insight)
+      }
+    }
+    return { session, insights: kept }
   } catch (err) {
     console.error('Content Engine meeting ingest failed (meeting left intact):', err)
     return { session, insights: [] }

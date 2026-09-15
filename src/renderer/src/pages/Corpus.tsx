@@ -152,7 +152,7 @@ function InsightsPane(): React.JSX.Element {
         origin: 'manual'
       }
       const created = await window.mycel.createInsight(input)
-      setInsights((prev) => [created, ...prev])
+      setInsights((prev) => (prev.some((row) => row.id === created.id) ? prev : [created, ...prev]))
       resetForm()
       setFormOpen(false)
     } catch (err) {
@@ -353,8 +353,10 @@ function InsightsPane(): React.JSX.Element {
 }
 
 function PatternsPane(): React.JSX.Element {
+  const createView = useUIStore((s) => s.createView)
   const [threads, setThreads] = useState<CorpusThread[]>([])
   const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState<'all' | CorpusThreadStatus>('all')
 
   const load = useCallback(async () => {
     const rows = await window.mycel.getCorpusThreads()
@@ -365,6 +367,10 @@ function PatternsPane(): React.JSX.Element {
   useEffect(() => {
     load().catch(() => setLoading(false))
   }, [load])
+
+  useEffect(() => {
+    if (createView === 'corpus') load().catch(() => {})
+  }, [createView, load])
 
   const setStatus = async (thread: CorpusThread, status: CorpusThreadStatus): Promise<void> => {
     const previous = threads
@@ -377,92 +383,198 @@ function PatternsPane(): React.JSX.Element {
     }
   }
 
+  const visible = useMemo(() => {
+    return threads.filter((thread) => {
+      const listed =
+        thread.surfaced ||
+        thread.status === 'pinned' ||
+        thread.status === 'muted' ||
+        (thread.status === 'emerging' && thread.evidenceCount >= 2)
+      if (!listed) return false
+      if (filter === 'all') return true
+      return thread.status === filter
+    })
+  }, [threads, filter])
+
   if (loading) return <EmptyLine>Loading…</EmptyLine>
-  if (threads.length === 0) {
-    return <EmptyLine>No patterns yet. They’ll cluster here from insights in a later phase.</EmptyLine>
+  if (visible.length === 0) {
+    return (
+      <div>
+        <PatternFilters filter={filter} setFilter={setFilter} />
+        <EmptyLine>
+          No patterns yet. Add 3 related insights, or 2 from different sources, and they’ll cluster here.
+        </EmptyLine>
+      </div>
+    )
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {threads.map((thread) => {
-        const pinned = thread.status === 'pinned'
-        const muted = thread.status === 'muted'
+    <div>
+      <PatternFilters filter={filter} setFilter={setFilter} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {visible.map((thread) => {
+          const pinned = thread.status === 'pinned'
+          const muted = thread.status === 'muted'
+          const unpinTo = thread.surfaced ? 'active' : 'emerging'
+          const unmuteTo = thread.surfaced ? 'active' : 'emerging'
+          return (
+            <article
+              key={thread.id}
+              style={{
+                padding: '12px 14px',
+                borderRadius: 8,
+                border: '1px solid var(--border)',
+                background: 'var(--surface)',
+                opacity: muted ? 0.65 : 1
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-heading)',
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: 'var(--text)'
+                      }}
+                    >
+                      {thread.title || thread.meaning || 'Untitled pattern'}
+                    </span>
+                    <StatusChip status={thread.status} />
+                    {!thread.eligibleForDraft && muted && (
+                      <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, color: 'var(--text-muted)' }}>
+                        excluded from drafts
+                      </span>
+                    )}
+                  </div>
+                  {thread.meaning && thread.title && thread.meaning !== thread.title && (
+                    <p
+                      style={{
+                        margin: 0,
+                        fontFamily: 'var(--font-ui)',
+                        fontSize: 12,
+                        color: 'var(--text-muted)',
+                        lineHeight: 1.4
+                      }}
+                    >
+                      {thread.meaning}
+                    </p>
+                  )}
+                  <div
+                    style={{
+                      marginTop: 6,
+                      fontFamily: 'var(--font-ui)',
+                      fontSize: 11,
+                      color: 'var(--text-muted)'
+                    }}
+                  >
+                    {thread.evidenceCount} evidence · diversity {thread.sourceDiversity} · score{' '}
+                    {thread.meaningScore.toFixed(1)}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    aria-label={pinned ? 'Unpin pattern' : 'Pin pattern'}
+                    onClick={() => void setStatus(thread, pinned ? unpinTo : 'pinned')}
+                    style={{
+                      ...iconBtn,
+                      color: pinned ? 'var(--accent)' : 'var(--text-muted)'
+                    }}
+                  >
+                    <Pin size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={muted ? 'Unmute pattern' : 'Mute pattern'}
+                    onClick={() => void setStatus(thread, muted ? unmuteTo : 'muted')}
+                    style={{
+                      ...iconBtn,
+                      color: muted ? 'var(--text)' : 'var(--text-muted)'
+                    }}
+                  >
+                    <VolumeX size={13} />
+                  </button>
+                </div>
+              </div>
+              {thread.insights.length > 0 && (
+                <ul style={{ listStyle: 'none', margin: '10px 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {thread.insights.map((insight) => (
+                    <li
+                      key={insight.id}
+                      style={{
+                        padding: '8px 10px',
+                        borderRadius: 6,
+                        background: 'var(--bg)',
+                        fontFamily: 'var(--font-ui)',
+                        fontSize: 12,
+                        lineHeight: 1.45,
+                        color: 'var(--text)'
+                      }}
+                    >
+                      <div>{insight.text}</div>
+                      <div
+                        style={{
+                          marginTop: 4,
+                          fontSize: 10,
+                          color: 'var(--text-muted)'
+                        }}
+                      >
+                        {originLabel(insight.origin)}
+                        {insight.source ? ` · ${insight.source}` : ''}
+                        {' · '}
+                        {format(insight.createdAt, 'MMM d')}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </article>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function PatternFilters({
+  filter,
+  setFilter
+}: {
+  filter: 'all' | CorpusThreadStatus
+  setFilter: (id: 'all' | CorpusThreadStatus) => void
+}): React.JSX.Element {
+  const tabs: { id: 'all' | CorpusThreadStatus; label: string }[] = [
+    { id: 'all', label: 'All' },
+    { id: 'emerging', label: 'Emerging' },
+    { id: 'active', label: 'Active' },
+    { id: 'pinned', label: 'Pinned' },
+    { id: 'muted', label: 'Muted' }
+  ]
+  return (
+    <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+      {tabs.map((tab) => {
+        const active = filter === tab.id
         return (
-          <article
-            key={thread.id}
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setFilter(tab.id)}
             style={{
-              padding: '12px 14px',
+              padding: '4px 10px',
               borderRadius: 8,
               border: '1px solid var(--border)',
-              background: 'var(--surface)',
-              opacity: muted ? 0.65 : 1
+              background: active ? 'var(--surface)' : 'transparent',
+              cursor: 'pointer',
+              fontFamily: 'var(--font-ui)',
+              fontSize: 11,
+              fontWeight: active ? 600 : 500,
+              color: active ? 'var(--text)' : 'var(--text-muted)'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span
-                    style={{
-                      fontFamily: 'var(--font-heading)',
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: 'var(--text)'
-                    }}
-                  >
-                    {thread.title || thread.meaning || 'Untitled pattern'}
-                  </span>
-                  <StatusChip status={thread.status} />
-                </div>
-                {thread.meaning && thread.title && (
-                  <p
-                    style={{
-                      margin: 0,
-                      fontFamily: 'var(--font-ui)',
-                      fontSize: 12,
-                      color: 'var(--text-muted)',
-                      lineHeight: 1.4
-                    }}
-                  >
-                    {thread.meaning}
-                  </p>
-                )}
-                <div
-                  style={{
-                    marginTop: 6,
-                    fontFamily: 'var(--font-ui)',
-                    fontSize: 11,
-                    color: 'var(--text-muted)'
-                  }}
-                >
-                  {thread.evidenceCount} evidence · diversity {thread.sourceDiversity}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                <button
-                  type="button"
-                  aria-label={pinned ? 'Unpin pattern' : 'Pin pattern'}
-                  onClick={() => void setStatus(thread, pinned ? 'active' : 'pinned')}
-                  style={{
-                    ...iconBtn,
-                    color: pinned ? 'var(--accent)' : 'var(--text-muted)'
-                  }}
-                >
-                  <Pin size={13} />
-                </button>
-                <button
-                  type="button"
-                  aria-label={muted ? 'Unmute pattern' : 'Mute pattern'}
-                  onClick={() => void setStatus(thread, muted ? 'emerging' : 'muted')}
-                  style={{
-                    ...iconBtn,
-                    color: muted ? 'var(--text)' : 'var(--text-muted)'
-                  }}
-                >
-                  <VolumeX size={13} />
-                </button>
-              </div>
-            </div>
-          </article>
+            {tab.label}
+          </button>
         )
       })}
     </div>

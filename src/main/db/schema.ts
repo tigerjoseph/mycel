@@ -216,6 +216,8 @@ CREATE TABLE IF NOT EXISTS corpus_insights (
   embedding TEXT,
   dump_id TEXT,
   session_id TEXT,
+  thread_id TEXT,
+  duplicate_of TEXT,
   provenance TEXT NOT NULL DEFAULT '{}',
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
@@ -223,6 +225,7 @@ CREATE TABLE IF NOT EXISTS corpus_insights (
 
 CREATE INDEX IF NOT EXISTS idx_corpus_insights_created ON corpus_insights (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_corpus_insights_session ON corpus_insights (session_id);
+CREATE INDEX IF NOT EXISTS idx_corpus_insights_thread ON corpus_insights (thread_id);
 
 CREATE TABLE IF NOT EXISTS corpus_threads (
   id TEXT PRIMARY KEY,
@@ -233,6 +236,7 @@ CREATE TABLE IF NOT EXISTS corpus_threads (
   status TEXT NOT NULL DEFAULT 'emerging',
   evidence_count INTEGER NOT NULL DEFAULT 0,
   source_diversity INTEGER NOT NULL DEFAULT 0,
+  titled_once INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
