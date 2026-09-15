@@ -1,3 +1,5 @@
+import { normalizeAllowlist, type CaptureSettings } from '@shared/capture'
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let store: any = null
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -66,6 +68,27 @@ export async function getTelegramUpdateOffset(): Promise<number> {
 
 export async function setTelegramUpdateOffset(offset: number): Promise<void> {
   await setAppSettings({ telegramUpdateOffset: offset })
+}
+
+export async function getCaptureSettings(): Promise<CaptureSettings> {
+  const settings = await getAppSettings()
+  return {
+    enabled: settings.captureEnabled === true,
+    allowlist: normalizeAllowlist(settings.captureAllowlist)
+  }
+}
+
+export async function setCaptureSettings(partial: Partial<CaptureSettings>): Promise<CaptureSettings> {
+  const current = await getCaptureSettings()
+  const next: CaptureSettings = {
+    enabled: partial.enabled ?? current.enabled,
+    allowlist: partial.allowlist !== undefined ? normalizeAllowlist(partial.allowlist) : current.allowlist
+  }
+  await setAppSettings({
+    captureEnabled: next.enabled,
+    captureAllowlist: next.allowlist
+  })
+  return next
 }
 
 export async function getTheme(): Promise<string> {

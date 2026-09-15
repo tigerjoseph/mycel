@@ -199,6 +199,15 @@ declare global {
       ): Promise<import('@shared/types').Dump>
       onTelegramDumpReceived(callback: (dump: import('@shared/types').Dump) => void): () => void
 
+      getCaptureStatus(): Promise<import('@shared/types').CaptureStatus>
+      getCaptureSettings(): Promise<import('@shared/capture').CaptureSettings>
+      setCaptureSettings(patch: {
+        enabled?: boolean
+        allowlist?: import('@shared/capture').CaptureAppId[]
+      }): Promise<import('@shared/capture').CaptureSettings>
+      setCaptureEnabled(enabled: boolean): Promise<import('@shared/capture').CaptureSettings>
+      onCaptureChanged(callback: (status: import('@shared/types').CaptureStatus) => void): () => void
+
       // Library
       getLibraryItems(filterTags?: string[]): Promise<import('@shared/types').LibraryItem[]>
       getLibraryItem(id: string): Promise<import('@shared/types').LibraryItem | null>

@@ -1,7 +1,18 @@
 import { app, Menu, BrowserWindow } from 'electron'
+import { getCaptureSettings } from './settingsStore'
+import { captureSupported } from './observe/frontmost'
+import { setCaptureEnabled } from './observe/poller'
 
-export function setApplicationMenu(): void {
-  const template: Electron.MenuItemConstructorOptions[] = [
+async function buildTemplate(): Promise<Electron.MenuItemConstructorOptions[]> {
+  let captureEnabled = false
+  try {
+    captureEnabled = (await getCaptureSettings()).enabled
+  } catch {
+    // settings store may not be ready
+  }
+  const mac = captureSupported()
+
+  return [
     {
       label: app.name,
       submenu: [
@@ -15,6 +26,15 @@ export function setApplicationMenu(): void {
             if (win) {
               win.webContents.send('open-settings')
             }
+          }
+        },
+        {
+          label: mac ? 'Capture' : 'Capture (Mac only)',
+          type: 'checkbox',
+          checked: captureEnabled && mac,
+          enabled: mac,
+          click: (item): void => {
+            void setCaptureEnabled(item.checked)
           }
         },
         { type: 'separator' },
@@ -63,7 +83,13 @@ export function setApplicationMenu(): void {
       ]
     }
   ]
+}
 
-  const menu = Menu.buildFromTemplate(template)
-  Menu.setApplicationMenu(menu)
+export function setApplicationMenu(): void {
+  void refreshApplicationMenu()
+}
+
+export async function refreshApplicationMenu(): Promise<void> {
+  const template = await buildTemplate()
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }

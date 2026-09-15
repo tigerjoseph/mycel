@@ -122,7 +122,7 @@ function InsightsPane(): React.JSX.Element {
     return insights.filter((insight) => {
       if (corpusFocusSessionId && insight.sessionId !== corpusFocusSessionId) return false
       if (filter === 'manual') return insight.origin === 'manual'
-      if (filter === 'meeting') return isMeetingInsightOrigin(insight.origin) || Boolean(insight.sessionId)
+      if (filter === 'meeting') return isMeetingInsightOrigin(insight.origin)
       return true
     })
   }, [insights, filter, corpusFocusSessionId])
@@ -695,7 +695,7 @@ function originLabel(origin: CorpusInsight['origin']): string {
   if (origin === 'manual') return 'Manual'
   if (origin === 'auto') return 'Meeting'
   if (origin === 'hybrid') return 'Meeting'
-  if (origin === 'session') return 'Meeting'
+  if (origin === 'session') return 'Session'
   if (origin === 'dump') return 'Dump'
   return origin
 }

@@ -342,7 +342,7 @@ export interface RequestContextInput {
 }
 
 export type SessionKind = 'work' | 'meeting'
-export type SessionSource = 'work' | 'meeting' | 'manual'
+export type SessionSource = 'work' | 'meeting' | 'manual' | 'observer'
 
 export interface WorkSession {
   id: string
@@ -384,6 +384,18 @@ export interface ActivityEvent {
   capturedAt: number
   expiresAt: number | null
   createdAt: number
+}
+
+export interface CaptureStatus {
+  enabled: boolean
+  running: boolean
+  supported: boolean
+  allowlist: import('./capture').CaptureAppId[]
+  lastAppName: string | null
+  lastMatchedId: import('./capture').CaptureAppId | null
+  currentSessionId: string | null
+  currentSessionTitle: string | null
+  lastError: string | null
 }
 
 export type PageId = 'todo' | 'people' | 'create' | 'library'

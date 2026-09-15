@@ -210,6 +210,17 @@ const mycelAPI = {
     return () => ipcRenderer.removeListener('telegram:dumpReceived', handler)
   },
 
+  getCaptureStatus: (): Promise<unknown> => ipcRenderer.invoke('capture:getStatus'),
+  getCaptureSettings: (): Promise<unknown> => ipcRenderer.invoke('capture:getSettings'),
+  setCaptureSettings: (patch: unknown): Promise<unknown> => ipcRenderer.invoke('capture:setSettings', patch),
+  setCaptureEnabled: (enabled: boolean): Promise<unknown> =>
+    ipcRenderer.invoke('capture:setEnabled', enabled),
+  onCaptureChanged: (callback: (status: unknown) => void): (() => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, status: unknown): void => callback(status)
+    ipcRenderer.on('capture:changed', handler)
+    return () => ipcRenderer.removeListener('capture:changed', handler)
+  },
+
   // Library (visual saves from browser extension)
   getLibraryItems: (filterTags?: string[]): Promise<unknown[]> =>
     ipcRenderer.invoke('library:getAll', filterTags),

@@ -7,6 +7,8 @@ import {
   type ModeId,
   type PaletteId
 } from '@shared/appearance'
+import { CAPTURE_APP_IDS, CAPTURE_APP_LABELS, type CaptureAppId } from '@shared/capture'
+import type { CaptureStatus } from '@shared/types'
 
 const PALETTES: PaletteId[] = ['warm', 'bold']
 const MODES: ModeId[] = ['light', 'dark']
@@ -67,6 +69,9 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
   const [telegramBusy, setTelegramBusy] = useState(false)
   const [telegramMessage, setTelegramMessage] = useState<string | null>(null)
   const [testDumpText, setTestDumpText] = useState('')
+  const [captureStatus, setCaptureStatus] = useState<CaptureStatus | null>(null)
+  const [captureBusy, setCaptureBusy] = useState(false)
+  const [observerSessions, setObserverSessions] = useState<import('@shared/types').WorkSession[]>([])
 
   const refreshGcalStatus = (): void => {
     window.mycel.gcalGetStatus().then((s) => setGcalConnected(s.connected)).catch(() => {})
@@ -87,6 +92,13 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
       else if (typeof s.telegramUserId === 'number') setTelegramUserId(String(s.telegramUserId))
     })
     window.mycel.getTelegramStatus().then(setTelegramStatus).catch(() => {})
+    window.mycel.getCaptureStatus().then(setCaptureStatus).catch(() => {})
+    window.mycel
+      .getSessions()
+      .then((rows) => {
+        setObserverSessions(rows.filter((row) => row.source === 'observer').slice(0, 5))
+      })
+      .catch(() => {})
     refreshGcalStatus()
     window.mycel.getDataInfo().then((info) => {
       setDbPath(info.dbPath)
@@ -95,6 +107,18 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
     window.mycel.getVoiceImportStatus().then(setVoiceStatus).catch(() => {})
     window.mycel.getLibraryExtensionInfo().then(setExtInfo).catch(() => {})
   }, [isOpen])
+
+  useEffect(() => {
+    return window.mycel.onCaptureChanged((status) => {
+      setCaptureStatus(status)
+      window.mycel
+        .getSessions()
+        .then((rows) => {
+          setObserverSessions(rows.filter((row) => row.source === 'observer').slice(0, 5))
+        })
+        .catch(() => {})
+    })
+  }, [])
 
   const handleAppearance = (id: AppearanceId): void => {
     setAppearance(id)
@@ -258,6 +282,28 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
     } finally {
       setTelegramBusy(false)
     }
+  }
+
+  const saveCapture = async (patch: {
+    enabled?: boolean
+    allowlist?: CaptureAppId[]
+  }): Promise<void> => {
+    setCaptureBusy(true)
+    try {
+      await window.mycel.setCaptureSettings(patch)
+      const status = await window.mycel.getCaptureStatus()
+      setCaptureStatus(status)
+    } catch {
+      // fail soft
+    } finally {
+      setCaptureBusy(false)
+    }
+  }
+
+  const toggleCaptureApp = (id: CaptureAppId): void => {
+    const current = captureStatus?.allowlist ?? []
+    const next = current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+    void saveCapture({ allowlist: next })
   }
 
   return (
@@ -517,6 +563,94 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
         {telegramMessage && <StatusLine>{telegramMessage}</StatusLine>}
       </Section>
 
+      <Section title="Capture">
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
+          Lightweight allowlisted work observer for this Intel Mac. Polls the frontmost app every 10–15s
+          (name + optional window title / browser host). No screen OCR, no mic, no meeting bots.
+          <strong> Off by default.</strong> Mycel is not a LinkedIn publisher — LinkedIn is a signal only.
+        </p>
+        {!captureStatus?.supported && (
+          <StatusLine>Capture runs on macOS only. This machine is a no-op stub.</StatusLine>
+        )}
+        <IntegrationRow
+          connected={Boolean(captureStatus?.running)}
+          label={
+            !captureStatus?.enabled
+              ? 'Off'
+              : captureStatus.running
+                ? captureStatus.currentSessionTitle
+                  ? `On — ${captureStatus.currentSessionTitle}`
+                  : 'On — waiting for an allowlisted app'
+                : captureStatus.allowlist.length === 0
+                  ? 'On — check at least one app'
+                  : 'On'
+          }
+          action={
+            <button
+              type="button"
+              disabled={captureBusy || !captureStatus?.supported}
+              onClick={() => void saveCapture({ enabled: !captureStatus?.enabled })}
+              style={{
+                ...secondaryBtn,
+                backgroundColor: captureStatus?.enabled ? 'var(--text)' : 'var(--surface)',
+                color: captureStatus?.enabled ? 'var(--bg)' : 'var(--text)',
+                opacity: captureBusy || !captureStatus?.supported ? 0.6 : 1
+              }}
+            >
+              {captureStatus?.enabled ? 'Disable' : 'Enable'}
+            </button>
+          }
+        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+          {CAPTURE_APP_IDS.map((id) => {
+            const checked = Boolean(captureStatus?.allowlist.includes(id))
+            return (
+              <label
+                key={id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontSize: 13,
+                  color: 'var(--text)',
+                  cursor: 'pointer'
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={captureBusy}
+                  onChange={() => toggleCaptureApp(id)}
+                />
+                {CAPTURE_APP_LABELS[id]}
+              </label>
+            )
+          })}
+        </div>
+        <Hint>
+          Also toggle from the Mycel menu (Capture checkbox). Accessibility permission is optional and only
+          used for window titles; app-name sessionize works without it. Activity events compost after 7 days;
+          corpus insights are never deleted.
+        </Hint>
+        {captureStatus?.lastError && <StatusLine>{captureStatus.lastError}</StatusLine>}
+        {observerSessions.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 6px' }}>Recent observer sessions</p>
+            {observerSessions.map((session) => (
+              <div
+                key={session.id}
+                style={{ fontSize: 12, color: 'var(--text)', marginBottom: 4, fontFamily: 'var(--font-ui)' }}
+              >
+                {session.title || 'Untitled'}{' '}
+                <span style={{ color: 'var(--text-muted)' }}>
+                  {session.endedAt ? 'ended' : 'open'}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+
       <Section title="Voice & Extractions">
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
           Local transcription for audio in Create → Extractions and the <code style={{ fontSize: 11 }}>/voice</code> slash
@@ -585,7 +719,7 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
 
       <Section title="Identity, voice & capture">
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
-          Identity and voice kit stay off. Pocket capture is Telegram above.
+          Identity and voice kit stay off. Work observers are Settings → Capture; pocket dumps are Telegram.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <ActionButton disabled onClick={() => {}}>

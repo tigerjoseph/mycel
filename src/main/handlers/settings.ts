@@ -11,6 +11,7 @@ import {
   setAppearance
 } from '../settingsStore'
 import { restartTelegramPolling } from '../telegram/poller'
+import { restartCaptureObserver } from '../observe/poller'
 
 export function registerSettingsHandlers(): void {
   ipcMain.handle('settings:get', async () => getAppSettings())
@@ -19,6 +20,9 @@ export function registerSettingsHandlers(): void {
     await setAppSettings(newSettings)
     if ('telegramBotToken' in (newSettings || {}) || 'telegramUserId' in (newSettings || {})) {
       void restartTelegramPolling()
+    }
+    if ('captureEnabled' in (newSettings || {}) || 'captureAllowlist' in (newSettings || {})) {
+      void restartCaptureObserver()
     }
   })
 
