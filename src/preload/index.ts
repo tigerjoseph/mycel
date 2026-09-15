@@ -192,6 +192,9 @@ const mycelAPI = {
     ipcRenderer.invoke('sessions:update', id, patch),
   ensureMeetingSessions: (): Promise<unknown[]> => ipcRenderer.invoke('sessions:ensureForMeetings'),
 
+  runSynthesis: (): Promise<unknown> => ipcRenderer.invoke('synthesis:run'),
+  getSynthesisStatus: (): Promise<unknown> => ipcRenderer.invoke('synthesis:getStatus'),
+
   getTelegramStatus: (): Promise<unknown> => ipcRenderer.invoke('telegram:getStatus'),
   getTelegramPrompts: (): Promise<unknown[]> => ipcRenderer.invoke('telegram:getPrompts'),
   sendTelegramTestNotification: (): Promise<unknown> =>

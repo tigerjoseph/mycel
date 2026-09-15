@@ -182,6 +182,9 @@ declare global {
       ): Promise<import('@shared/types').WorkSession>
       ensureMeetingSessions(): Promise<import('@shared/types').WorkSession[]>
 
+      runSynthesis(): Promise<import('@shared/types').SynthesisResult>
+      getSynthesisStatus(): Promise<import('@shared/types').SynthesisStatus>
+
       getTelegramStatus(): Promise<import('@shared/types').TelegramStatus>
       getTelegramPrompts(): Promise<import('@shared/types').TelegramPrompt[]>
       sendTelegramTestNotification(): Promise<{ ok: true }>

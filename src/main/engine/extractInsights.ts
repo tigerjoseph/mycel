@@ -142,3 +142,23 @@ export async function extractCorpusInsights(
     return null
   }
 }
+
+export interface Extractor {
+  extract(
+    transcript: string,
+    opts?: { apiKey?: string | null; atoms?: Atom[] }
+  ): Promise<ExtractedCorpusInsight[] | null>
+}
+
+class CorpusExtractor implements Extractor {
+  extract(
+    transcript: string,
+    opts?: { apiKey?: string | null; atoms?: Atom[] }
+  ): Promise<ExtractedCorpusInsight[] | null> {
+    return extractCorpusInsights(transcript, opts)
+  }
+}
+
+export function getExtractor(): Extractor {
+  return new CorpusExtractor()
+}

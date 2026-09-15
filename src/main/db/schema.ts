@@ -185,6 +185,7 @@ CREATE TABLE IF NOT EXISTS telegram_prompts (
   related_draft_id TEXT,
   telegram_message_id TEXT,
   status TEXT NOT NULL DEFAULT 'pending',
+  kind TEXT NOT NULL DEFAULT 'manual',
   answer_text TEXT,
   answer_dump_id TEXT,
   created_at INTEGER NOT NULL,

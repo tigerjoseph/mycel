@@ -18,6 +18,7 @@ export function parsePromptRow(row: Record<string, unknown>): TelegramPrompt {
     relatedDraftId: (row.related_draft_id as string | null) ?? null,
     telegramMessageId: (row.telegram_message_id as string | null) ?? null,
     status: ((row.status as string) || 'pending') as TelegramPromptStatus,
+    kind: ((row.kind as string) || 'manual').trim() || 'manual',
     answerText: (row.answer_text as string | null) ?? null,
     answerDumpId: (row.answer_dump_id as string | null) ?? null,
     createdAt: row.created_at as number,
@@ -30,17 +31,19 @@ export async function createPrompt(input: {
   text: string
   relatedInsightId?: string | null
   relatedDraftId?: string | null
+  kind?: string | null
 }): Promise<TelegramPrompt> {
   const text = input.text.trim()
   if (!text) throw new Error('Prompt text is empty')
   const db = getDb()
   const now = Date.now()
   const id = nanoid()
+  const kind = (input.kind || 'manual').trim() || 'manual'
   await db.execute({
     sql: `INSERT INTO telegram_prompts
-          (id, text, related_insight_id, related_draft_id, telegram_message_id, status, created_at)
-          VALUES (?, ?, ?, ?, NULL, 'pending', ?)`,
-    args: [id, text, optionalText(input.relatedInsightId), optionalText(input.relatedDraftId), now]
+          (id, text, related_insight_id, related_draft_id, telegram_message_id, status, kind, created_at)
+          VALUES (?, ?, ?, ?, NULL, 'pending', ?, ?)`,
+    args: [id, text, optionalText(input.relatedInsightId), optionalText(input.relatedDraftId), kind, now]
   })
   return parsePromptRow({
     id,
@@ -49,6 +52,7 @@ export async function createPrompt(input: {
     related_draft_id: optionalText(input.relatedDraftId),
     telegram_message_id: null,
     status: 'pending',
+    kind,
     answer_text: null,
     answer_dump_id: null,
     created_at: now,
@@ -78,12 +82,34 @@ export async function countOpenPrompts(): Promise<number> {
   return Number(result.rows[0]?.n ?? 0)
 }
 
+export async function listOpenPromptsByKind(kind: string): Promise<TelegramPrompt[]> {
+  const db = getDb()
+  const result = await db.execute({
+    sql: `SELECT * FROM telegram_prompts
+          WHERE kind = ? AND status IN ('pending', 'sent')
+          ORDER BY created_at ASC`,
+    args: [kind]
+  })
+  return result.rows.map((row) => parsePromptRow(row as unknown as Record<string, unknown>))
+}
+
+export async function listAnsweredPromptsSince(kind: string, since: number): Promise<TelegramPrompt[]> {
+  const db = getDb()
+  const result = await db.execute({
+    sql: `SELECT * FROM telegram_prompts
+          WHERE kind = ? AND status = 'answered' AND COALESCE(answered_at, 0) >= ?
+          ORDER BY answered_at ASC`,
+    args: [kind, since]
+  })
+  return result.rows.map((row) => parsePromptRow(row as unknown as Record<string, unknown>))
+}
+
 export async function getLatestSentPrompt(): Promise<TelegramPrompt | null> {
   const db = getDb()
   const result = await db.execute(
     `SELECT * FROM telegram_prompts
      WHERE status = 'sent'
-     ORDER BY COALESCE(sent_at, created_at) DESC
+     ORDER BY COALESCE(sent_at, created_at) ASC
      LIMIT 1`
   )
   if (result.rows.length === 0) return null

@@ -1,6 +1,6 @@
 import { getDb } from '../db'
 import { getGoogleApiKey } from '../settingsStore'
-import { extractCorpusInsights } from '../engine/extractInsights'
+import { getExtractor, type ExtractedCorpusInsight } from '../engine/extractInsights'
 import { saveCorpusInsight } from '../engine/saveInsight'
 import { CAPTURE_MIN_EXTRACT_MS } from '@shared/capture'
 import type { CaptureAppId } from '@shared/capture'
@@ -54,9 +54,9 @@ export async function extractOnSessionEnd(sessionId: string, appId: CaptureAppId
   if (blob.length < 40) return
 
   const apiKey = await getGoogleApiKey()
-  let extracted: Awaited<ReturnType<typeof extractCorpusInsights>> = null
+  let extracted: ExtractedCorpusInsight[] | null = null
   try {
-    extracted = await extractCorpusInsights(blob, { apiKey })
+    extracted = await getExtractor().extract(blob, { apiKey })
   } catch (err) {
     console.error('Capture session extract failed:', err)
   }

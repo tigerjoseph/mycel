@@ -22,6 +22,7 @@ import { isGcalConnected } from './gcal/auth'
 import { syncCalendarContacts } from './gcal/sync'
 import { startTelegramPolling, stopTelegramPolling } from './telegram/poller'
 import { startCaptureObserver, stopCaptureObserver } from './observe/poller'
+import { startSynthesisScheduler, stopSynthesisScheduler } from './engine/synthesis'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -88,6 +89,7 @@ app.whenReady().then(async () => {
   setupAutoUpdater()
   startTelegramPolling()
   startCaptureObserver()
+  startSynthesisScheduler()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -104,6 +106,7 @@ app.on('will-quit', () => {
   stopLibraryServer()
   void stopTelegramPolling()
   void stopCaptureObserver({ endSession: true })
+  stopSynthesisScheduler()
 })
 
 // Settings opens as in-app modal (works in fullscreen; child windows do not)

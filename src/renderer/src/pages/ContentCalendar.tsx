@@ -3,7 +3,8 @@ import { Plus } from 'lucide-react'
 import { nanoid } from 'nanoid'
 import { format } from 'date-fns'
 import { POST_STATUSES } from '@shared/contentEngine'
-import type { Doc, PostStatus } from '@shared/types'
+import { formatSynthesisSummary } from '@shared/synthesis'
+import type { Doc, PostStatus, SynthesisResult } from '@shared/types'
 import { useUIStore } from '../store/ui'
 import { openDoc } from '../utils/openDoc'
 
@@ -21,6 +22,8 @@ export function ContentCalendar(): React.JSX.Element {
   const [posts, setPosts] = useState<Doc[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | PostStatus>('all')
+  const [synthBusy, setSynthBusy] = useState(false)
+  const [synthMessage, setSynthMessage] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const docs = await window.mycel.getDocs()
@@ -30,6 +33,12 @@ export function ContentCalendar(): React.JSX.Element {
 
   useEffect(() => {
     load().catch(() => setLoading(false))
+    window.mycel
+      .getSynthesisStatus()
+      .then((status) => {
+        if (status.lastResult) setSynthMessage(formatSynthesisSummary(status.lastResult))
+      })
+      .catch(() => {})
   }, [load])
 
   const visible = useMemo(() => {
@@ -50,6 +59,21 @@ export function ContentCalendar(): React.JSX.Element {
     },
     [setCreateView, setDocsView]
   )
+
+  const handleSynthesis = useCallback(async () => {
+    setSynthBusy(true)
+    setSynthMessage(null)
+    try {
+      const result: SynthesisResult = await window.mycel.runSynthesis()
+      setSynthMessage(formatSynthesisSummary(result))
+      await load()
+      if (result.drafts.length > 0) setFilter('review')
+    } catch (err) {
+      setSynthMessage(err instanceof Error ? err.message : 'Synthesis failed')
+    } finally {
+      setSynthBusy(false)
+    }
+  }, [load])
 
   const handleNew = useCallback(async () => {
     const now = Date.now()
@@ -90,14 +114,29 @@ export function ContentCalendar(): React.JSX.Element {
             Content calendar
           </h2>
           <p style={{ margin: '4px 0 0', fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--text-muted)' }}>
-            Posts by status. Opens the same doc editor.
+            Posts by status. Synthesis drafts land in Review. Opens the same doc editor.
           </p>
         </div>
-        <button type="button" onClick={() => void handleNew()} style={primaryBtn}>
-          <Plus size={13} />
-          New post
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={() => void handleSynthesis()}
+            disabled={synthBusy}
+            style={{ ...primaryBtn, opacity: synthBusy ? 0.6 : 1 }}
+          >
+            {synthBusy ? 'Synthesizing…' : 'Run synthesis'}
+          </button>
+          <button type="button" onClick={() => void handleNew()} style={primaryBtn}>
+            <Plus size={13} />
+            New post
+          </button>
+        </div>
       </div>
+      {synthMessage && (
+        <p style={{ margin: '0 0 12px', fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.45 }}>
+          {synthMessage}
+        </p>
+      )}
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
         {FILTERS.map((tab) => {

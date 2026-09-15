@@ -1,7 +1,7 @@
 import { nanoid } from 'nanoid'
 import { getDb } from '../db'
 import { getEmbedder } from './embedder'
-import { extractCorpusInsights } from './extractInsights'
+import { getExtractor } from './extractInsights'
 import { getGoogleApiKey } from '../settingsStore'
 import type {
   Atom,
@@ -233,7 +233,7 @@ export async function ingestMeetingIntoCorpus(
   const session = await ensureMeetingSession(meeting)
   try {
     const apiKey = await getGoogleApiKey()
-    const extracted = await extractCorpusInsights(meeting.transcript, { apiKey, atoms })
+    const extracted = await getExtractor().extract(meeting.transcript, { apiKey, atoms })
     if (!extracted || extracted.length === 0) {
       return { session, insights: [] }
     }

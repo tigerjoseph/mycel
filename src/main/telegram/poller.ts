@@ -14,6 +14,7 @@ import {
 import { readTranscriptFromFile } from '../engine/readImportFile'
 import { ingestDump, removeTempFile, writeTempVoiceFile } from '../engine/ingestDump'
 import { answerPrompt, getLatestSentPrompt } from '../engine/prompts'
+import { runSynthesis } from '../engine/synthesis'
 import {
   downloadTelegramFile,
   getUpdates,
@@ -90,6 +91,11 @@ async function processMessage(token: string, userId: string, message: TelegramMe
   if (pending && payload !== TELEGRAM_VOICE_PLACEHOLDER) {
     const answered = await answerPrompt(pending, { text: payload, telegramMessageId })
     broadcastTelegramEvent('telegram:dumpReceived', answered.dump)
+    if (answered.prompt.kind === 'synthesis') {
+      void runSynthesis().catch((err) => {
+        console.error('Content Engine synthesis after prompt failed:', err)
+      })
+    }
     return
   }
 

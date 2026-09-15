@@ -8,6 +8,7 @@ import {
   type PaletteId
 } from '@shared/appearance'
 import { CAPTURE_APP_IDS, CAPTURE_APP_LABELS, type CaptureAppId } from '@shared/capture'
+import { formatSynthesisSummary } from '@shared/synthesis'
 import type { CaptureStatus } from '@shared/types'
 
 const PALETTES: PaletteId[] = ['warm', 'bold']
@@ -72,6 +73,9 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
   const [captureStatus, setCaptureStatus] = useState<CaptureStatus | null>(null)
   const [captureBusy, setCaptureBusy] = useState(false)
   const [observerSessions, setObserverSessions] = useState<import('@shared/types').WorkSession[]>([])
+  const [synthBusy, setSynthBusy] = useState(false)
+  const [synthMessage, setSynthMessage] = useState<string | null>(null)
+  const [synthEodEnabled, setSynthEodEnabled] = useState(false)
 
   const refreshGcalStatus = (): void => {
     window.mycel.gcalGetStatus().then((s) => setGcalConnected(s.connected)).catch(() => {})
@@ -90,9 +94,16 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
       if (typeof s.telegramBotToken === 'string') setTelegramBotToken(s.telegramBotToken)
       if (typeof s.telegramUserId === 'string') setTelegramUserId(s.telegramUserId)
       else if (typeof s.telegramUserId === 'number') setTelegramUserId(String(s.telegramUserId))
+      setSynthEodEnabled(s.synthesisEodEnabled === true)
     })
     window.mycel.getTelegramStatus().then(setTelegramStatus).catch(() => {})
     window.mycel.getCaptureStatus().then(setCaptureStatus).catch(() => {})
+    window.mycel
+      .getSynthesisStatus()
+      .then((status) => {
+        if (status.lastResult) setSynthMessage(formatSynthesisSummary(status.lastResult))
+      })
+      .catch(() => {})
     window.mycel
       .getSessions()
       .then((rows) => {
@@ -282,6 +293,24 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
     } finally {
       setTelegramBusy(false)
     }
+  }
+
+  const handleSynthesis = async (): Promise<void> => {
+    setSynthBusy(true)
+    setSynthMessage(null)
+    try {
+      const result = await window.mycel.runSynthesis()
+      setSynthMessage(formatSynthesisSummary(result))
+    } catch (err) {
+      setSynthMessage(err instanceof Error ? err.message : 'Synthesis failed')
+    } finally {
+      setSynthBusy(false)
+    }
+  }
+
+  const saveSynthEod = (enabled: boolean): void => {
+    setSynthEodEnabled(enabled)
+    window.mycel.setSettings({ synthesisEodEnabled: enabled })
   }
 
   const saveCapture = async (patch: {
@@ -651,6 +680,46 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
         )}
       </Section>
 
+      <Section title="Synthesis">
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
+          Enough material → near-complete drafts in Calendar Review. Rich days draft without asking.
+          Thin days send a specific prompt first (Telegram when configured). Empty Review is success
+          if nothing passes the bar. Does not auto-turn meetings into LinkedIn posts.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+          <button
+            type="button"
+            onClick={() => void handleSynthesis()}
+            disabled={synthBusy}
+            style={{ ...secondaryBtn, opacity: synthBusy ? 0.6 : 1 }}
+          >
+            {synthBusy ? 'Synthesizing…' : 'Run synthesis'}
+          </button>
+        </div>
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 13,
+            color: 'var(--text)',
+            cursor: 'pointer'
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={synthEodEnabled}
+            onChange={(e) => saveSynthEod(e.target.checked)}
+          />
+          End-of-day run (18:00 local, off by default)
+        </label>
+        <Hint>
+          Human still edits in the Doc editor. No autopublish. Without a Google key, synthesis stitches
+          quoted Corpus material or skips — it never invents a post.
+        </Hint>
+        {synthMessage && <StatusLine>{synthMessage}</StatusLine>}
+      </Section>
+
       <Section title="Voice & Extractions">
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
           Local transcription for audio in Create → Extractions and the <code style={{ fontSize: 11 }}>/voice</code> slash
@@ -719,7 +788,8 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
 
       <Section title="Identity, voice & capture">
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
-          Identity and voice kit stay off. Work observers are Settings → Capture; pocket dumps are Telegram.
+          Identity and voice kit stay off. Work observers are Settings → Capture; pocket dumps are Telegram;
+          drafts are Settings → Synthesis or Create → Calendar.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <ActionButton disabled onClick={() => {}}>

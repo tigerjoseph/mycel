@@ -4,7 +4,7 @@ import { join } from 'path'
 import { tmpdir } from 'os'
 import { getDb } from '../db'
 import { getGoogleApiKey } from '../settingsStore'
-import { extractCorpusInsights } from './extractInsights'
+import { getExtractor, type ExtractedCorpusInsight } from './extractInsights'
 import { saveCorpusInsight } from './saveInsight'
 import { findSimilarThreadId } from './clusterThreads'
 import { parseSessionRow } from './ingestMeeting'
@@ -152,9 +152,9 @@ async function extractInsightsForDump(params: {
 }): Promise<CorpusInsight[]> {
   const insights: CorpusInsight[] = []
   const apiKey = await getGoogleApiKey()
-  let extracted: Awaited<ReturnType<typeof extractCorpusInsights>> = null
+  let extracted: ExtractedCorpusInsight[] | null = null
   try {
-    extracted = await extractCorpusInsights(params.text, { apiKey })
+    extracted = await getExtractor().extract(params.text, { apiKey })
   } catch (err) {
     console.error('Dump insight extract failed:', err)
   }

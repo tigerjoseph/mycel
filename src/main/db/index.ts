@@ -227,6 +227,12 @@ export async function initDb(): Promise<void> {
     // index already exists or duplicate ids
   }
 
+  try {
+    await db.execute("ALTER TABLE telegram_prompts ADD COLUMN kind TEXT NOT NULL DEFAULT 'manual'")
+  } catch {
+    // column already exists
+  }
+
   await backfillLibraryEmbeds(db)
 }
 

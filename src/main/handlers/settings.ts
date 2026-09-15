@@ -24,6 +24,9 @@ export function registerSettingsHandlers(): void {
     if ('captureEnabled' in (newSettings || {}) || 'captureAllowlist' in (newSettings || {})) {
       void restartCaptureObserver()
     }
+    if ('synthesisEodEnabled' in (newSettings || {})) {
+      void import('../engine/synthesis').then((mod) => mod.restartSynthesisScheduler())
+    }
   })
 
   ipcMain.handle('theme:get', async () => getTheme())

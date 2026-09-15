@@ -300,6 +300,39 @@ export interface CreateDumpInput {
   telegramMessageId?: string | null
 }
 
+export interface SynthesisDraftResult {
+  docId: string
+  title: string
+  channel: PostChannel
+  threadId: string | null
+}
+
+export interface SynthesisPromptResult {
+  promptId: string
+  text: string
+  sent: boolean
+  error: string | null
+}
+
+export interface SynthesisResult {
+  richness: import('./synthesis').DayRichness
+  skipped: boolean
+  skipReason: string | null
+  waitingOnPrompt: boolean
+  usedLlm: boolean
+  drafts: SynthesisDraftResult[]
+  prompts: SynthesisPromptResult[]
+  ranAt: number
+}
+
+export interface SynthesisStatus {
+  richness: import('./synthesis').DayRichness
+  eodEnabled: boolean
+  lastRunAt: number | null
+  lastResult: SynthesisResult | null
+  openSynthesisPromptCount: number
+}
+
 export type TelegramPromptStatus = 'pending' | 'sent' | 'answered'
 
 export interface TelegramPrompt {
@@ -309,6 +342,7 @@ export interface TelegramPrompt {
   relatedDraftId: string | null
   telegramMessageId: string | null
   status: TelegramPromptStatus
+  kind: string
   answerText: string | null
   answerDumpId: string | null
   createdAt: number
