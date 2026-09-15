@@ -44,6 +44,30 @@ export async function getGoogleApiKey(): Promise<string | null> {
   return typeof key === 'string' && key.trim() ? key.trim() : null
 }
 
+export async function getTelegramBotToken(): Promise<string | null> {
+  const settings = await getAppSettings()
+  const key = settings.telegramBotToken
+  return typeof key === 'string' && key.trim() ? key.trim() : null
+}
+
+export async function getTelegramUserId(): Promise<string | null> {
+  const settings = await getAppSettings()
+  const raw = settings.telegramUserId
+  if (typeof raw === 'number' && Number.isFinite(raw)) return String(Math.trunc(raw))
+  if (typeof raw === 'string' && raw.trim()) return raw.trim()
+  return null
+}
+
+export async function getTelegramUpdateOffset(): Promise<number> {
+  const settings = await getAppSettings()
+  const offset = settings.telegramUpdateOffset
+  return typeof offset === 'number' && Number.isFinite(offset) ? offset : 0
+}
+
+export async function setTelegramUpdateOffset(offset: number): Promise<void> {
+  await setAppSettings({ telegramUpdateOffset: offset })
+}
+
 export async function getTheme(): Promise<string> {
   const s = await getStore()
   return s.get('theme', 'light') as string

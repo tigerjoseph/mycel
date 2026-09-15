@@ -289,6 +289,7 @@ export interface Dump {
   source: DumpSource
   payload: string
   metadata: Record<string, unknown>
+  telegramMessageId: string | null
   createdAt: number
 }
 
@@ -296,6 +297,48 @@ export interface CreateDumpInput {
   source?: DumpSource
   payload: string
   metadata?: Record<string, unknown>
+  telegramMessageId?: string | null
+}
+
+export type TelegramPromptStatus = 'pending' | 'sent' | 'answered'
+
+export interface TelegramPrompt {
+  id: string
+  text: string
+  relatedInsightId: string | null
+  relatedDraftId: string | null
+  telegramMessageId: string | null
+  status: TelegramPromptStatus
+  answerText: string | null
+  answerDumpId: string | null
+  createdAt: number
+  sentAt: number | null
+  answeredAt: number | null
+}
+
+export interface TelegramStatus {
+  configured: boolean
+  tokenConfigured: boolean
+  userIdConfigured: boolean
+  polling: boolean
+  lastError: string | null
+  lastOkAt: number | null
+  pendingPromptCount: number
+}
+
+export interface NotifyDraftReadyInput {
+  title: string
+  docId?: string | null
+}
+
+export interface IngestTestDumpInput {
+  text: string
+}
+
+export interface RequestContextInput {
+  text?: string
+  relatedInsightId?: string | null
+  relatedDraftId?: string | null
 }
 
 export type SessionKind = 'work' | 'meeting'

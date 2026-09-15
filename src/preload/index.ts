@@ -192,6 +192,24 @@ const mycelAPI = {
     ipcRenderer.invoke('sessions:update', id, patch),
   ensureMeetingSessions: (): Promise<unknown[]> => ipcRenderer.invoke('sessions:ensureForMeetings'),
 
+  getTelegramStatus: (): Promise<unknown> => ipcRenderer.invoke('telegram:getStatus'),
+  getTelegramPrompts: (): Promise<unknown[]> => ipcRenderer.invoke('telegram:getPrompts'),
+  sendTelegramTestNotification: (): Promise<unknown> =>
+    ipcRenderer.invoke('telegram:sendTestNotification'),
+  notifyTelegramPromptReady: (promptId: string): Promise<unknown> =>
+    ipcRenderer.invoke('telegram:notifyPromptReady', promptId),
+  notifyTelegramDraftReady: (input: unknown): Promise<unknown> =>
+    ipcRenderer.invoke('telegram:notifyDraftReady', input),
+  requestTelegramContext: (input?: unknown): Promise<unknown> =>
+    ipcRenderer.invoke('telegram:requestContext', input),
+  ingestTelegramTestDump: (input: unknown): Promise<unknown> =>
+    ipcRenderer.invoke('telegram:ingestTestDump', input),
+  onTelegramDumpReceived: (callback: (dump: unknown) => void): (() => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, dump: unknown): void => callback(dump)
+    ipcRenderer.on('telegram:dumpReceived', handler)
+    return () => ipcRenderer.removeListener('telegram:dumpReceived', handler)
+  },
+
   // Library (visual saves from browser extension)
   getLibraryItems: (filterTags?: string[]): Promise<unknown[]> =>
     ipcRenderer.invoke('library:getAll', filterTags),

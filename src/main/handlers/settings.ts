@@ -10,12 +10,16 @@ import {
   getAppearance,
   setAppearance
 } from '../settingsStore'
+import { restartTelegramPolling } from '../telegram/poller'
 
 export function registerSettingsHandlers(): void {
   ipcMain.handle('settings:get', async () => getAppSettings())
 
   ipcMain.handle('settings:set', async (_e, newSettings: Record<string, unknown>) => {
     await setAppSettings(newSettings)
+    if ('telegramBotToken' in (newSettings || {}) || 'telegramUserId' in (newSettings || {})) {
+      void restartTelegramPolling()
+    }
   })
 
   ipcMain.handle('theme:get', async () => getTheme())

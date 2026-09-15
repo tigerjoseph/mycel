@@ -5,7 +5,6 @@ import { getEmbedder } from '../engine/embedder'
 import {
   attachInsightToThread,
   applyThreadStatus,
-  findNearDuplicate,
   listDecoratedThreads
 } from '../engine/clusterThreads'
 import {
@@ -13,16 +12,16 @@ import {
   parseInsightRow,
   parseSessionRow
 } from '../engine/ingestMeeting'
+import { saveCorpusInsight } from '../engine/saveInsight'
+import { parseDumpRow } from '../engine/ingestDump'
 import { insightTextError } from '@shared/contentEngine'
 import type {
   CorpusThreadStatus,
   CreateDumpInput,
   CreateInsightInput,
   CreateSessionInput,
-  Dump,
   DumpSource,
   InsightListFilter,
-  InsightProvenance,
   SessionSource,
   UpdateInsightInput,
   UpdateSessionInput
@@ -30,35 +29,10 @@ import type {
 
 const THREAD_STATUSES = new Set<CorpusThreadStatus>(['emerging', 'active', 'pinned', 'muted'])
 
-function parseJsonObject(value: unknown): Record<string, unknown> {
-  if (value == null || value === '') return {}
-  if (typeof value === 'object' && !Array.isArray(value)) return value as Record<string, unknown>
-  if (typeof value !== 'string') return {}
-  try {
-    const parsed = JSON.parse(value) as unknown
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      return parsed as Record<string, unknown>
-    }
-  } catch {
-    // ignore
-  }
-  return {}
-}
-
 function optionalText(value: unknown): string | null {
   if (value == null) return null
   const text = String(value).trim()
   return text.length > 0 ? text : null
-}
-
-function parseDumpRow(row: Record<string, unknown>): Dump {
-  return {
-    id: row.id as string,
-    source: ((row.source as string) || 'manual') as DumpSource,
-    payload: (row.payload as string) || '',
-    metadata: parseJsonObject(row.metadata),
-    createdAt: row.created_at as number
-  }
 }
 
 async function embedText(text: string): Promise<string> {
@@ -85,55 +59,7 @@ export function registerContentEngineHandlers(): void {
   })
 
   ipcMain.handle('insights:create', async (_e, input: CreateInsightInput) => {
-    const text = (input?.text || '').trim()
-    const error = insightTextError(text)
-    if (error) throw new Error(error)
-
-    const db = getDb()
-    const now = Date.now()
-    const id = nanoid()
-    const origin = input.origin ?? 'manual'
-    const soWhat = optionalText(input.soWhat)
-    const source = optionalText(input.source)
-    const pillar = optionalText(input.pillar)
-    const dumpId = optionalText(input.dumpId)
-    const sessionId = optionalText(input.sessionId)
-    const provenance: InsightProvenance = {
-      ...(input.provenance ?? {}),
-      sessionId: input.provenance?.sessionId ?? sessionId ?? undefined
-    }
-    const embeddingVec = await getEmbedder().embed(text)
-    const dup = await findNearDuplicate(embeddingVec, now, text)
-    if (dup) {
-      try {
-        await attachInsightToThread(dup.id)
-      } catch (err) {
-        console.error('Content Engine cluster attach failed:', err)
-      }
-      const existing = await db.execute({ sql: 'SELECT * FROM corpus_insights WHERE id = ?', args: [dup.id] })
-      return parseInsightRow(existing.rows[0] as unknown as Record<string, unknown>)
-    }
-
-    const embedding = JSON.stringify(embeddingVec)
-
-    await db.execute({
-      sql: `INSERT INTO corpus_insights
-            (id, text, so_what, source, pillar, origin, embedding, dump_id, session_id, provenance, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [
-        id, text, soWhat, source, pillar, origin, embedding, dumpId, sessionId,
-        JSON.stringify(provenance), now, now
-      ]
-    })
-
-    try {
-      await attachInsightToThread(id)
-    } catch (err) {
-      console.error('Content Engine cluster attach failed:', err)
-    }
-
-    const saved = await db.execute({ sql: 'SELECT * FROM corpus_insights WHERE id = ?', args: [id] })
-    return parseInsightRow(saved.rows[0] as unknown as Record<string, unknown>)
+    return saveCorpusInsight(input)
   })
 
   ipcMain.handle('insights:update', async (_e, id: string, patch: UpdateInsightInput) => {
@@ -204,18 +130,23 @@ export function registerContentEngineHandlers(): void {
     const db = getDb()
     const now = Date.now()
     const id = nanoid()
-    const source = input.source ?? 'manual'
-    const metadata = JSON.stringify(input.metadata ?? {})
+    const source: DumpSource = input.source ?? 'manual'
+    const telegramMessageId = optionalText(input.telegramMessageId) ?? optionalText(input.metadata?.telegramMessageId)
+    const metadata = JSON.stringify({
+      ...(input.metadata ?? {}),
+      ...(telegramMessageId ? { telegramMessageId } : {})
+    })
     await db.execute({
-      sql: `INSERT INTO dumps (id, source, payload, metadata, created_at)
-            VALUES (?, ?, ?, ?, ?)`,
-      args: [id, source, payload, metadata, now]
+      sql: `INSERT INTO dumps (id, source, payload, metadata, telegram_message_id, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+      args: [id, source, payload, metadata, telegramMessageId, now]
     })
     return parseDumpRow({
       id,
       source,
       payload,
       metadata,
+      telegram_message_id: telegramMessageId,
       created_at: now
     })
   })

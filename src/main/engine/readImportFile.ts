@@ -7,7 +7,7 @@ import { promisify } from 'util'
 
 const execFileAsync = promisify(execFile)
 
-const AUDIO_EXT = new Set(['.m4a', '.mp3', '.wav', '.webm', '.mp4', '.aac', '.ogg', '.caf', '.flac'])
+const AUDIO_EXT = new Set(['.m4a', '.mp3', '.wav', '.webm', '.mp4', '.aac', '.ogg', '.oga', '.caf', '.flac'])
 const TEXT_EXT = new Set(['.txt', '.md', '.vtt', '.srt'])
 
 const WHISPER_CLI_PATHS = ['/usr/local/bin/whisper-cli', '/opt/homebrew/bin/whisper-cli']
@@ -19,7 +19,7 @@ const WHISPER_MODEL_PATHS = [
   '/opt/homebrew/share/whisper-cpp/models/ggml-tiny.en.bin'
 ]
 
-const CONVERT_TO_WAV = new Set(['.m4a', '.caf', '.aac', '.webm', '.mp4'])
+const CONVERT_TO_WAV = new Set(['.m4a', '.caf', '.aac', '.webm', '.mp4', '.ogg', '.oga'])
 
 async function exists(path: string): Promise<boolean> {
   try {

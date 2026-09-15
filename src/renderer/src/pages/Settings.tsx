@@ -61,6 +61,12 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
   const [updateMessage, setUpdateMessage] = useState<string | null>(null)
   const [extInfo, setExtInfo] = useState<{ port: number; token: string } | null>(null)
   const [extMessage, setExtMessage] = useState<string | null>(null)
+  const [telegramBotToken, setTelegramBotToken] = useState('')
+  const [telegramUserId, setTelegramUserId] = useState('')
+  const [telegramStatus, setTelegramStatus] = useState<import('@shared/types').TelegramStatus | null>(null)
+  const [telegramBusy, setTelegramBusy] = useState(false)
+  const [telegramMessage, setTelegramMessage] = useState<string | null>(null)
+  const [testDumpText, setTestDumpText] = useState('')
 
   const refreshGcalStatus = (): void => {
     window.mycel.gcalGetStatus().then((s) => setGcalConnected(s.connected)).catch(() => {})
@@ -76,7 +82,11 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
     window.mycel.getSettings().then((s) => {
       if (typeof s.googleApiKey === 'string') setGoogleApiKey(s.googleApiKey)
       if (typeof s.stripeApiKey === 'string') setStripeApiKey(s.stripeApiKey)
+      if (typeof s.telegramBotToken === 'string') setTelegramBotToken(s.telegramBotToken)
+      if (typeof s.telegramUserId === 'string') setTelegramUserId(s.telegramUserId)
+      else if (typeof s.telegramUserId === 'number') setTelegramUserId(String(s.telegramUserId))
     })
+    window.mycel.getTelegramStatus().then(setTelegramStatus).catch(() => {})
     refreshGcalStatus()
     window.mycel.getDataInfo().then((info) => {
       setDbPath(info.dbPath)
@@ -180,6 +190,73 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
       }
     } finally {
       setUpdateBusy(false)
+    }
+  }
+
+  const refreshTelegramStatus = (): void => {
+    window.mycel.getTelegramStatus().then(setTelegramStatus).catch(() => {})
+  }
+
+  const saveTelegramSettings = (): void => {
+    window.mycel.setSettings({
+      telegramBotToken: telegramBotToken.trim(),
+      telegramUserId: telegramUserId.trim()
+    })
+    window.setTimeout(refreshTelegramStatus, 400)
+  }
+
+  const handleTelegramTest = async (): Promise<void> => {
+    setTelegramBusy(true)
+    setTelegramMessage(null)
+    try {
+      await window.mycel.sendTelegramTestNotification()
+      setTelegramMessage('Test sent. Check Telegram. Message the bot once if it cannot ping you yet.')
+    } catch (err) {
+      setTelegramMessage(err instanceof Error ? err.message : 'Could not send test notification')
+    } finally {
+      setTelegramBusy(false)
+      refreshTelegramStatus()
+    }
+  }
+
+  const handleRequestContext = async (): Promise<void> => {
+    setTelegramBusy(true)
+    setTelegramMessage(null)
+    try {
+      const result = await window.mycel.requestTelegramContext()
+      if (result.sent) {
+        setTelegramMessage('Prompt sent to Telegram.')
+      } else {
+        setTelegramMessage(
+          result.error
+            ? `Prompt saved locally. ${result.error}`
+            : 'Prompt saved locally. Connect Telegram to send it.'
+        )
+      }
+    } catch (err) {
+      setTelegramMessage(err instanceof Error ? err.message : 'Could not create prompt')
+    } finally {
+      setTelegramBusy(false)
+      refreshTelegramStatus()
+    }
+  }
+
+  const handleTestDump = async (): Promise<void> => {
+    const text = testDumpText.trim()
+    if (!text) {
+      setTelegramMessage('Write a short dump to ingest locally.')
+      return
+    }
+    setTelegramBusy(true)
+    setTelegramMessage(null)
+    try {
+      await window.mycel.ingestTelegramTestDump({ text })
+      setTestDumpText('')
+      setTelegramMessage('Test dump ingested. Open Create → Corpus → Inbox.')
+    } catch (err) {
+      setTelegramMessage(err instanceof Error ? err.message : 'Could not ingest test dump')
+    } finally {
+      setTelegramBusy(false)
     }
   }
 
@@ -342,6 +419,104 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
         </div>
       </Section>
 
+      <Section title="Telegram">
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
+          Pocket channel while Mycel is running. One-way dumps get a <strong>Saved.</strong> reply.
+          Prompts are specific (thin days, narrative, so-what) — not “what did you do today?”
+          Works only when a bot token and your user id are set. The app boots fine disconnected.
+        </p>
+        <div style={{ marginBottom: 12 }}>
+          <IntegrationRow
+            connected={Boolean(telegramStatus?.configured && telegramStatus.polling)}
+            label={
+              !telegramStatus?.tokenConfigured && !telegramStatus?.userIdConfigured
+                ? 'Disconnected'
+                : telegramStatus?.polling
+                  ? 'Polling while Mycel is open'
+                  : telegramStatus?.configured
+                    ? 'Configured — waiting to poll'
+                    : telegramStatus?.tokenConfigured
+                      ? 'Token saved — add your user id'
+                      : 'User id saved — add a bot token'
+            }
+            action={
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                {telegramStatus?.pendingPromptCount
+                  ? `${telegramStatus.pendingPromptCount} prompt waiting`
+                  : telegramStatus?.lastError
+                    ? 'Error'
+                    : ''}
+              </span>
+            }
+          />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+          <input
+            type="password"
+            placeholder="Bot token from @BotFather"
+            value={telegramBotToken}
+            onChange={(e) => setTelegramBotToken(e.target.value)}
+            onBlur={saveTelegramSettings}
+            style={{ ...inputStyle, width: '100%' }}
+          />
+          <input
+            type="text"
+            placeholder="Your Telegram user id"
+            value={telegramUserId}
+            onChange={(e) => setTelegramUserId(e.target.value)}
+            onBlur={saveTelegramSettings}
+            style={{ ...inputStyle, width: '100%' }}
+          />
+        </div>
+        <Hint>
+          Create a bot with @BotFather. Get your numeric id from @userinfobot, then message your bot once.
+          Token stays in local settings on this Mac — never commit it. Polling is local <code style={{ fontSize: 11 }}>getUpdates</code>
+          (catch-up on launch). No cloud inbox.
+        </Hint>
+        {telegramStatus?.lastError && (
+          <StatusLine>{telegramStatus.lastError}</StatusLine>
+        )}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+          <button
+            type="button"
+            onClick={() => void handleTelegramTest()}
+            disabled={telegramBusy || !telegramStatus?.configured}
+            style={{ ...secondaryBtn, opacity: telegramBusy || !telegramStatus?.configured ? 0.6 : 1 }}
+          >
+            Send test notification
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleRequestContext()}
+            disabled={telegramBusy}
+            style={{ ...secondaryBtn, opacity: telegramBusy ? 0.6 : 1 }}
+          >
+            Request test prompt
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
+          <input
+            type="text"
+            placeholder="Ingest a test dump (no bot needed)"
+            value={testDumpText}
+            onChange={(e) => setTestDumpText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void handleTestDump()
+            }}
+            style={{ ...inputStyle, width: '100%' }}
+          />
+          <button
+            type="button"
+            onClick={() => void handleTestDump()}
+            disabled={telegramBusy}
+            style={{ ...secondaryBtn, flexShrink: 0, opacity: telegramBusy ? 0.6 : 1 }}
+          >
+            Ingest
+          </button>
+        </div>
+        {telegramMessage && <StatusLine>{telegramMessage}</StatusLine>}
+      </Section>
+
       <Section title="Voice & Extractions">
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
           Local transcription for audio in Create → Extractions and the <code style={{ fontSize: 11 }}>/voice</code> slash
@@ -410,7 +585,7 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
 
       <Section title="Identity, voice & capture">
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
-          Content engine placeholders. Identity, voice kit, and capture stay off until a later phase.
+          Identity and voice kit stay off. Pocket capture is Telegram above.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <ActionButton disabled onClick={() => {}}>
@@ -419,10 +594,6 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
           </ActionButton>
           <ActionButton disabled onClick={() => {}}>
             Voice kit
-            <ComingSoonBadge />
-          </ActionButton>
-          <ActionButton disabled onClick={() => {}}>
-            Capture
             <ComingSoonBadge />
           </ActionButton>
         </div>

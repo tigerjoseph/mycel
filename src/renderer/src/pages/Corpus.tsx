@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pin, VolumeX, Plus } from 'lucide-react'
 import { insightTextError, isMeetingInsightOrigin } from '@shared/contentEngine'
-import type { CorpusInsight, CorpusThread, CorpusThreadStatus, CreateInsightInput, WorkSession } from '@shared/types'
+import type { CorpusInsight, CorpusThread, CorpusThreadStatus, CreateInsightInput, Dump, WorkSession } from '@shared/types'
 import { format } from 'date-fns'
 import { useUIStore } from '../store/ui'
 
@@ -582,9 +582,113 @@ function PatternFilters({
 }
 
 function InboxPane(): React.JSX.Element {
+  const createView = useUIStore((s) => s.createView)
+  const [dumps, setDumps] = useState<Dump[]>([])
+  const [loading, setLoading] = useState(true)
+  const [telegramConfigured, setTelegramConfigured] = useState<boolean | null>(null)
+
+  const load = useCallback(async () => {
+    const [rows, status] = await Promise.all([
+      window.mycel.getDumps(),
+      window.mycel.getTelegramStatus().catch(() => null)
+    ])
+    setDumps(rows)
+    setTelegramConfigured(status ? status.configured : false)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    load().catch(() => setLoading(false))
+  }, [load])
+
+  useEffect(() => {
+    if (createView === 'corpus') load().catch(() => {})
+  }, [createView, load])
+
+  useEffect(() => {
+    return window.mycel.onTelegramDumpReceived((dump) => {
+      setDumps((prev) => (prev.some((row) => row.id === dump.id) ? prev : [dump, ...prev]))
+    })
+  }, [])
+
+  if (loading) return <EmptyLine>Loading…</EmptyLine>
+
   return (
-    <EmptyLine>Inbox is empty. Raw dumps and capture land here in a later phase.</EmptyLine>
+    <div>
+      {telegramConfigured === false && (
+        <p
+          style={{
+            margin: '0 0 12px',
+            fontFamily: 'var(--font-ui)',
+            fontSize: 12,
+            color: 'var(--text-muted)',
+            lineHeight: 1.45
+          }}
+        >
+          Telegram is disconnected. Add a bot token and user id in Settings, or ingest a test dump there
+          to exercise this inbox without a live bot.
+        </p>
+      )}
+      {dumps.length === 0 ? (
+        <EmptyLine>No dumps yet. Telegram text/voice lands here with a Saved. reply when connected.</EmptyLine>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {dumps.map((dump) => {
+            const destination = typeof dump.metadata.destination === 'string' ? dump.metadata.destination : 'inbox'
+            const sttFailed = Boolean(dump.metadata.sttFailed)
+            return (
+              <article
+                key={dump.id}
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 8,
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)'
+                }}
+              >
+                <p
+                  style={{
+                    margin: 0,
+                    fontFamily: 'var(--font-ui)',
+                    fontSize: 13,
+                    lineHeight: 1.5,
+                    color: 'var(--text)',
+                    whiteSpace: 'pre-wrap'
+                  }}
+                >
+                  {dump.payload}
+                </p>
+                <div
+                  style={{
+                    marginTop: 8,
+                    fontFamily: 'var(--font-ui)',
+                    fontSize: 11,
+                    color: 'var(--text-muted)',
+                    display: 'flex',
+                    gap: 8,
+                    flexWrap: 'wrap'
+                  }}
+                >
+                  <span>{dump.source === 'telegram' ? 'Telegram' : dump.source}</span>
+                  <span>{dumpDestinationLabel(destination)}</span>
+                  {sttFailed && <span>transcription needed</span>}
+                  {dump.metadata.localTest ? <span>local test</span> : null}
+                  <span>{format(dump.createdAt, 'MMM d, h:mm a')}</span>
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      )}
+    </div>
   )
+}
+
+function dumpDestinationLabel(destination: string): string {
+  if (destination === 'session') return 'Attached to session'
+  if (destination === 'thread') return 'Attached to pattern'
+  if (destination === 'prompt') return 'Prompt reply'
+  return 'Inbox'
 }
 
 function originLabel(origin: CorpusInsight['origin']): string {
@@ -592,6 +696,7 @@ function originLabel(origin: CorpusInsight['origin']): string {
   if (origin === 'auto') return 'Meeting'
   if (origin === 'hybrid') return 'Meeting'
   if (origin === 'session') return 'Meeting'
+  if (origin === 'dump') return 'Dump'
   return origin
 }
 

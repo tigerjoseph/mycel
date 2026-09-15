@@ -171,6 +171,24 @@ export async function findNearDuplicate(
   return best
 }
 
+export async function findSimilarThreadId(text: string): Promise<string | null> {
+  const embedding = await getEmbedder().embed(text)
+  const recent = await loadRecentInsights()
+  const db = getDb()
+  const muted = await db.execute("SELECT id FROM corpus_threads WHERE status = 'muted'")
+  const mutedIds = new Set(muted.rows.map((row) => row.id as string))
+  let bestId: string | null = null
+  let bestScore = CLUSTER_SIMILARITY
+  for (const insight of recent) {
+    if (!insight.threadId || mutedIds.has(insight.threadId)) continue
+    const score = clusterSimilarity(embedding, insight.embedding, text, insight.text)
+    if (score < bestScore) continue
+    bestId = insight.threadId
+    bestScore = score
+  }
+  return bestId
+}
+
 async function createSingleton(insight: CorpusInsight): Promise<string> {
   const db = getDb()
   const now = Date.now()

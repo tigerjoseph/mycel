@@ -213,6 +213,20 @@ export async function initDb(): Promise<void> {
     // index already exists
   }
 
+  try {
+    await db.execute('ALTER TABLE dumps ADD COLUMN telegram_message_id TEXT')
+  } catch {
+    // column already exists
+  }
+
+  try {
+    await db.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_dumps_telegram_message_id ON dumps (telegram_message_id)'
+    )
+  } catch {
+    // index already exists or duplicate ids
+  }
+
   await backfillLibraryEmbeds(db)
 }
 

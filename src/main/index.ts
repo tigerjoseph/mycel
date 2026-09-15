@@ -20,6 +20,7 @@ import { registerHandlers } from './handlers'
 import { setupAutoUpdater } from './updater'
 import { isGcalConnected } from './gcal/auth'
 import { syncCalendarContacts } from './gcal/sync'
+import { startTelegramPolling, stopTelegramPolling } from './telegram/poller'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -84,6 +85,7 @@ app.whenReady().then(async () => {
   }
   createWindow()
   setupAutoUpdater()
+  startTelegramPolling()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -98,6 +100,7 @@ app.on('window-all-closed', () => {
 
 app.on('will-quit', () => {
   stopLibraryServer()
+  void stopTelegramPolling()
 })
 
 // Settings opens as in-app modal (works in fullscreen; child windows do not)

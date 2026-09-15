@@ -182,6 +182,23 @@ declare global {
       ): Promise<import('@shared/types').WorkSession>
       ensureMeetingSessions(): Promise<import('@shared/types').WorkSession[]>
 
+      getTelegramStatus(): Promise<import('@shared/types').TelegramStatus>
+      getTelegramPrompts(): Promise<import('@shared/types').TelegramPrompt[]>
+      sendTelegramTestNotification(): Promise<{ ok: true }>
+      notifyTelegramPromptReady(promptId: string): Promise<import('@shared/types').TelegramPrompt>
+      notifyTelegramDraftReady(
+        input: import('@shared/types').NotifyDraftReadyInput
+      ): Promise<{ ok: true }>
+      requestTelegramContext(input?: import('@shared/types').RequestContextInput): Promise<{
+        prompt: import('@shared/types').TelegramPrompt
+        sent: boolean
+        error: string | null
+      }>
+      ingestTelegramTestDump(
+        input: import('@shared/types').IngestTestDumpInput
+      ): Promise<import('@shared/types').Dump>
+      onTelegramDumpReceived(callback: (dump: import('@shared/types').Dump) => void): () => void
+
       // Library
       getLibraryItems(filterTags?: string[]): Promise<import('@shared/types').LibraryItem[]>
       getLibraryItem(id: string): Promise<import('@shared/types').LibraryItem | null>

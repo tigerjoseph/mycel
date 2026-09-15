@@ -41,6 +41,15 @@ export const MEANING_WEIGHT_DIVERSITY = 1.5
 export const MEANING_WEIGHT_RECENCY = 1
 export const MEANING_PIN_BONUS = 2
 
+/** Attach a dump to a meeting session ended (or started) within this window. */
+export const TELEGRAM_RECENT_SESSION_MS = 2 * 60 * 60 * 1000
+/** Telegram getUpdates long-poll timeout while the app is focused. */
+export const TELEGRAM_POLL_FOCUSED_SEC = 5
+/** Longer hold when unfocused so idle Intel boxes are not hammered. */
+export const TELEGRAM_POLL_IDLE_SEC = 25
+export const TELEGRAM_SAVED_REPLY = 'Saved.'
+export const TELEGRAM_VOICE_PLACEHOLDER = '[Voice note — transcription needed]'
+
 const DAY_MS = 24 * 60 * 60 * 1000
 const WEEK_MS = 7 * DAY_MS
 const MONTH_MS = 30 * DAY_MS

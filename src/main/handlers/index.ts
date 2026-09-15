@@ -17,6 +17,7 @@ import { registerGcalHandlers } from './gcal'
 import { registerLibraryHandlers } from './library'
 import { registerContentScriptHandlers } from './contentScripts'
 import { registerContentEngineHandlers } from './contentEngine'
+import { registerTelegramHandlers } from './telegram'
 
 /** Register remaining IPC stubs for features not yet implemented */
 function registerRemainingStubs(): void {
@@ -49,5 +50,6 @@ export function registerHandlers(): void {
   registerLibraryHandlers()
   registerContentScriptHandlers()
   registerContentEngineHandlers()
+  registerTelegramHandlers()
   registerRemainingStubs()
 }

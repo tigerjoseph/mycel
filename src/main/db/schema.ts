@@ -172,10 +172,27 @@ CREATE TABLE IF NOT EXISTS dumps (
   source TEXT NOT NULL DEFAULT 'manual',
   payload TEXT NOT NULL DEFAULT '',
   metadata TEXT NOT NULL DEFAULT '{}',
+  telegram_message_id TEXT,
   created_at INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_dumps_created ON dumps (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS telegram_prompts (
+  id TEXT PRIMARY KEY,
+  text TEXT NOT NULL,
+  related_insight_id TEXT,
+  related_draft_id TEXT,
+  telegram_message_id TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  answer_text TEXT,
+  answer_dump_id TEXT,
+  created_at INTEGER NOT NULL,
+  sent_at INTEGER,
+  answered_at INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_telegram_prompts_status ON telegram_prompts (status, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS activity_events (
   id TEXT PRIMARY KEY,
