@@ -69,6 +69,7 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
   const [telegramStatus, setTelegramStatus] = useState<import('@shared/types').TelegramStatus | null>(null)
   const [telegramBusy, setTelegramBusy] = useState(false)
   const [telegramMessage, setTelegramMessage] = useState<string | null>(null)
+  const [telegramDaytimeEnabled, setTelegramDaytimeEnabled] = useState(true)
   const [testDumpText, setTestDumpText] = useState('')
   const [captureStatus, setCaptureStatus] = useState<CaptureStatus | null>(null)
   const [captureBusy, setCaptureBusy] = useState(false)
@@ -94,6 +95,7 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
       if (typeof s.telegramBotToken === 'string') setTelegramBotToken(s.telegramBotToken)
       if (typeof s.telegramUserId === 'string') setTelegramUserId(s.telegramUserId)
       else if (typeof s.telegramUserId === 'number') setTelegramUserId(String(s.telegramUserId))
+      setTelegramDaytimeEnabled(s.telegramDaytimeEnabled !== false)
       setSynthEodEnabled(s.synthesisEodEnabled !== false)
     })
     window.mycel.getTelegramStatus().then(setTelegramStatus).catch(() => {})
@@ -311,6 +313,11 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
   const saveSynthEod = (enabled: boolean): void => {
     setSynthEodEnabled(enabled)
     window.mycel.setSettings({ synthesisEodEnabled: enabled })
+  }
+
+  const saveTelegramDaytime = (enabled: boolean): void => {
+    setTelegramDaytimeEnabled(enabled)
+    window.mycel.setSettings({ telegramDaytimeEnabled: enabled })
   }
 
   const saveCapture = async (patch: {
@@ -547,6 +554,29 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
           Create a bot with @BotFather. Get your numeric id from @userinfobot, then message your bot once.
           Token stays in local settings on this Mac — never commit it. Polling is local <code style={{ fontSize: 11 }}>getUpdates</code>
           (catch-up on launch). No cloud inbox.
+        </Hint>
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 13,
+            color: 'var(--text)',
+            cursor: 'pointer',
+            marginTop: 12
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={telegramDaytimeEnabled}
+            onChange={(e) => saveTelegramDaytime(e.target.checked)}
+            disabled={!telegramStatus?.configured}
+          />
+          Daytime prompts (up to 3, 10:00–18:00 local)
+        </label>
+        <Hint>
+          Specific questions, not a recap. Replies land in Corpus; a 1–3 sentence answer also becomes a
+          Calendar draft. Needs Mycel running. Uncheck to pause.
         </Hint>
         {telegramStatus?.lastError && (
           <StatusLine>{telegramStatus.lastError}</StatusLine>

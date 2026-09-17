@@ -11,6 +11,7 @@ import {
   setAppearance
 } from '../settingsStore'
 import { restartTelegramPolling } from '../telegram/poller'
+import { restartDaytimePrompts } from '../telegram/daytime'
 import { restartCaptureObserver } from '../observe/poller'
 
 export function registerSettingsHandlers(): void {
@@ -20,6 +21,10 @@ export function registerSettingsHandlers(): void {
     await setAppSettings(newSettings)
     if ('telegramBotToken' in (newSettings || {}) || 'telegramUserId' in (newSettings || {})) {
       void restartTelegramPolling()
+      void restartDaytimePrompts()
+    }
+    if ('telegramDaytimeEnabled' in (newSettings || {})) {
+      void restartDaytimePrompts()
     }
     if ('captureEnabled' in (newSettings || {}) || 'captureAllowlist' in (newSettings || {})) {
       void restartCaptureObserver()

@@ -21,6 +21,7 @@ import { setupAutoUpdater } from './updater'
 import { isGcalConnected } from './gcal/auth'
 import { syncCalendarContacts } from './gcal/sync'
 import { startTelegramPolling, stopTelegramPolling } from './telegram/poller'
+import { startDaytimePrompts, stopDaytimePrompts } from './telegram/daytime'
 import { startCaptureObserver, stopCaptureObserver } from './observe/poller'
 import { startSynthesisScheduler, stopSynthesisScheduler } from './engine/synthesis'
 
@@ -88,6 +89,7 @@ app.whenReady().then(async () => {
   createWindow()
   setupAutoUpdater()
   startTelegramPolling()
+  startDaytimePrompts()
   startCaptureObserver()
   startSynthesisScheduler()
 
@@ -105,6 +107,7 @@ app.on('window-all-closed', () => {
 app.on('will-quit', () => {
   stopLibraryServer()
   void stopTelegramPolling()
+  stopDaytimePrompts()
   void stopCaptureObserver({ endSession: true })
   stopSynthesisScheduler()
 })

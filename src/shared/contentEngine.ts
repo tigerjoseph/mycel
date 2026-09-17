@@ -53,6 +53,12 @@ export const TELEGRAM_POLL_FOCUSED_SEC = 5
 export const TELEGRAM_POLL_IDLE_SEC = 25
 export const TELEGRAM_SAVED_REPLY = 'Saved.'
 export const TELEGRAM_VOICE_PLACEHOLDER = '[Voice note — transcription needed]'
+export const DAYTIME_PROMPT_KIND = 'daytime'
+export const DAYTIME_MAX_PER_DAY = 3
+export const DAYTIME_MIN_GAP_MS = 2.5 * 60 * 60 * 1000
+export const DAYTIME_CHECK_MS = 15 * 60 * 1000
+export const DAYTIME_START_HOUR = 10
+export const DAYTIME_END_HOUR = 18
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const WEEK_MS = 7 * DAY_MS

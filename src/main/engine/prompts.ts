@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid'
 import { getDb } from '../db'
 import { saveCorpusInsight } from './saveInsight'
 import { ingestDump, parseDumpRow } from './ingestDump'
+import { DAYTIME_PROMPT_KIND, insightTextError } from '@shared/contentEngine'
 import type { Dump, TelegramPrompt, TelegramPromptStatus } from '@shared/types'
 
 function optionalText(value: unknown): string | null {
@@ -72,6 +73,15 @@ export async function listPrompts(): Promise<TelegramPrompt[]> {
   const db = getDb()
   const result = await db.execute('SELECT * FROM telegram_prompts ORDER BY created_at DESC')
   return result.rows.map((row) => parsePromptRow(row as unknown as Record<string, unknown>))
+}
+
+export async function countPromptsSince(kind: string, since: number): Promise<number> {
+  const db = getDb()
+  const result = await db.execute({
+    sql: `SELECT COUNT(*) AS n FROM telegram_prompts WHERE kind = ? AND created_at >= ?`,
+    args: [kind, since]
+  })
+  return Number(result.rows[0]?.n ?? 0)
 }
 
 export async function countOpenPrompts(): Promise<number> {
@@ -171,6 +181,12 @@ export async function answerPrompt(
     }
   }
 
+  if (prompt.kind === DAYTIME_PROMPT_KIND && !insightTextError(text)) {
+    await persistStandalonePost(text).catch((err) => {
+      console.error('Daytime reply draft failed:', err)
+    })
+  }
+
   const db = getDb()
   const now = Date.now()
   await db.execute({
@@ -205,24 +221,86 @@ export async function answerPrompt(
 }
 
 export async function buildStubContextPrompt(): Promise<{ text: string; relatedInsightId: string | null }> {
+  return buildDaytimePrompt()
+}
+
+export async function buildDaytimePrompt(): Promise<{ text: string; relatedInsightId: string | null }> {
   const db = getDb()
-  const result = await db.execute(
-    `SELECT id, text FROM corpus_insights
+  const insight = await db.execute(
+    `SELECT id, text, so_what FROM corpus_insights
      WHERE (duplicate_of IS NULL OR duplicate_of = '')
      ORDER BY created_at DESC
      LIMIT 1`
   )
-  const row = result.rows[0] as { id?: string; text?: string } | undefined
+  const row = insight.rows[0] as { id?: string; text?: string; so_what?: string | null } | undefined
   const insightText = (row?.text || '').replace(/\s+/g, ' ').trim()
-  if (insightText) {
-    const snippet = insightText.length > 80 ? `${insightText.slice(0, 77)}…` : insightText
+  const soWhat = optionalText(row?.so_what)
+  if (insightText && !soWhat) {
+    const snippet = clip(insightText)
     return {
-      text: `“${snippet}” reads mostly as narrative. What's the so-what you'd actually teach from it?`,
+      text: `“${snippet}” is still mostly story. One line you'd actually post?`,
       relatedInsightId: (row?.id as string) ?? null
     }
   }
+  if (insightText) {
+    const snippet = clip(insightText)
+    return {
+      text: `Could “${snippet}” stand alone as a post, or what's the sharper version?`,
+      relatedInsightId: (row?.id as string) ?? null
+    }
+  }
+
+  const fourHoursAgo = Date.now() - 4 * 60 * 60 * 1000
+  const session = await db.execute({
+    sql: `SELECT title FROM sessions
+          WHERE COALESCE(ended_at, started_at, created_at) >= ?
+          ORDER BY COALESCE(ended_at, started_at, created_at) DESC
+          LIMIT 1`,
+    args: [fourHoursAgo]
+  })
+  const title = optionalText(session.rows[0]?.title)
+  if (title) {
+    return {
+      text: `You were in “${clip(title, 60)}”. One sentence from that that could stand as a post?`,
+      relatedInsightId: null
+    }
+  }
+
   return {
-    text: 'Thin day — what one thing from the last two hours is worth keeping in Corpus?',
+    text: 'One concrete line from the last couple hours that could stand as a post — not a recap.',
     relatedInsightId: null
   }
+}
+
+function clip(text: string, max = 80): string {
+  const cleaned = text.replace(/\s+/g, ' ').trim()
+  if (cleaned.length <= max) return cleaned
+  return `${cleaned.slice(0, max - 1)}…`
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+async function persistStandalonePost(text: string): Promise<void> {
+  const db = getDb()
+  const now = Date.now()
+  const id = nanoid()
+  const title = clip(text, 72)
+  const html = `<p>${escapeHtml(text).replace(/\n/g, '<br>')}</p>`
+  const postMeta = {
+    status: 'draft',
+    channel: 'linkedin',
+    source: 'telegram'
+  }
+  await db.execute({
+    sql: `INSERT INTO docs
+          (id, title, body, type, folder_id, icon, cover_image, is_template,
+           is_favorite, favorite_order, tags, post_meta, created_at, updated_at)
+          VALUES (?, ?, ?, 'post', NULL, NULL, NULL, 0, 0, NULL, '[]', ?, ?, ?)`,
+    args: [id, title, html, JSON.stringify(postMeta), now, now]
+  })
 }
