@@ -94,7 +94,7 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
       if (typeof s.telegramBotToken === 'string') setTelegramBotToken(s.telegramBotToken)
       if (typeof s.telegramUserId === 'string') setTelegramUserId(s.telegramUserId)
       else if (typeof s.telegramUserId === 'number') setTelegramUserId(String(s.telegramUserId))
-      setSynthEodEnabled(s.synthesisEodEnabled === true)
+      setSynthEodEnabled(s.synthesisEodEnabled !== false)
     })
     window.mycel.getTelegramStatus().then(setTelegramStatus).catch(() => {})
     window.mycel.getCaptureStatus().then(setCaptureStatus).catch(() => {})
@@ -693,7 +693,7 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
             disabled={synthBusy}
             style={{ ...secondaryBtn, opacity: synthBusy ? 0.6 : 1 }}
           >
-            {synthBusy ? 'Synthesizing…' : 'Run synthesis'}
+            {synthBusy ? 'Synthesizing…' : 'Run now'}
           </button>
         </div>
         <label
@@ -711,11 +711,12 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
             checked={synthEodEnabled}
             onChange={(e) => saveSynthEod(e.target.checked)}
           />
-          End-of-day run (18:00 local, off by default)
+          Automatic end-of-day run (18:00 local)
         </label>
         <Hint>
-          Human still edits in the Doc editor. No autopublish. Without a Google key, synthesis stitches
-          quoted Corpus material or skips — it never invents a post.
+          On by default. Human still edits in the Doc editor. No autopublish. Without a Google key,
+          synthesis stitches quoted Corpus material or skips — it never invents a post. Use Run now
+          only to force a pass.
         </Hint>
         {synthMessage && <StatusLine>{synthMessage}</StatusLine>}
       </Section>

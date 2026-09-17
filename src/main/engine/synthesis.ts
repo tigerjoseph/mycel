@@ -449,7 +449,7 @@ export async function getSynthesisStatus(): Promise<SynthesisStatus> {
     typeof settings.synthesisLastRunAt === 'number' ? settings.synthesisLastRunAt : lastResult?.ranAt ?? null
   return {
     richness,
-    eodEnabled: settings.synthesisEodEnabled === true,
+    eodEnabled: settings.synthesisEodEnabled !== false,
     lastRunAt,
     lastResult,
     openSynthesisPromptCount: open.length
@@ -459,7 +459,7 @@ export async function getSynthesisStatus(): Promise<SynthesisStatus> {
 async function maybeRunEod(): Promise<void> {
   try {
     const settings = await getAppSettings()
-    if (settings.synthesisEodEnabled !== true) return
+    if (settings.synthesisEodEnabled === false) return
     const now = Date.now()
     const date = new Date(now)
     if (date.getHours() < SYNTHESIS_EOD_HOUR) return

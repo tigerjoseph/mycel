@@ -1,7 +1,7 @@
 import type { PageId } from '@shared/types'
 
 export type PeopleSubView = 'projects' | 'contacts'
-export type CreateSubView = 'docs' | 'notes' | 'content' | 'corpus' | 'calendar'
+export type CreateSubView = 'docs' | 'notes' | 'corpus' | 'calendar'
 
 export interface PageSubTab {
   id: string
@@ -16,7 +16,6 @@ export const PAGE_SUBS: Partial<Record<PageId, PageSubTab[]>> = {
   create: [
     { id: 'docs', label: 'Docs' },
     { id: 'notes', label: 'Notes' },
-    { id: 'content', label: 'Content' },
     { id: 'corpus', label: 'Corpus' },
     { id: 'calendar', label: 'Calendar' }
   ]

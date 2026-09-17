@@ -18,6 +18,10 @@ export function insightTextError(text: string): string | null {
 }
 
 export const POST_STATUSES = ['draft', 'review', 'scheduled', 'published'] as const
+
+export function isPostStatus(status: string): status is (typeof POST_STATUSES)[number] {
+  return (POST_STATUSES as readonly string[]).includes(status)
+}
 export const CORPUS_THREAD_STATUSES = ['emerging', 'active', 'pinned', 'muted'] as const
 export const MEETING_INSIGHT_ORIGINS = ['auto', 'hybrid', 'session'] as const
 export const INSIGHT_INTENTS = ['teach', 'entertain', 'discover', 'frame'] as const
