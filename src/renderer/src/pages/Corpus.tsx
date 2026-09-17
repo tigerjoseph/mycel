@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Pin, VolumeX, Plus } from 'lucide-react'
+import { Pin, VolumeX, Plus, Upload, FileText } from 'lucide-react'
 import { insightTextError, isMeetingInsightOrigin } from '@shared/contentEngine'
 import type { CorpusInsight, CorpusThread, CorpusThreadStatus, CreateInsightInput, Dump, WorkSession } from '@shared/types'
 import { format } from 'date-fns'
@@ -14,27 +14,149 @@ const PANES: { id: CorpusPane; label: string }[] = [
 ]
 
 export function Corpus(): React.JSX.Element {
+  const showCopyFeedback = useUIStore((s) => s.showCopyFeedback)
   const [pane, setPane] = useState<CorpusPane>('insights')
+  const [pasteOpen, setPasteOpen] = useState(false)
+  const [pasteText, setPasteText] = useState('')
+  const [pasteTitle, setPasteTitle] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
+  const [importTick, setImportTick] = useState(0)
+
+  const finishImport = useCallback(async (fn: () => Promise<unknown>) => {
+    setImporting(true)
+    try {
+      await fn()
+      setImportTick((n) => n + 1)
+      showCopyFeedback('Imported')
+    } catch (err) {
+      showCopyFeedback(err instanceof Error ? err.message : 'Import failed')
+    } finally {
+      setImporting(false)
+      setPasteText('')
+      setPasteTitle('')
+      setPasteOpen(false)
+    }
+  }, [showCopyFeedback])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    const paths = Array.from(e.dataTransfer.files)
+      .map((f) => (f as File & { path?: string }).path)
+      .filter((p): p is string => Boolean(p))
+    if (paths.length === 0) return
+    void finishImport(() => window.mycel.importPaths(paths))
+  }, [finishImport])
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '4px 20px 24px' }}>
-      <div style={{ marginBottom: 14 }}>
-        <h2
+    <div
+      style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '4px 20px 24px', position: 'relative' }}
+      onDragOver={(e) => {
+        e.preventDefault()
+        setDragOver(true)
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+    >
+      {dragOver && (
+        <div
           style={{
-            margin: 0,
-            fontFamily: 'var(--font-heading)',
-            fontSize: 20,
-            fontWeight: 600,
-            letterSpacing: '-0.02em',
-            color: 'var(--text)'
+            position: 'absolute',
+            inset: 0,
+            zIndex: 50,
+            background: 'rgba(0,0,0,0.04)',
+            border: '2px dashed var(--accent)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none'
           }}
         >
-          Corpus
-        </h2>
-        <p style={{ margin: '4px 0 0', fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--text-muted)' }}>
-          Distilled meaning — insights and patterns. Capture inbox is a later phase.
-        </p>
+          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 15, color: 'var(--accent)', fontWeight: 600 }}>
+            Drop transcript or voice note
+          </span>
+        </div>
+      )}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 14 }}>
+        <div>
+          <h2
+            style={{
+              margin: 0,
+              fontFamily: 'var(--font-heading)',
+              fontSize: 20,
+              fontWeight: 600,
+              letterSpacing: '-0.02em',
+              color: 'var(--text)'
+            }}
+          >
+            Corpus
+          </h2>
+          <p style={{ margin: '4px 0 0', fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--text-muted)' }}>
+            Distilled meaning — import transcripts here, then work insights and patterns.
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={() => setPasteOpen((v) => !v)}
+            disabled={importing}
+            style={ghostBtn}
+          >
+            <FileText size={13} />
+            Paste
+          </button>
+          <button
+            type="button"
+            onClick={() => void finishImport(() => window.mycel.pickAndImport())}
+            disabled={importing}
+            style={primaryBtn}
+          >
+            <Upload size={13} />
+            {importing ? 'Importing…' : 'Import'}
+          </button>
+        </div>
       </div>
+
+      {pasteOpen && (
+        <div
+          style={{
+            marginBottom: 14,
+            padding: 14,
+            borderRadius: 8,
+            border: '1px solid var(--border)',
+            background: 'var(--surface)'
+          }}
+        >
+          <input
+            value={pasteTitle}
+            onChange={(e) => setPasteTitle(e.target.value)}
+            placeholder="Title (optional)"
+            style={inputStyle}
+          />
+          <textarea
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+            placeholder="Paste transcript or voice-note text…"
+            rows={6}
+            style={{ ...inputStyle, marginTop: 8, resize: 'vertical', minHeight: 96 }}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              const text = pasteText.trim()
+              if (!text) return
+              void finishImport(() =>
+                window.mycel.importTranscript({ text, title: pasteTitle.trim() || undefined })
+              )
+            }}
+            disabled={importing || !pasteText.trim()}
+            style={{ ...primaryBtn, marginTop: 10, opacity: importing || !pasteText.trim() ? 0.5 : 1 }}
+          >
+            Import to corpus
+          </button>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
         {PANES.map((tab) => {
@@ -64,15 +186,15 @@ export function Corpus(): React.JSX.Element {
       </div>
 
       <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-        {pane === 'insights' && <InsightsPane />}
-        {pane === 'patterns' && <PatternsPane />}
-        {pane === 'inbox' && <InboxPane />}
+        {pane === 'insights' && <InsightsPane refreshTick={importTick} />}
+        {pane === 'patterns' && <PatternsPane refreshTick={importTick} />}
+        {pane === 'inbox' && <InboxPane refreshTick={importTick} />}
       </div>
     </div>
   )
 }
 
-function InsightsPane(): React.JSX.Element {
+function InsightsPane({ refreshTick }: { refreshTick: number }): React.JSX.Element {
   const corpusFocusSessionId = useUIStore((s) => s.corpusFocusSessionId)
   const setCorpusFocusSessionId = useUIStore((s) => s.setCorpusFocusSessionId)
   const createView = useUIStore((s) => s.createView)
@@ -100,7 +222,7 @@ function InsightsPane(): React.JSX.Element {
 
   useEffect(() => {
     load().catch(() => setLoading(false))
-  }, [load])
+  }, [load, refreshTick])
 
   useEffect(() => {
     if (createView === 'corpus') load().catch(() => {})
@@ -286,8 +408,8 @@ function InsightsPane(): React.JSX.Element {
       ) : visible.length === 0 ? (
         <EmptyLine>
           {filter === 'meeting'
-            ? 'No meeting-sourced insights yet. Import a transcript in Extractions.'
-            : 'No insights yet. Add one by hand — extractors come later.'}
+            ? 'No meeting-sourced insights yet. Import a transcript above.'
+            : 'No insights yet. Add one by hand or import a transcript.'}
         </EmptyLine>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -352,7 +474,7 @@ function InsightsPane(): React.JSX.Element {
   )
 }
 
-function PatternsPane(): React.JSX.Element {
+function PatternsPane({ refreshTick }: { refreshTick: number }): React.JSX.Element {
   const createView = useUIStore((s) => s.createView)
   const [threads, setThreads] = useState<CorpusThread[]>([])
   const [loading, setLoading] = useState(true)
@@ -366,7 +488,7 @@ function PatternsPane(): React.JSX.Element {
 
   useEffect(() => {
     load().catch(() => setLoading(false))
-  }, [load])
+  }, [load, refreshTick])
 
   useEffect(() => {
     if (createView === 'corpus') load().catch(() => {})
@@ -581,7 +703,7 @@ function PatternFilters({
   )
 }
 
-function InboxPane(): React.JSX.Element {
+function InboxPane({ refreshTick }: { refreshTick: number }): React.JSX.Element {
   const createView = useUIStore((s) => s.createView)
   const [dumps, setDumps] = useState<Dump[]>([])
   const [loading, setLoading] = useState(true)
@@ -599,7 +721,7 @@ function InboxPane(): React.JSX.Element {
 
   useEffect(() => {
     load().catch(() => setLoading(false))
-  }, [load])
+  }, [load, refreshTick])
 
   useEffect(() => {
     if (createView === 'corpus') load().catch(() => {})
@@ -775,6 +897,9 @@ const primaryBtn: React.CSSProperties = {
 }
 
 const ghostBtn: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 5,
   padding: '6px 12px',
   borderRadius: 8,
   border: '1px solid transparent',

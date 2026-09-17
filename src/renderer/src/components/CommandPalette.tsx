@@ -22,7 +22,7 @@ const typeLabels = {
   project: 'Project',
   todo: 'To-Do',
   library: 'Mindspace',
-  atom: 'Extraction'
+  atom: 'Corpus'
 } as const
 
 const entityIcons = {
@@ -53,7 +53,7 @@ export function CommandPalette(): React.JSX.Element | null {
   const setActiveProjectId = useUIStore((s) => s.setActiveProjectId)
   const setCreateView = useUIStore((s) => s.setCreateView)
   const setLibraryFocusItemId = useUIStore((s) => s.setLibraryFocusItemId)
-  const setExtractionsFocus = useUIStore((s) => s.setExtractionsFocus)
+  const setCorpusFocusSessionId = useUIStore((s) => s.setCorpusFocusSessionId)
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
@@ -173,9 +173,12 @@ export function CommandPalette(): React.JSX.Element | null {
           break
         case 'atom':
           setPage('create')
-          setCreateView('extractions')
+          setCreateView('corpus')
           if (result.parentId) {
-            setExtractionsFocus({ meetingId: result.parentId, atomId: result.id })
+            void window.mycel.getSessions().then((sessions) => {
+              const session = sessions.find((row) => row.meetingId === result.parentId)
+              if (session) setCorpusFocusSessionId(session.id)
+            })
           }
           break
       }
@@ -191,7 +194,7 @@ export function CommandPalette(): React.JSX.Element | null {
       setActiveProjectId,
       setCreateView,
       setLibraryFocusItemId,
-      setExtractionsFocus
+      setCorpusFocusSessionId
     ]
   )
 

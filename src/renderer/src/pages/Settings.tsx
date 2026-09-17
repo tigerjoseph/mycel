@@ -446,7 +446,7 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
             }
           />
           <Hint>
-            Powers insight/quote extraction in Create → Extractions and voice-note imports. Get a key at{' '}
+            Powers insight/quote extraction in Create → Corpus and voice-note imports. Get a key at{' '}
             <a
               href="https://aistudio.google.com/apikey"
               target="_blank"
@@ -720,9 +720,9 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
         {synthMessage && <StatusLine>{synthMessage}</StatusLine>}
       </Section>
 
-      <Section title="Voice & Extractions">
+      <Section title="Voice">
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
-          Local transcription for audio in Create → Extractions and the <code style={{ fontSize: 11 }}>/voice</code> slash
+          Local transcription for audio in Create → Corpus and the <code style={{ fontSize: 11 }}>/voice</code> slash
           command in docs. Gemini key above improves insight/quote extraction.
         </p>
         {voiceStatus ? (

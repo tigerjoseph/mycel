@@ -114,7 +114,7 @@ export function registerSearchHandlers(): void {
       })
     }
 
-    // Search Extractions atoms (quotes/insights/actions/frames) by text
+    // Search meeting atoms (quotes/insights/actions/frames) by text
     const atoms = await db.execute({
       sql: `SELECT a.id, a.meeting_id, a.text, m.title AS meeting_title FROM atoms a
             LEFT JOIN meetings m ON m.id = a.meeting_id
