@@ -24,6 +24,7 @@ import { startTelegramPolling, stopTelegramPolling } from './telegram/poller'
 import { startDaytimePrompts, stopDaytimePrompts } from './telegram/daytime'
 import { startCaptureObserver, stopCaptureObserver } from './observe/poller'
 import { startSynthesisScheduler, stopSynthesisScheduler } from './engine/synthesis'
+import { applyOpenAtLogin } from './openAtLogin'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -77,6 +78,7 @@ function createWindow(): void {
 app.whenReady().then(async () => {
   loadProjectEnvUserData()
   app.setAppUserModelId('com.mycel.app')
+  await applyOpenAtLogin()
 
   setApplicationMenu()
   await initDb()

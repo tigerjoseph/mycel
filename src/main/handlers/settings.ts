@@ -13,6 +13,7 @@ import {
 import { restartTelegramPolling } from '../telegram/poller'
 import { restartDaytimePrompts } from '../telegram/daytime'
 import { restartCaptureObserver } from '../observe/poller'
+import { applyOpenAtLogin } from '../openAtLogin'
 
 export function registerSettingsHandlers(): void {
   ipcMain.handle('settings:get', async () => getAppSettings())
@@ -31,6 +32,9 @@ export function registerSettingsHandlers(): void {
     }
     if ('synthesisEodEnabled' in (newSettings || {})) {
       void import('../engine/synthesis').then((mod) => mod.restartSynthesisScheduler())
+    }
+    if ('openAtLogin' in (newSettings || {})) {
+      void applyOpenAtLogin()
     }
   })
 

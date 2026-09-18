@@ -77,6 +77,7 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
   const [synthBusy, setSynthBusy] = useState(false)
   const [synthMessage, setSynthMessage] = useState<string | null>(null)
   const [synthEodEnabled, setSynthEodEnabled] = useState(false)
+  const [openAtLogin, setOpenAtLogin] = useState(true)
 
   const refreshGcalStatus = (): void => {
     window.mycel.gcalGetStatus().then((s) => setGcalConnected(s.connected)).catch(() => {})
@@ -97,6 +98,7 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
       else if (typeof s.telegramUserId === 'number') setTelegramUserId(String(s.telegramUserId))
       setTelegramDaytimeEnabled(s.telegramDaytimeEnabled !== false)
       setSynthEodEnabled(s.synthesisEodEnabled !== false)
+      setOpenAtLogin(s.openAtLogin !== false)
     })
     window.mycel.getTelegramStatus().then(setTelegramStatus).catch(() => {})
     window.mycel.getCaptureStatus().then(setCaptureStatus).catch(() => {})
@@ -939,6 +941,28 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
             {updateBusy ? 'Checking…' : 'Check for updates'}
           </button>
         </div>
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 13,
+            color: 'var(--text)',
+            cursor: 'pointer',
+            marginBottom: 12
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={openAtLogin}
+            onChange={(e) => {
+              const enabled = e.target.checked
+              setOpenAtLogin(enabled)
+              window.mycel.setSettings({ openAtLogin: enabled })
+            }}
+          />
+          Open Mycel at login
+        </label>
         {updateMessage && <StatusLine>{updateMessage}</StatusLine>}
         <a
           href="https://github.com/tigerjoseph/mycel/releases"
