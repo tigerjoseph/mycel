@@ -20,6 +20,11 @@ import { registerHandlers } from './handlers'
 import { setupAutoUpdater } from './updater'
 import { isGcalConnected } from './gcal/auth'
 import { syncCalendarContacts } from './gcal/sync'
+import { startTelegramPolling, stopTelegramPolling } from './telegram/poller'
+import { startDaytimePrompts, stopDaytimePrompts } from './telegram/daytime'
+import { startCaptureObserver, stopCaptureObserver } from './observe/poller'
+import { startSynthesisScheduler, stopSynthesisScheduler } from './engine/synthesis'
+import { applyOpenAtLogin } from './openAtLogin'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -73,6 +78,7 @@ function createWindow(): void {
 app.whenReady().then(async () => {
   loadProjectEnvUserData()
   app.setAppUserModelId('com.mycel.app')
+  await applyOpenAtLogin()
 
   setApplicationMenu()
   await initDb()
@@ -84,6 +90,10 @@ app.whenReady().then(async () => {
   }
   createWindow()
   setupAutoUpdater()
+  startTelegramPolling()
+  startDaytimePrompts()
+  startCaptureObserver()
+  startSynthesisScheduler()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -98,6 +108,10 @@ app.on('window-all-closed', () => {
 
 app.on('will-quit', () => {
   stopLibraryServer()
+  void stopTelegramPolling()
+  stopDaytimePrompts()
+  void stopCaptureObserver({ endSession: true })
+  stopSynthesisScheduler()
 })
 
 // Settings opens as in-app modal (works in fullscreen; child windows do not)

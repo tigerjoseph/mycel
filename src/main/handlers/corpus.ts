@@ -5,6 +5,7 @@ import { extractAtoms } from '../engine/extractAtoms'
 import { atomsToDocHtml, generateProseFromAtoms, voiceNoteAtomsHtml } from '../engine/generateDoc'
 import { readTranscriptFromFile } from '../engine/readImportFile'
 import { getGoogleApiKey } from '../settingsStore'
+import { ingestMeetingIntoCorpus, deleteSessionForMeeting } from '../engine/ingestMeeting'
 import type { Atom, AtomKind, CreateDocFromAtomsInput, Meeting } from '@shared/types'
 
 const AUDIO_IMPORT_FILTERS = [
@@ -103,6 +104,12 @@ async function saveMeetingWithAtoms(
     sourcePath: opts.sourcePath ?? null,
     createdAt: now,
     updatedAt: now
+  }
+
+  try {
+    await ingestMeetingIntoCorpus(meeting, atoms)
+  } catch (err) {
+    console.error('Content Engine meeting ingest failed (meeting left intact):', err)
   }
 
   return { meeting, atoms }
@@ -210,6 +217,11 @@ export function registerCorpusHandlers(): void {
   ipcMain.handle('corpus:deleteMeeting', async (_e, id: string) => {
     const db = getDb()
     await db.execute({ sql: 'DELETE FROM atoms WHERE meeting_id = ?', args: [id] })
+    try {
+      await deleteSessionForMeeting(id)
+    } catch (err) {
+      console.error('Failed to delete meeting session:', err)
+    }
     await db.execute({ sql: 'DELETE FROM meetings WHERE id = ?', args: [id] })
   })
 

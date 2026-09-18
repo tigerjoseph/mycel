@@ -10,12 +10,32 @@ import {
   getAppearance,
   setAppearance
 } from '../settingsStore'
+import { restartTelegramPolling } from '../telegram/poller'
+import { restartDaytimePrompts } from '../telegram/daytime'
+import { restartCaptureObserver } from '../observe/poller'
+import { applyOpenAtLogin } from '../openAtLogin'
 
 export function registerSettingsHandlers(): void {
   ipcMain.handle('settings:get', async () => getAppSettings())
 
   ipcMain.handle('settings:set', async (_e, newSettings: Record<string, unknown>) => {
     await setAppSettings(newSettings)
+    if ('telegramBotToken' in (newSettings || {}) || 'telegramUserId' in (newSettings || {})) {
+      void restartTelegramPolling()
+      void restartDaytimePrompts()
+    }
+    if ('telegramDaytimeEnabled' in (newSettings || {})) {
+      void restartDaytimePrompts()
+    }
+    if ('captureEnabled' in (newSettings || {}) || 'captureAllowlist' in (newSettings || {})) {
+      void restartCaptureObserver()
+    }
+    if ('synthesisEodEnabled' in (newSettings || {})) {
+      void import('../engine/synthesis').then((mod) => mod.restartSynthesisScheduler())
+    }
+    if ('openAtLogin' in (newSettings || {})) {
+      void applyOpenAtLogin()
+    }
   })
 
   ipcMain.handle('theme:get', async () => getTheme())

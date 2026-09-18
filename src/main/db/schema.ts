@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS docs (
   is_favorite INTEGER NOT NULL DEFAULT 0,
   favorite_order INTEGER,
   tags TEXT NOT NULL DEFAULT '[]',
+  post_meta TEXT NOT NULL DEFAULT '{}',
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -165,4 +166,100 @@ CREATE TABLE IF NOT EXISTS content_scripts (
 );
 
 CREATE INDEX IF NOT EXISTS idx_content_scripts_stage ON content_scripts (stage, position);
+
+CREATE TABLE IF NOT EXISTS dumps (
+  id TEXT PRIMARY KEY,
+  source TEXT NOT NULL DEFAULT 'manual',
+  payload TEXT NOT NULL DEFAULT '',
+  metadata TEXT NOT NULL DEFAULT '{}',
+  telegram_message_id TEXT,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_dumps_created ON dumps (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS telegram_prompts (
+  id TEXT PRIMARY KEY,
+  text TEXT NOT NULL,
+  related_insight_id TEXT,
+  related_draft_id TEXT,
+  telegram_message_id TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  kind TEXT NOT NULL DEFAULT 'manual',
+  answer_text TEXT,
+  answer_dump_id TEXT,
+  created_at INTEGER NOT NULL,
+  sent_at INTEGER,
+  answered_at INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_telegram_prompts_status ON telegram_prompts (status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS activity_events (
+  id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL DEFAULT 'capture',
+  payload TEXT NOT NULL DEFAULT '{}',
+  captured_at INTEGER NOT NULL,
+  expires_at INTEGER,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_activity_events_expires ON activity_events (expires_at);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL DEFAULT '',
+  kind TEXT NOT NULL DEFAULT 'work',
+  source TEXT NOT NULL DEFAULT 'work',
+  meeting_id TEXT,
+  transcript_ref TEXT,
+  contact_id TEXT,
+  project_id TEXT,
+  started_at INTEGER,
+  ended_at INTEGER,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_created ON sessions (created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_meeting_id ON sessions (meeting_id);
+
+CREATE TABLE IF NOT EXISTS corpus_insights (
+  id TEXT PRIMARY KEY,
+  text TEXT NOT NULL,
+  so_what TEXT,
+  source TEXT,
+  pillar TEXT,
+  origin TEXT NOT NULL DEFAULT 'manual',
+  embedding TEXT,
+  dump_id TEXT,
+  session_id TEXT,
+  thread_id TEXT,
+  duplicate_of TEXT,
+  provenance TEXT NOT NULL DEFAULT '{}',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_corpus_insights_created ON corpus_insights (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_corpus_insights_session ON corpus_insights (session_id);
+CREATE INDEX IF NOT EXISTS idx_corpus_insights_thread ON corpus_insights (thread_id);
+
+CREATE TABLE IF NOT EXISTS corpus_threads (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL DEFAULT '',
+  meaning TEXT NOT NULL DEFAULT '',
+  centroid_embedding TEXT,
+  meaning_score REAL NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'emerging',
+  evidence_count INTEGER NOT NULL DEFAULT 0,
+  source_diversity INTEGER NOT NULL DEFAULT 0,
+  titled_once INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_corpus_threads_status ON corpus_threads (status);
+
+CREATE INDEX IF NOT EXISTS idx_docs_type ON docs (type);
 `

@@ -7,6 +7,9 @@ import {
   type ModeId,
   type PaletteId
 } from '@shared/appearance'
+import { CAPTURE_APP_IDS, CAPTURE_APP_LABELS, type CaptureAppId } from '@shared/capture'
+import { formatSynthesisSummary } from '@shared/synthesis'
+import type { CaptureStatus } from '@shared/types'
 
 const PALETTES: PaletteId[] = ['warm', 'bold']
 const MODES: ModeId[] = ['light', 'dark']
@@ -61,6 +64,20 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
   const [updateMessage, setUpdateMessage] = useState<string | null>(null)
   const [extInfo, setExtInfo] = useState<{ port: number; token: string } | null>(null)
   const [extMessage, setExtMessage] = useState<string | null>(null)
+  const [telegramBotToken, setTelegramBotToken] = useState('')
+  const [telegramUserId, setTelegramUserId] = useState('')
+  const [telegramStatus, setTelegramStatus] = useState<import('@shared/types').TelegramStatus | null>(null)
+  const [telegramBusy, setTelegramBusy] = useState(false)
+  const [telegramMessage, setTelegramMessage] = useState<string | null>(null)
+  const [telegramDaytimeEnabled, setTelegramDaytimeEnabled] = useState(true)
+  const [testDumpText, setTestDumpText] = useState('')
+  const [captureStatus, setCaptureStatus] = useState<CaptureStatus | null>(null)
+  const [captureBusy, setCaptureBusy] = useState(false)
+  const [observerSessions, setObserverSessions] = useState<import('@shared/types').WorkSession[]>([])
+  const [synthBusy, setSynthBusy] = useState(false)
+  const [synthMessage, setSynthMessage] = useState<string | null>(null)
+  const [synthEodEnabled, setSynthEodEnabled] = useState(false)
+  const [openAtLogin, setOpenAtLogin] = useState(true)
 
   const refreshGcalStatus = (): void => {
     window.mycel.gcalGetStatus().then((s) => setGcalConnected(s.connected)).catch(() => {})
@@ -76,7 +93,27 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
     window.mycel.getSettings().then((s) => {
       if (typeof s.googleApiKey === 'string') setGoogleApiKey(s.googleApiKey)
       if (typeof s.stripeApiKey === 'string') setStripeApiKey(s.stripeApiKey)
+      if (typeof s.telegramBotToken === 'string') setTelegramBotToken(s.telegramBotToken)
+      if (typeof s.telegramUserId === 'string') setTelegramUserId(s.telegramUserId)
+      else if (typeof s.telegramUserId === 'number') setTelegramUserId(String(s.telegramUserId))
+      setTelegramDaytimeEnabled(s.telegramDaytimeEnabled !== false)
+      setSynthEodEnabled(s.synthesisEodEnabled !== false)
+      setOpenAtLogin(s.openAtLogin !== false)
     })
+    window.mycel.getTelegramStatus().then(setTelegramStatus).catch(() => {})
+    window.mycel.getCaptureStatus().then(setCaptureStatus).catch(() => {})
+    window.mycel
+      .getSynthesisStatus()
+      .then((status) => {
+        if (status.lastResult) setSynthMessage(formatSynthesisSummary(status.lastResult))
+      })
+      .catch(() => {})
+    window.mycel
+      .getSessions()
+      .then((rows) => {
+        setObserverSessions(rows.filter((row) => row.source === 'observer').slice(0, 5))
+      })
+      .catch(() => {})
     refreshGcalStatus()
     window.mycel.getDataInfo().then((info) => {
       setDbPath(info.dbPath)
@@ -85,6 +122,18 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
     window.mycel.getVoiceImportStatus().then(setVoiceStatus).catch(() => {})
     window.mycel.getLibraryExtensionInfo().then(setExtInfo).catch(() => {})
   }, [isOpen])
+
+  useEffect(() => {
+    return window.mycel.onCaptureChanged((status) => {
+      setCaptureStatus(status)
+      window.mycel
+        .getSessions()
+        .then((rows) => {
+          setObserverSessions(rows.filter((row) => row.source === 'observer').slice(0, 5))
+        })
+        .catch(() => {})
+    })
+  }, [])
 
   const handleAppearance = (id: AppearanceId): void => {
     setAppearance(id)
@@ -181,6 +230,118 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
     } finally {
       setUpdateBusy(false)
     }
+  }
+
+  const refreshTelegramStatus = (): void => {
+    window.mycel.getTelegramStatus().then(setTelegramStatus).catch(() => {})
+  }
+
+  const saveTelegramSettings = (): void => {
+    window.mycel.setSettings({
+      telegramBotToken: telegramBotToken.trim(),
+      telegramUserId: telegramUserId.trim()
+    })
+    window.setTimeout(refreshTelegramStatus, 400)
+  }
+
+  const handleTelegramTest = async (): Promise<void> => {
+    setTelegramBusy(true)
+    setTelegramMessage(null)
+    try {
+      await window.mycel.sendTelegramTestNotification()
+      setTelegramMessage('Test sent. Check Telegram. Message the bot once if it cannot ping you yet.')
+    } catch (err) {
+      setTelegramMessage(err instanceof Error ? err.message : 'Could not send test notification')
+    } finally {
+      setTelegramBusy(false)
+      refreshTelegramStatus()
+    }
+  }
+
+  const handleRequestContext = async (): Promise<void> => {
+    setTelegramBusy(true)
+    setTelegramMessage(null)
+    try {
+      const result = await window.mycel.requestTelegramContext()
+      if (result.sent) {
+        setTelegramMessage('Prompt sent to Telegram.')
+      } else {
+        setTelegramMessage(
+          result.error
+            ? `Prompt saved locally. ${result.error}`
+            : 'Prompt saved locally. Connect Telegram to send it.'
+        )
+      }
+    } catch (err) {
+      setTelegramMessage(err instanceof Error ? err.message : 'Could not create prompt')
+    } finally {
+      setTelegramBusy(false)
+      refreshTelegramStatus()
+    }
+  }
+
+  const handleTestDump = async (): Promise<void> => {
+    const text = testDumpText.trim()
+    if (!text) {
+      setTelegramMessage('Write a short dump to ingest locally.')
+      return
+    }
+    setTelegramBusy(true)
+    setTelegramMessage(null)
+    try {
+      await window.mycel.ingestTelegramTestDump({ text })
+      setTestDumpText('')
+      setTelegramMessage('Test dump ingested. Open Create → Corpus → Inbox.')
+    } catch (err) {
+      setTelegramMessage(err instanceof Error ? err.message : 'Could not ingest test dump')
+    } finally {
+      setTelegramBusy(false)
+    }
+  }
+
+  const handleSynthesis = async (): Promise<void> => {
+    setSynthBusy(true)
+    setSynthMessage(null)
+    try {
+      const result = await window.mycel.runSynthesis()
+      setSynthMessage(formatSynthesisSummary(result))
+    } catch (err) {
+      setSynthMessage(err instanceof Error ? err.message : 'Synthesis failed')
+    } finally {
+      setSynthBusy(false)
+    }
+  }
+
+  const saveSynthEod = (enabled: boolean): void => {
+    setSynthEodEnabled(enabled)
+    window.mycel.setSettings({ synthesisEodEnabled: enabled })
+  }
+
+  const saveTelegramDaytime = (enabled: boolean): void => {
+    setTelegramDaytimeEnabled(enabled)
+    window.mycel.setSettings({ telegramDaytimeEnabled: enabled })
+  }
+
+  const saveCapture = async (patch: {
+    enabled?: boolean
+    allowlist?: CaptureAppId[]
+  }): Promise<void> => {
+    setCaptureBusy(true)
+    try {
+      await window.mycel.setCaptureSettings(patch)
+      const status = await window.mycel.getCaptureStatus()
+      setCaptureStatus(status)
+    } catch {
+      // fail soft
+    } finally {
+      setCaptureBusy(false)
+    }
+  }
+
+  const toggleCaptureApp = (id: CaptureAppId): void => {
+    const current = captureStatus?.allowlist ?? []
+    const next = current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+    void saveCapture({ allowlist: next })
   }
 
   return (
@@ -294,7 +455,7 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
             }
           />
           <Hint>
-            Powers insight/quote extraction in Create → Extractions and voice-note imports. Get a key at{' '}
+            Powers insight/quote extraction in Create → Corpus and voice-note imports. Get a key at{' '}
             <a
               href="https://aistudio.google.com/apikey"
               target="_blank"
@@ -342,9 +503,259 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
         </div>
       </Section>
 
-      <Section title="Voice & Extractions">
+      <Section title="Telegram">
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
-          Local transcription for audio in Create → Extractions and the <code style={{ fontSize: 11 }}>/voice</code> slash
+          Pocket channel while Mycel is running. One-way dumps get a <strong>Saved.</strong> reply.
+          Prompts are specific (thin days, narrative, so-what) — not “what did you do today?”
+          Works only when a bot token and your user id are set. The app boots fine disconnected.
+        </p>
+        <div style={{ marginBottom: 12 }}>
+          <IntegrationRow
+            connected={Boolean(telegramStatus?.configured && telegramStatus.polling)}
+            label={
+              !telegramStatus?.tokenConfigured && !telegramStatus?.userIdConfigured
+                ? 'Disconnected'
+                : telegramStatus?.polling
+                  ? 'Polling while Mycel is open'
+                  : telegramStatus?.configured
+                    ? 'Configured — waiting to poll'
+                    : telegramStatus?.tokenConfigured
+                      ? 'Token saved — add your user id'
+                      : 'User id saved — add a bot token'
+            }
+            action={
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                {telegramStatus?.pendingPromptCount
+                  ? `${telegramStatus.pendingPromptCount} prompt waiting`
+                  : telegramStatus?.lastError
+                    ? 'Error'
+                    : ''}
+              </span>
+            }
+          />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+          <input
+            type="password"
+            placeholder="Bot token from @BotFather"
+            value={telegramBotToken}
+            onChange={(e) => setTelegramBotToken(e.target.value)}
+            onBlur={saveTelegramSettings}
+            style={{ ...inputStyle, width: '100%' }}
+          />
+          <input
+            type="text"
+            placeholder="Your Telegram user id"
+            value={telegramUserId}
+            onChange={(e) => setTelegramUserId(e.target.value)}
+            onBlur={saveTelegramSettings}
+            style={{ ...inputStyle, width: '100%' }}
+          />
+        </div>
+        <Hint>
+          Create a bot with @BotFather. Get your numeric id from @userinfobot, then message your bot once.
+          Token stays in local settings on this Mac — never commit it. Polling is local <code style={{ fontSize: 11 }}>getUpdates</code>
+          (catch-up on launch). No cloud inbox.
+        </Hint>
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 13,
+            color: 'var(--text)',
+            cursor: 'pointer',
+            marginTop: 12
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={telegramDaytimeEnabled}
+            onChange={(e) => saveTelegramDaytime(e.target.checked)}
+            disabled={!telegramStatus?.configured}
+          />
+          Daytime prompts (up to 3, 10:00–18:00 local)
+        </label>
+        <Hint>
+          Specific questions, not a recap. Replies land in Corpus; a 1–3 sentence answer also becomes a
+          Calendar draft. Needs Mycel running. Uncheck to pause.
+        </Hint>
+        {telegramStatus?.lastError && (
+          <StatusLine>{telegramStatus.lastError}</StatusLine>
+        )}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+          <button
+            type="button"
+            onClick={() => void handleTelegramTest()}
+            disabled={telegramBusy || !telegramStatus?.configured}
+            style={{ ...secondaryBtn, opacity: telegramBusy || !telegramStatus?.configured ? 0.6 : 1 }}
+          >
+            Send test notification
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleRequestContext()}
+            disabled={telegramBusy}
+            style={{ ...secondaryBtn, opacity: telegramBusy ? 0.6 : 1 }}
+          >
+            Request test prompt
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
+          <input
+            type="text"
+            placeholder="Ingest a test dump (no bot needed)"
+            value={testDumpText}
+            onChange={(e) => setTestDumpText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void handleTestDump()
+            }}
+            style={{ ...inputStyle, width: '100%' }}
+          />
+          <button
+            type="button"
+            onClick={() => void handleTestDump()}
+            disabled={telegramBusy}
+            style={{ ...secondaryBtn, flexShrink: 0, opacity: telegramBusy ? 0.6 : 1 }}
+          >
+            Ingest
+          </button>
+        </div>
+        {telegramMessage && <StatusLine>{telegramMessage}</StatusLine>}
+      </Section>
+
+      <Section title="Capture">
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
+          Lightweight allowlisted work observer for this Intel Mac. Polls the frontmost app every 10–15s
+          (name + optional window title / browser host). No screen OCR, no mic, no meeting bots.
+          <strong> Off by default.</strong> Mycel is not a LinkedIn publisher — LinkedIn is a signal only.
+        </p>
+        {!captureStatus?.supported && (
+          <StatusLine>Capture runs on macOS only. This machine is a no-op stub.</StatusLine>
+        )}
+        <IntegrationRow
+          connected={Boolean(captureStatus?.running)}
+          label={
+            !captureStatus?.enabled
+              ? 'Off'
+              : captureStatus.running
+                ? captureStatus.currentSessionTitle
+                  ? `On — ${captureStatus.currentSessionTitle}`
+                  : 'On — waiting for an allowlisted app'
+                : captureStatus.allowlist.length === 0
+                  ? 'On — check at least one app'
+                  : 'On'
+          }
+          action={
+            <button
+              type="button"
+              disabled={captureBusy || !captureStatus?.supported}
+              onClick={() => void saveCapture({ enabled: !captureStatus?.enabled })}
+              style={{
+                ...secondaryBtn,
+                backgroundColor: captureStatus?.enabled ? 'var(--text)' : 'var(--surface)',
+                color: captureStatus?.enabled ? 'var(--bg)' : 'var(--text)',
+                opacity: captureBusy || !captureStatus?.supported ? 0.6 : 1
+              }}
+            >
+              {captureStatus?.enabled ? 'Disable' : 'Enable'}
+            </button>
+          }
+        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+          {CAPTURE_APP_IDS.map((id) => {
+            const checked = Boolean(captureStatus?.allowlist.includes(id))
+            return (
+              <label
+                key={id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontSize: 13,
+                  color: 'var(--text)',
+                  cursor: 'pointer'
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={captureBusy}
+                  onChange={() => toggleCaptureApp(id)}
+                />
+                {CAPTURE_APP_LABELS[id]}
+              </label>
+            )
+          })}
+        </div>
+        <Hint>
+          Also toggle from the Mycel menu (Capture checkbox). Accessibility permission is optional and only
+          used for window titles; app-name sessionize works without it. Activity events compost after 7 days;
+          corpus insights are never deleted.
+        </Hint>
+        {captureStatus?.lastError && <StatusLine>{captureStatus.lastError}</StatusLine>}
+        {observerSessions.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 6px' }}>Recent observer sessions</p>
+            {observerSessions.map((session) => (
+              <div
+                key={session.id}
+                style={{ fontSize: 12, color: 'var(--text)', marginBottom: 4, fontFamily: 'var(--font-ui)' }}
+              >
+                {session.title || 'Untitled'}{' '}
+                <span style={{ color: 'var(--text-muted)' }}>
+                  {session.endedAt ? 'ended' : 'open'}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+
+      <Section title="Synthesis">
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
+          Enough material → near-complete drafts in Calendar Review. Rich days draft without asking.
+          Thin days send a specific prompt first (Telegram when configured). Empty Review is success
+          if nothing passes the bar. Does not auto-turn meetings into LinkedIn posts.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+          <button
+            type="button"
+            onClick={() => void handleSynthesis()}
+            disabled={synthBusy}
+            style={{ ...secondaryBtn, opacity: synthBusy ? 0.6 : 1 }}
+          >
+            {synthBusy ? 'Synthesizing…' : 'Run now'}
+          </button>
+        </div>
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 13,
+            color: 'var(--text)',
+            cursor: 'pointer'
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={synthEodEnabled}
+            onChange={(e) => saveSynthEod(e.target.checked)}
+          />
+          Automatic end-of-day run (18:00 local)
+        </label>
+        <Hint>
+          On by default. Human still edits in the Doc editor. No autopublish. Without a Google key,
+          synthesis stitches quoted Corpus material or skips — it never invents a post. Use Run now
+          only to force a pass.
+        </Hint>
+        {synthMessage && <StatusLine>{synthMessage}</StatusLine>}
+      </Section>
+
+      <Section title="Voice">
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
+          Local transcription for audio in Create → Corpus and the <code style={{ fontSize: 11 }}>/voice</code> slash
           command in docs. Gemini key above improves insight/quote extraction.
         </p>
         {voiceStatus ? (
@@ -406,6 +817,23 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
           folder above. On Instagram, hover a post and click <strong>+ Mycel</strong>. On YouTube, hover a video or use the button on a watch page — or press{' '}
           <kbd style={kbdStyle}>⌘⇧S</kbd> on any page. Full setup steps are in the extension README.
         </Hint>
+      </Section>
+
+      <Section title="Identity, voice & capture">
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
+          Identity and voice kit stay off. Work observers are Settings → Capture; pocket dumps are Telegram;
+          drafts are Settings → Synthesis or Create → Calendar.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <ActionButton disabled onClick={() => {}}>
+            Identity
+            <ComingSoonBadge />
+          </ActionButton>
+          <ActionButton disabled onClick={() => {}}>
+            Voice kit
+            <ComingSoonBadge />
+          </ActionButton>
+        </div>
       </Section>
 
       <Section title="Keyboard shortcuts">
@@ -513,6 +941,28 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
             {updateBusy ? 'Checking…' : 'Check for updates'}
           </button>
         </div>
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 13,
+            color: 'var(--text)',
+            cursor: 'pointer',
+            marginBottom: 12
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={openAtLogin}
+            onChange={(e) => {
+              const enabled = e.target.checked
+              setOpenAtLogin(enabled)
+              window.mycel.setSettings({ openAtLogin: enabled })
+            }}
+          />
+          Open Mycel at login
+        </label>
         {updateMessage && <StatusLine>{updateMessage}</StatusLine>}
         <a
           href="https://github.com/tigerjoseph/mycel/releases"

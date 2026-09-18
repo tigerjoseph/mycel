@@ -160,6 +160,57 @@ declare global {
       deleteMeeting(id: string): Promise<void>
       createDocFromAtoms(input: import('@shared/types').CreateDocFromAtomsInput): Promise<import('@shared/types').Doc>
 
+      // Content Engine corpus
+      getInsights(filter?: import('@shared/types').InsightListFilter): Promise<import('@shared/types').CorpusInsight[]>
+      createInsight(input: import('@shared/types').CreateInsightInput): Promise<import('@shared/types').CorpusInsight>
+      updateInsight(
+        id: string,
+        patch: import('@shared/types').UpdateInsightInput
+      ): Promise<import('@shared/types').CorpusInsight>
+      getCorpusThreads(): Promise<import('@shared/types').CorpusThread[]>
+      setCorpusThreadStatus(
+        id: string,
+        status: import('@shared/types').CorpusThreadStatus
+      ): Promise<import('@shared/types').CorpusThread>
+      getDumps(): Promise<import('@shared/types').Dump[]>
+      createDump(input: import('@shared/types').CreateDumpInput): Promise<import('@shared/types').Dump>
+      getSessions(): Promise<import('@shared/types').WorkSession[]>
+      createSession(input: import('@shared/types').CreateSessionInput): Promise<import('@shared/types').WorkSession>
+      updateSession(
+        id: string,
+        patch: import('@shared/types').UpdateSessionInput
+      ): Promise<import('@shared/types').WorkSession>
+      ensureMeetingSessions(): Promise<import('@shared/types').WorkSession[]>
+
+      runSynthesis(): Promise<import('@shared/types').SynthesisResult>
+      getSynthesisStatus(): Promise<import('@shared/types').SynthesisStatus>
+
+      getTelegramStatus(): Promise<import('@shared/types').TelegramStatus>
+      getTelegramPrompts(): Promise<import('@shared/types').TelegramPrompt[]>
+      sendTelegramTestNotification(): Promise<{ ok: true }>
+      notifyTelegramPromptReady(promptId: string): Promise<import('@shared/types').TelegramPrompt>
+      notifyTelegramDraftReady(
+        input: import('@shared/types').NotifyDraftReadyInput
+      ): Promise<{ ok: true }>
+      requestTelegramContext(input?: import('@shared/types').RequestContextInput): Promise<{
+        prompt: import('@shared/types').TelegramPrompt
+        sent: boolean
+        error: string | null
+      }>
+      ingestTelegramTestDump(
+        input: import('@shared/types').IngestTestDumpInput
+      ): Promise<import('@shared/types').Dump>
+      onTelegramDumpReceived(callback: (dump: import('@shared/types').Dump) => void): () => void
+
+      getCaptureStatus(): Promise<import('@shared/types').CaptureStatus>
+      getCaptureSettings(): Promise<import('@shared/capture').CaptureSettings>
+      setCaptureSettings(patch: {
+        enabled?: boolean
+        allowlist?: import('@shared/capture').CaptureAppId[]
+      }): Promise<import('@shared/capture').CaptureSettings>
+      setCaptureEnabled(enabled: boolean): Promise<import('@shared/capture').CaptureSettings>
+      onCaptureChanged(callback: (status: import('@shared/types').CaptureStatus) => void): () => void
+
       // Library
       getLibraryItems(filterTags?: string[]): Promise<import('@shared/types').LibraryItem[]>
       getLibraryItem(id: string): Promise<import('@shared/types').LibraryItem | null>

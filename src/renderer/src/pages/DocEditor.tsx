@@ -394,6 +394,7 @@ function DocEditorSurface({
       isFavorite: false,
       favoriteOrder: null,
       tags: doc.tags,
+      postMeta: doc.postMeta ?? {},
       createdAt: Date.now(),
       updatedAt: Date.now()
     })

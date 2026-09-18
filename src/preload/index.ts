@@ -176,6 +176,54 @@ const mycelAPI = {
   createDocFromAtoms: (input: unknown): Promise<unknown> =>
     ipcRenderer.invoke('corpus:createDocFromAtoms', input),
 
+  // Content Engine corpus (insights / patterns) — distinct from meetings/atoms
+  getInsights: (filter?: unknown): Promise<unknown[]> => ipcRenderer.invoke('insights:getAll', filter),
+  createInsight: (input: unknown): Promise<unknown> => ipcRenderer.invoke('insights:create', input),
+  updateInsight: (id: string, patch: unknown): Promise<unknown> =>
+    ipcRenderer.invoke('insights:update', id, patch),
+  getCorpusThreads: (): Promise<unknown[]> => ipcRenderer.invoke('threads:getAll'),
+  setCorpusThreadStatus: (id: string, status: string): Promise<unknown> =>
+    ipcRenderer.invoke('threads:setStatus', id, status),
+  getDumps: (): Promise<unknown[]> => ipcRenderer.invoke('dumps:getAll'),
+  createDump: (input: unknown): Promise<unknown> => ipcRenderer.invoke('dumps:create', input),
+  getSessions: (): Promise<unknown[]> => ipcRenderer.invoke('sessions:getAll'),
+  createSession: (input: unknown): Promise<unknown> => ipcRenderer.invoke('sessions:create', input),
+  updateSession: (id: string, patch: unknown): Promise<unknown> =>
+    ipcRenderer.invoke('sessions:update', id, patch),
+  ensureMeetingSessions: (): Promise<unknown[]> => ipcRenderer.invoke('sessions:ensureForMeetings'),
+
+  runSynthesis: (): Promise<unknown> => ipcRenderer.invoke('synthesis:run'),
+  getSynthesisStatus: (): Promise<unknown> => ipcRenderer.invoke('synthesis:getStatus'),
+
+  getTelegramStatus: (): Promise<unknown> => ipcRenderer.invoke('telegram:getStatus'),
+  getTelegramPrompts: (): Promise<unknown[]> => ipcRenderer.invoke('telegram:getPrompts'),
+  sendTelegramTestNotification: (): Promise<unknown> =>
+    ipcRenderer.invoke('telegram:sendTestNotification'),
+  notifyTelegramPromptReady: (promptId: string): Promise<unknown> =>
+    ipcRenderer.invoke('telegram:notifyPromptReady', promptId),
+  notifyTelegramDraftReady: (input: unknown): Promise<unknown> =>
+    ipcRenderer.invoke('telegram:notifyDraftReady', input),
+  requestTelegramContext: (input?: unknown): Promise<unknown> =>
+    ipcRenderer.invoke('telegram:requestContext', input),
+  ingestTelegramTestDump: (input: unknown): Promise<unknown> =>
+    ipcRenderer.invoke('telegram:ingestTestDump', input),
+  onTelegramDumpReceived: (callback: (dump: unknown) => void): (() => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, dump: unknown): void => callback(dump)
+    ipcRenderer.on('telegram:dumpReceived', handler)
+    return () => ipcRenderer.removeListener('telegram:dumpReceived', handler)
+  },
+
+  getCaptureStatus: (): Promise<unknown> => ipcRenderer.invoke('capture:getStatus'),
+  getCaptureSettings: (): Promise<unknown> => ipcRenderer.invoke('capture:getSettings'),
+  setCaptureSettings: (patch: unknown): Promise<unknown> => ipcRenderer.invoke('capture:setSettings', patch),
+  setCaptureEnabled: (enabled: boolean): Promise<unknown> =>
+    ipcRenderer.invoke('capture:setEnabled', enabled),
+  onCaptureChanged: (callback: (status: unknown) => void): (() => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, status: unknown): void => callback(status)
+    ipcRenderer.on('capture:changed', handler)
+    return () => ipcRenderer.removeListener('capture:changed', handler)
+  },
+
   // Library (visual saves from browser extension)
   getLibraryItems: (filterTags?: string[]): Promise<unknown[]> =>
     ipcRenderer.invoke('library:getAll', filterTags),

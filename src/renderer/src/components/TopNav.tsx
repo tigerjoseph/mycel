@@ -1,5 +1,6 @@
 import { motion } from 'motion/react'
 import { Search, Settings } from 'lucide-react'
+import { CaptureStatusDot } from './CaptureStatusDot'
 import { useUIStore } from '../store/ui'
 import type { PageId } from '@shared/types'
 import {
@@ -129,6 +130,7 @@ export default function TopNav(): React.JSX.Element {
             paddingRight: 16
           }}
         >
+          <CaptureStatusDot />
           <button
             onClick={() => setCommandPaletteOpen(true)}
             style={iconBtnStyle}

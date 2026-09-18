@@ -143,6 +143,96 @@ export async function initDb(): Promise<void> {
     // column already exists
   }
 
+  try {
+    await db.execute("ALTER TABLE docs ADD COLUMN post_meta TEXT NOT NULL DEFAULT '{}'")
+  } catch {
+    // column already exists
+  }
+
+  try {
+    await db.execute("ALTER TABLE sessions ADD COLUMN source TEXT NOT NULL DEFAULT 'work'")
+  } catch {
+    // column already exists
+  }
+
+  try {
+    await db.execute('ALTER TABLE sessions ADD COLUMN meeting_id TEXT')
+  } catch {
+    // column already exists
+  }
+
+  try {
+    await db.execute('ALTER TABLE sessions ADD COLUMN transcript_ref TEXT')
+  } catch {
+    // column already exists
+  }
+
+  try {
+    await db.execute("ALTER TABLE corpus_insights ADD COLUMN provenance TEXT NOT NULL DEFAULT '{}'")
+  } catch {
+    // column already exists
+  }
+
+  try {
+    await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_meeting_id ON sessions (meeting_id)')
+  } catch {
+    // index already exists or duplicate meeting_id rows
+  }
+
+  try {
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_corpus_insights_session ON corpus_insights (session_id)'
+    )
+  } catch {
+    // index already exists
+  }
+
+  try {
+    await db.execute('ALTER TABLE corpus_insights ADD COLUMN thread_id TEXT')
+  } catch {
+    // column already exists
+  }
+
+  try {
+    await db.execute('ALTER TABLE corpus_insights ADD COLUMN duplicate_of TEXT')
+  } catch {
+    // column already exists
+  }
+
+  try {
+    await db.execute('ALTER TABLE corpus_threads ADD COLUMN titled_once INTEGER NOT NULL DEFAULT 0')
+  } catch {
+    // column already exists
+  }
+
+  try {
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_corpus_insights_thread ON corpus_insights (thread_id)'
+    )
+  } catch {
+    // index already exists
+  }
+
+  try {
+    await db.execute('ALTER TABLE dumps ADD COLUMN telegram_message_id TEXT')
+  } catch {
+    // column already exists
+  }
+
+  try {
+    await db.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_dumps_telegram_message_id ON dumps (telegram_message_id)'
+    )
+  } catch {
+    // index already exists or duplicate ids
+  }
+
+  try {
+    await db.execute("ALTER TABLE telegram_prompts ADD COLUMN kind TEXT NOT NULL DEFAULT 'manual'")
+  } catch {
+    // column already exists
+  }
+
   await backfillLibraryEmbeds(db)
 }
 
