@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { motion } from 'motion/react'
-import { Plus, Check, ArrowLeft, Trash2 } from 'lucide-react'
+import { Plus, Check, Trash2, X } from 'lucide-react'
 import { fadeUp, spring } from '../styles/animation'
 import { useUIStore } from '../store/ui'
 import { ProjectFollowUp } from '../components/ProjectFollowUp'
@@ -8,9 +8,14 @@ import type { Project, Milestone, Contact, Touchpoint } from '@shared/types'
 import { formatUsdInputFromCents, parseDollarToCents } from '@shared/money'
 import { ALL_STAGES, getStageDisplayLabel, getStageDotColor, getStageLabelColor } from '@shared/stages'
 
-export function ProjectDetail(): React.JSX.Element {
+export function ProjectDetail({
+  variant = 'page'
+}: {
+  variant?: 'page' | 'lightbox'
+}): React.JSX.Element {
   const activeProjectId = useUIStore((s) => s.activeProjectId)
   const setActiveProjectId = useUIStore((s) => s.setActiveProjectId)
+  const isLightbox = variant === 'lightbox'
 
   const [project, setProject] = useState<Project | null>(null)
   const [milestones, setMilestones] = useState<Milestone[]>([])
@@ -71,7 +76,7 @@ export function ProjectDetail(): React.JSX.Element {
 
   const contactName = contact?.name ?? ''
 
-  const handleBack = (): void => {
+  const handleClose = (): void => {
     setActiveProjectId(null)
   }
 
@@ -157,9 +162,9 @@ export function ProjectDetail(): React.JSX.Element {
     return (
       <motion.div
         style={{
-          maxWidth: 680,
-          margin: '0 auto',
-          padding: '32px 24px',
+          maxWidth: isLightbox ? undefined : 680,
+          margin: isLightbox ? 0 : '0 auto',
+          padding: isLightbox ? '28px 28px 24px' : '32px 24px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -178,52 +183,107 @@ export function ProjectDetail(): React.JSX.Element {
 
   return (
     <motion.div
-      style={{ maxWidth: 680, margin: '0 auto', padding: '32px 24px' }}
+      style={{
+        maxWidth: isLightbox ? undefined : 680,
+        margin: isLightbox ? 0 : '0 auto',
+        padding: isLightbox ? '24px 28px 36px' : '32px 24px'
+      }}
       {...fadeUp}
     >
-      {/* Header row: back + delete */}
+      {/* Header: close / contact cue + delete */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 0 20px 0' }}>
-        <button
-          onClick={handleBack}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: 13,
-            fontFamily: 'var(--font-ui)',
-            color: 'var(--text-muted)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: 0,
-            transition: 'color 150ms ease'
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
-        >
-          <ArrowLeft size={14} />
-          {contactName || 'Contact'}
-        </button>
-        <button
-          onClick={handleDelete}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            color: 'var(--text-muted)',
-            padding: 4,
-            borderRadius: 6,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'color 150ms ease'
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = '#e55' }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
-          title="Delete project"
-        >
-          <Trash2 size={14} />
-        </button>
+        {isLightbox ? (
+          <button
+            type="button"
+            onClick={handleClose}
+            aria-label="Close project"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--text-muted)',
+              padding: 0,
+              minWidth: 32,
+              minHeight: 32,
+              borderRadius: 6,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'color 150ms ease, background 120ms ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--text)'
+              e.currentTarget.style.background = 'var(--surface)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--text-muted)'
+              e.currentTarget.style.background = 'none'
+            }}
+          >
+            <X size={18} />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontFamily: 'var(--font-ui)',
+              color: 'var(--text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: 0,
+              transition: 'color 150ms ease'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
+          >
+            Close
+            {contactName ? ` · ${contactName}` : ''}
+          </button>
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {isLightbox && contactName && (
+            <span
+              style={{
+                fontFamily: 'var(--font-ui)',
+                fontSize: 12,
+                color: 'var(--text-muted)',
+                marginRight: 4
+              }}
+            >
+              {contactName}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => void handleDelete()}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--text-muted)',
+              padding: 0,
+              minWidth: 32,
+              minHeight: 32,
+              borderRadius: 6,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'color 150ms ease'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#e55' }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
+            title="Delete project"
+            aria-label="Delete project"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Project name */}

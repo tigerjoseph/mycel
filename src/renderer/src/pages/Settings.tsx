@@ -149,12 +149,18 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
       refreshGcalStatus()
       if (result.syncWarning) {
         setGcalMessage(`Connected. ${result.syncWarning}`)
-      } else if (result.sync.created > 0) {
-        setGcalMessage(
-          `Added ${result.sync.created} contact${result.sync.created === 1 ? '' : 's'} from calendar`
-        )
       } else {
-        setGcalMessage('Connected — no new contacts to add')
+        const parts: string[] = []
+        if (result.sync.created > 0) {
+          parts.push(
+            `Added ${result.sync.created} contact${result.sync.created === 1 ? '' : 's'}`
+          )
+        }
+        const autoWon = (result.sync as { autoWon?: number }).autoWon ?? 0
+        if (autoWon > 0) {
+          parts.push(`marked ${autoWon} deal${autoWon === 1 ? '' : 's'} Won from meetings`)
+        }
+        setGcalMessage(parts.length > 0 ? `Connected. ${parts.join('; ')}` : 'Connected — no new contacts to add')
       }
     } catch (err) {
       setGcalMessage(err instanceof Error ? err.message : 'Could not connect Google Calendar')
@@ -182,11 +188,15 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
     setGcalMessage(null)
     try {
       const result = await window.mycel.gcalSyncContacts()
-      setGcalMessage(
-        result.created > 0
-          ? `Added ${result.created} new contact${result.created === 1 ? '' : 's'}`
-          : 'Up to date — no new contacts'
-      )
+      const autoWon = (result as { autoWon?: number }).autoWon ?? 0
+      const parts: string[] = []
+      if (result.created > 0) {
+        parts.push(`Added ${result.created} new contact${result.created === 1 ? '' : 's'}`)
+      }
+      if (autoWon > 0) {
+        parts.push(`Marked ${autoWon} deal${autoWon === 1 ? '' : 's'} Won from meetings`)
+      }
+      setGcalMessage(parts.length > 0 ? parts.join(' · ') : 'Up to date — no new contacts')
     } catch (err) {
       setGcalMessage(err instanceof Error ? err.message : 'Sync failed')
     } finally {
@@ -498,7 +508,8 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
             , create a <strong>restricted key</strong> with read access to{' '}
             <code style={{ fontSize: 11 }}>Customers</code> and{' '}
             <code style={{ fontSize: 11 }}>Invoices</code> (Charges optional). Paste it here — stored only on this Mac.
-            Sync is not live yet; when it ships, Mycel will match customer email to contacts and pull paid totals into Won.
+            With Stripe + Google Calendar connected, booking a meeting with a contact who has one{' '}
+            <strong>Active</strong> deal auto-marks that deal Won.
           </Hint>
         </div>
       </Section>

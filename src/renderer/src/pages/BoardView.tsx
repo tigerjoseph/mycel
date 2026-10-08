@@ -260,9 +260,8 @@ function DroppableColumn({
 // --- Board View ---
 
 export function BoardView(): React.JSX.Element {
-  const setActiveContactId = useUIStore((s) => s.setActiveContactId)
   const setActiveProjectId = useUIStore((s) => s.setActiveProjectId)
-  const pushBreadcrumb = useUIStore((s) => s.pushBreadcrumb)
+  const activeProjectId = useUIStore((s) => s.activeProjectId)
 
   const [projects, setProjects] = useState<BoardProject[]>([])
   const [loading, setLoading] = useState(true)
@@ -287,6 +286,11 @@ export function BoardView(): React.JSX.Element {
   useEffect(() => {
     loadProjects()
   }, [loadProjects])
+
+  // Refresh board after lightbox closes (stage/value edits)
+  useEffect(() => {
+    if (activeProjectId === null) loadProjects()
+  }, [activeProjectId, loadProjects])
 
   const closedCents = useMemo(
     () => sumClosedValueCents(projects, revenuePeriod),
@@ -333,17 +337,10 @@ export function BoardView(): React.JSX.Element {
 
   const handleCardClick = useCallback(
     (project: BoardProject) => {
-      setActiveContactId(project.contactId)
+      // Lightbox over the board — do not navigate into the contact page
       setActiveProjectId(project.id)
-      pushBreadcrumb({
-        label: project.name || 'Project',
-        action: () => {
-          setActiveProjectId(null)
-          setActiveContactId(null)
-        }
-      })
     },
-    [setActiveContactId, setActiveProjectId, pushBreadcrumb]
+    [setActiveProjectId]
   )
 
   const handleOpenMenu = useCallback((x: number, y: number, project: BoardProject) => {
