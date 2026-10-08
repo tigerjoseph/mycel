@@ -84,6 +84,24 @@ export function sumProjectValueCents(
   }, 0)
 }
 
+/** Whether a Won deal’s close date falls inside the revenue tab period. */
+export function isClosedInPeriod(
+  project: {
+    stage: string
+    closedAt?: number | null
+    updatedAt?: number
+  },
+  period: RevenuePeriod,
+  now = new Date()
+): boolean {
+  if (project.stage !== CLOSED_WON_STAGE) return false
+  const { start, end } = periodRange(period, now)
+  const wonAt = project.closedAt ?? project.updatedAt ?? 0
+  if (start != null && wonAt < start) return false
+  if (end != null && wonAt > end) return false
+  return true
+}
+
 export function sumClosedValueCents(
   projects: {
     stage: string
@@ -93,14 +111,10 @@ export function sumClosedValueCents(
   }[],
   period: RevenuePeriod
 ): number {
-  const { start, end } = periodRange(period)
   return projects.reduce((sum, p) => {
-    if (p.stage !== CLOSED_WON_STAGE) return sum
+    if (!isClosedInPeriod(p, period)) return sum
     const value = p.valueCents ?? 0
     if (value <= 0) return sum
-    const wonAt = p.closedAt ?? p.updatedAt ?? 0
-    if (start != null && wonAt < start) return sum
-    if (end != null && wonAt > end) return sum
     return sum + value
   }, 0)
 }

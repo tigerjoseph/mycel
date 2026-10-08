@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { MoreHorizontal, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MoreHorizontal, Plus } from 'lucide-react'
 import {
   DndContext,
   closestCenter,
@@ -21,11 +21,12 @@ import {
   REVENUE_PERIODS,
   formatUsdCompact,
   formatUsdFromCents,
+  isClosedInPeriod,
   sumClosedValueCents,
   sumProjectValueCents,
   type RevenuePeriod
 } from '@shared/money'
-import { ALL_STAGES, getStageColumnColor, getStageDisplayLabel } from '@shared/stages'
+import { ALL_STAGES, LOST_STAGE, WON_STAGE, getStageColumnColor, getStageDisplayLabel } from '@shared/stages'
 import { followUpAccentColor, getProjectFollowUpHint, getEffectiveFollowUp } from '@shared/followUp'
 
 const STAGES = ALL_STAGES
@@ -194,16 +195,69 @@ function DroppableColumn({
   projects,
   openMenuProjectId,
   onCardClick,
-  onOpenMenu
+  onOpenMenu,
+  collapsed = false,
+  onToggleCollapsed
 }: {
   stage: Stage
   projects: BoardProject[]
   openMenuProjectId: string | null
   onCardClick: (project: BoardProject) => void
   onOpenMenu: (x: number, y: number, project: BoardProject) => void
+  collapsed?: boolean
+  onToggleCollapsed?: () => void
 }): React.JSX.Element {
   const { setNodeRef, isOver } = useDroppable({ id: stage })
   const columnColor = getStageColumnColor(stage)
+  const label = getStageDisplayLabel(stage)
+
+  if (collapsed) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={{
+          flex: '0 0 44px',
+          width: 44,
+          backgroundColor: isOver ? 'var(--bg)' : 'var(--surface)',
+          borderRadius: 8,
+          border: '1px solid var(--border)',
+          borderTop: `2px solid ${columnColor}`,
+          padding: '8px 4px',
+          minHeight: 160,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 8,
+          transition: 'background 150ms ease, box-shadow 150ms ease',
+          boxShadow: isOver ? 'var(--shadow-md)' : 'var(--shadow-sm)',
+          cursor: 'pointer'
+        }}
+        onClick={onToggleCollapsed}
+        title={`Expand ${label}`}
+        role="button"
+        aria-expanded={false}
+        aria-label={`Expand ${label} column (${projects.length})`}
+      >
+        <ChevronLeft size={14} style={{ color: columnColor, flexShrink: 0 }} aria-hidden />
+        <div
+          style={{
+            writingMode: 'vertical-rl',
+            transform: 'rotate(180deg)',
+            fontFamily: 'var(--font-ui)',
+            fontSize: 10,
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            color: columnColor,
+            userSelect: 'none'
+          }}
+        >
+          {label}
+          {projects.length > 0 ? ` · ${projects.length}` : ''}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
@@ -233,14 +287,44 @@ function DroppableColumn({
           letterSpacing: '0.06em',
           color: columnColor,
           marginBottom: 2,
-          padding: '0 2px'
+          padding: '0 2px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 4
         }}
       >
-        {getStageDisplayLabel(stage)}
-        {projects.length > 0 && (
-          <span style={{ marginLeft: 5, fontWeight: 500, opacity: 0.8 }}>
-            {projects.length}
-          </span>
+        <span>
+          {label}
+          {projects.length > 0 && (
+            <span style={{ marginLeft: 5, fontWeight: 500, opacity: 0.8 }}>
+              {projects.length}
+            </span>
+          )}
+        </span>
+        {onToggleCollapsed && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggleCollapsed()
+            }}
+            aria-label={`Collapse ${label}`}
+            title={`Collapse ${label}`}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 2,
+              margin: 0,
+              cursor: 'pointer',
+              color: columnColor,
+              display: 'inline-flex',
+              borderRadius: 4,
+              opacity: 0.75
+            }}
+          >
+            <ChevronRight size={13} aria-hidden />
+          </button>
         )}
       </div>
 
@@ -266,6 +350,7 @@ export function BoardView(): React.JSX.Element {
   const [projects, setProjects] = useState<BoardProject[]>([])
   const [loading, setLoading] = useState(true)
   const [revenuePeriod, setRevenuePeriod] = useState<RevenuePeriod>('ytd')
+  const [lostCollapsed, setLostCollapsed] = useState(true)
   const [newProjectOpen, setNewProjectOpen] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; projectId: string } | null>(null)
 
@@ -300,6 +385,21 @@ export function BoardView(): React.JSX.Element {
     () => sumProjectValueCents(projects, PIPELINE_STAGES),
     [projects]
   )
+
+  const projectsByStage = useMemo(() => {
+    const map: Record<Stage, BoardProject[]> = {
+      Lead: [],
+      Active: [],
+      Won: [],
+      Lost: []
+    }
+    for (const p of projects) {
+      if (!STAGES.includes(p.stage as Stage)) continue
+      if (p.stage === WON_STAGE && !isClosedInPeriod(p, revenuePeriod)) continue
+      map[p.stage as Stage].push(p)
+    }
+    return map
+  }, [projects, revenuePeriod])
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
@@ -607,10 +707,14 @@ export function BoardView(): React.JSX.Element {
               <DroppableColumn
                 key={stage}
                 stage={stage}
-                projects={projects.filter((p) => p.stage === stage)}
+                projects={projectsByStage[stage]}
                 openMenuProjectId={contextMenu?.projectId ?? null}
                 onCardClick={handleCardClick}
                 onOpenMenu={handleOpenMenu}
+                collapsed={stage === LOST_STAGE ? lostCollapsed : false}
+                onToggleCollapsed={
+                  stage === LOST_STAGE ? () => setLostCollapsed((v) => !v) : undefined
+                }
               />
             ))}
           </DndContext>
