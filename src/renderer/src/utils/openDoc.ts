@@ -8,5 +8,11 @@ export function openDoc(
   const { setActiveDocId, setDocsView, pushBreadcrumb } = useUIStore.getState()
   setActiveDocId(doc.id)
   setDocsView(doc.type === 'grid' ? 'grid' : 'editor')
-  if (breadcrumb) pushBreadcrumb(breadcrumb)
+  // Default Back target is Docs home (Recent / Cmd+K). Callers from folder/favorites pass their own.
+  pushBreadcrumb(
+    breadcrumb ?? {
+      label: 'Docs',
+      action: () => setDocsView('home')
+    }
+  )
 }

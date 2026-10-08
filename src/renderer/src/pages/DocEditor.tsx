@@ -125,8 +125,6 @@ function DocEditorSurface({
 }): React.JSX.Element {
   const setDocsView = useUIStore((s) => s.setDocsView)
   const setActiveDocId = useUIStore((s) => s.setActiveDocId)
-  const setActiveFolderId = useUIStore((s) => s.setActiveFolderId)
-  const activeFolderId = useUIStore((s) => s.activeFolderId)
   const breadcrumbs = useUIStore((s) => s.breadcrumbs)
   const popBreadcrumb = useUIStore((s) => s.popBreadcrumb)
   const [title, setTitle] = useState(doc.title)
@@ -510,13 +508,17 @@ function DocEditorSurface({
   const handleBack = useCallback(async () => {
     if (editor) bodyRef.current = editor.getHTML()
     await flushSave()
+    setActiveDocId(null)
     if (breadcrumbs.length > 0) {
+      // Honor open origin (Recent → home, folder list → folder, favorites → favorites)
       popBreadcrumb()
       return
     }
-    setActiveDocId(null)
     setDocsView('home')
   }, [editor, flushSave, breadcrumbs.length, popBreadcrumb, setActiveDocId, setDocsView])
+
+  const backLabel =
+    breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1].label : 'Docs'
 
   // Immediate save on blur (for title)
   const handleTitleBlur = useCallback(() => {
@@ -544,7 +546,6 @@ function DocEditorSurface({
 
   // Word count
   const wordCount = editor?.storage.characterCount?.words() ?? 0
-  const folder = folders.find((f) => f.id === (doc.folderId ?? activeFolderId))
 
   return (
     <div
@@ -557,18 +558,7 @@ function DocEditorSurface({
       }}
     >
       <DocumentBreadcrumbs
-        items={[
-          { label: 'Docs', onClick: () => setDocsView('home') },
-          ...(folder
-            ? [{
-                label: folder.name,
-                onClick: () => {
-                  setActiveFolderId(folder.id)
-                  setDocsView('list')
-                }
-              }]
-            : [])
-        ]}
+        items={[{ label: backLabel, onClick: () => { void handleBack() } }]}
       />
 
       <motion.span
