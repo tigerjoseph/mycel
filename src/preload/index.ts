@@ -165,11 +165,6 @@ const mycelAPI = {
   getAtoms: (meetingId?: string): Promise<unknown[]> => ipcRenderer.invoke('corpus:getAtoms', meetingId),
   importTranscript: (payload: { text: string; title?: string }): Promise<unknown> =>
     ipcRenderer.invoke('corpus:importTranscript', payload),
-  importRecording: (payload: {
-    data: ArrayBuffer
-    title?: string
-    mimeType?: string
-  }): Promise<unknown> => ipcRenderer.invoke('corpus:importRecording', payload),
   importPaths: (paths: string[]): Promise<unknown[]> => ipcRenderer.invoke('corpus:importPaths', paths),
   pickAndImport: (): Promise<unknown[]> => ipcRenderer.invoke('corpus:pickAndImport'),
   pickAndImportToDoc: (docId: string): Promise<{

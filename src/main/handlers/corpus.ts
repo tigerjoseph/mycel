@@ -1,7 +1,4 @@
 import { dialog, ipcMain, type WebContents } from 'electron'
-import { mkdir, writeFile, rm } from 'fs/promises'
-import { join } from 'path'
-import { tmpdir } from 'os'
 import { nanoid } from 'nanoid'
 import { getDb } from '../db'
 import { extractAtoms } from '../engine/extractAtoms'
@@ -65,20 +62,19 @@ function titleFromTranscript(text: string, fallback = 'Voice note'): string {
 
 async function saveMeetingWithAtoms(
   transcript: string,
-  opts: { title?: string; sourcePath?: string | null; source?: Meeting['source'] }
+  opts: { title?: string; sourcePath?: string | null }
 ): Promise<{ meeting: Meeting; atoms: Atom[] }> {
   const db = getDb()
   const now = Date.now()
   const meetingId = nanoid()
-  const source = opts.source ?? 'import'
   const title = (opts.title?.trim() || titleFromTranscript(transcript)).slice(0, 200)
   const apiKey = await getGoogleApiKey()
   const extracted = await extractAtoms(transcript, apiKey)
 
   await db.execute({
     sql: `INSERT INTO meetings (id, title, transcript, source, source_path, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    args: [meetingId, title, transcript, source, opts.sourcePath ?? null, now, now]
+          VALUES (?, ?, ?, 'import', ?, ?, ?)`,
+    args: [meetingId, title, transcript, opts.sourcePath ?? null, now, now]
   })
 
   const atoms: Atom[] = []
@@ -104,7 +100,7 @@ async function saveMeetingWithAtoms(
     id: meetingId,
     title,
     transcript,
-    source,
+    source: 'import',
     sourcePath: opts.sourcePath ?? null,
     createdAt: now,
     updatedAt: now
@@ -152,36 +148,6 @@ export function registerCorpusHandlers(): void {
       const text = (payload.text || '').trim()
       if (!text) throw new Error('Transcript is empty')
       return saveMeetingWithAtoms(text, { title: payload.title })
-    }
-  )
-
-  ipcMain.handle(
-    'corpus:importRecording',
-    async (
-      _e,
-      payload: { data: ArrayBuffer | Uint8Array; title?: string; mimeType?: string }
-    ) => {
-      const bytes =
-        payload.data instanceof ArrayBuffer
-          ? new Uint8Array(payload.data)
-          : new Uint8Array(payload.data.buffer, payload.data.byteOffset, payload.data.byteLength)
-      if (bytes.byteLength === 0) throw new Error('Recording is empty')
-
-      const ext = (payload.mimeType || '').includes('mp4') ? 'mp4' : 'webm'
-      const dir = join(tmpdir(), `mycel-rec-${nanoid(8)}`)
-      await mkdir(dir, { recursive: true })
-      const filePath = join(dir, `meeting.${ext}`)
-      try {
-        await writeFile(filePath, bytes)
-        const { text, title } = await readTranscriptFromFile(filePath)
-        return await saveMeetingWithAtoms(text, {
-          title: payload.title?.trim() || title || 'Meeting recording',
-          sourcePath: filePath,
-          source: 'recording'
-        })
-      } finally {
-        await rm(dir, { recursive: true, force: true }).catch(() => {})
-      }
     }
   )
 

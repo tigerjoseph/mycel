@@ -1,7 +1,6 @@
 import { useUIStore } from '../store/ui'
 import { Docs } from './Docs'
 import { Notes } from './Notes'
-import { Meetings } from './Meetings'
 import { Corpus } from './Corpus'
 import { ContentCalendar } from './ContentCalendar'
 
@@ -24,9 +23,6 @@ export function Create(): React.JSX.Element {
         </div>
         <div style={subViewStyle(activeCreateView === 'notes')}>
           <Notes />
-        </div>
-        <div style={subViewStyle(activeCreateView === 'meetings')}>
-          <Meetings />
         </div>
         <div style={subViewStyle(activeCreateView === 'corpus')}>
           <Corpus />

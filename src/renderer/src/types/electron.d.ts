@@ -172,14 +172,6 @@ declare global {
         meeting: import('@shared/types').Meeting
         atoms: import('@shared/types').Atom[]
       }>
-      importRecording(payload: {
-        data: ArrayBuffer
-        title?: string
-        mimeType?: string
-      }): Promise<{
-        meeting: import('@shared/types').Meeting
-        atoms: import('@shared/types').Atom[]
-      }>
       importPaths(paths: string[]): Promise<{
         meeting: import('@shared/types').Meeting
         atoms: import('@shared/types').Atom[]
