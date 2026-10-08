@@ -24,6 +24,7 @@ import { startTelegramPolling, stopTelegramPolling } from './telegram/poller'
 import { startDaytimePrompts, stopDaytimePrompts } from './telegram/daytime'
 import { startCaptureObserver, stopCaptureObserver } from './observe/poller'
 import { startSynthesisScheduler, stopSynthesisScheduler } from './engine/synthesis'
+import { startMycelWorkScan, stopMycelWorkScan } from './engine/mycelWorkScan'
 import { applyOpenAtLogin } from './openAtLogin'
 
 let mainWindow: BrowserWindow | null = null
@@ -94,6 +95,7 @@ app.whenReady().then(async () => {
   startDaytimePrompts()
   startCaptureObserver()
   startSynthesisScheduler()
+  startMycelWorkScan()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -112,6 +114,7 @@ app.on('will-quit', () => {
   stopDaytimePrompts()
   void stopCaptureObserver({ endSession: true })
   stopSynthesisScheduler()
+  stopMycelWorkScan()
 })
 
 // Settings opens as in-app modal (works in fullscreen; child windows do not)

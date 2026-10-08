@@ -1,27 +1,39 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Pin, VolumeX, Plus, Upload, FileText } from 'lucide-react'
+import { Pin, VolumeX, Plus, Upload, FileText, Search } from 'lucide-react'
 import { insightTextError, isMeetingInsightOrigin } from '@shared/contentEngine'
-import type { CorpusInsight, CorpusThread, CorpusThreadStatus, CreateInsightInput, Dump, WorkSession } from '@shared/types'
-import { format } from 'date-fns'
+import type {
+  CorpusInsight,
+  CorpusSearchHit,
+  CorpusThread,
+  CorpusThreadStatus,
+  CreateInsightInput,
+  Dump,
+  InsightLifecycle,
+  WorkSession
+} from '@shared/types'
+import { format, startOfWeek } from 'date-fns'
 import { useUIStore } from '../store/ui'
 
-type CorpusPane = 'insights' | 'patterns' | 'inbox'
+type CorpusPane = 'patterns' | 'insights' | 'inbox'
 
 const PANES: { id: CorpusPane; label: string }[] = [
-  { id: 'insights', label: 'Insights' },
   { id: 'patterns', label: 'Patterns' },
+  { id: 'insights', label: 'Insights' },
   { id: 'inbox', label: 'Inbox' }
 ]
 
 export function Corpus(): React.JSX.Element {
   const showCopyFeedback = useUIStore((s) => s.showCopyFeedback)
-  const [pane, setPane] = useState<CorpusPane>('insights')
+  const [pane, setPane] = useState<CorpusPane>('patterns')
   const [pasteOpen, setPasteOpen] = useState(false)
   const [pasteText, setPasteText] = useState('')
   const [pasteTitle, setPasteTitle] = useState('')
   const [importing, setImporting] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [importTick, setImportTick] = useState(0)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchHits, setSearchHits] = useState<CorpusSearchHit[]>([])
+  const [searchBusy, setSearchBusy] = useState(false)
 
   const finishImport = useCallback(async (fn: () => Promise<unknown>) => {
     setImporting(true)
@@ -93,7 +105,7 @@ export function Corpus(): React.JSX.Element {
             Corpus
           </h2>
           <p style={{ margin: '4px 0 0', fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--text-muted)' }}>
-            Distilled meaning — import transcripts here, then work insights and patterns.
+            Patterns are the home. Insights are evidence. Import or let Mycel scan your docs & notes.
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
@@ -158,40 +170,163 @@ export function Corpus(): React.JSX.Element {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-        {PANES.map((tab) => {
-          const active = pane === tab.id
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setPane(tab.id)}
-              style={{
-                padding: '5px 12px',
-                borderRadius: 8,
-                border: '1px solid var(--border)',
-                background: active ? 'var(--surface)' : 'transparent',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-ui)',
-                fontSize: 12,
-                fontWeight: active ? 600 : 500,
-                color: active ? 'var(--text)' : 'var(--text-muted)',
-                boxShadow: active ? 'var(--shadow-sm)' : undefined
-              }}
-            >
-              {tab.label}
-            </button>
-          )
-        })}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: 14,
+          padding: '8px 10px',
+          borderRadius: 8,
+          border: '1px solid var(--border)',
+          background: 'var(--surface)'
+        }}
+      >
+        <Search size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+        <input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              const q = searchQuery.trim()
+              if (!q) {
+                setSearchHits([])
+                return
+              }
+              setSearchBusy(true)
+              void window.mycel
+                .searchCorpus(q)
+                .then(setSearchHits)
+                .catch(() => setSearchHits([]))
+                .finally(() => setSearchBusy(false))
+            }
+          }}
+          placeholder="Semantic search patterns & insights…"
+          style={{
+            flex: 1,
+            border: 'none',
+            outline: 'none',
+            background: 'transparent',
+            fontFamily: 'var(--font-ui)',
+            fontSize: 13,
+            color: 'var(--text)'
+          }}
+        />
+        {searchQuery.trim() && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearchQuery('')
+              setSearchHits([])
+            }}
+            style={{ ...ghostBtn, minHeight: 28, padding: '0 8px' }}
+          >
+            Clear
+          </button>
+        )}
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-        {pane === 'insights' && <InsightsPane refreshTick={importTick} />}
-        {pane === 'patterns' && <PatternsPane refreshTick={importTick} />}
-        {pane === 'inbox' && <InboxPane refreshTick={importTick} />}
-      </div>
+      {searchQuery.trim() && (searchBusy || searchHits.length > 0 || !searchBusy) ? (
+        <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+          {searchBusy ? (
+            <EmptyLine>Searching…</EmptyLine>
+          ) : searchHits.length === 0 ? (
+            <EmptyLine>No semantic matches. Try different words.</EmptyLine>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {searchHits.map((hit) => (
+                <button
+                  key={`${hit.kind}-${hit.id}`}
+                  type="button"
+                  onClick={() => {
+                    setPane(hit.kind === 'pattern' ? 'patterns' : 'insights')
+                    setSearchQuery('')
+                    setSearchHits([])
+                  }}
+                  style={{
+                    textAlign: 'left',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    background: 'var(--surface)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: 'var(--font-ui)',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      color: 'var(--text-muted)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      marginBottom: 4
+                    }}
+                  >
+                    {hit.kind}
+                    {hit.meta ? ` · ${hit.meta}` : ''}
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-ui)', fontSize: 13, color: 'var(--text)', fontWeight: 500 }}>
+                    {hit.title}
+                  </div>
+                  {hit.snippet && (
+                    <div style={{ fontFamily: 'var(--font-ui)', fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                      {hit.snippet}
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+            {PANES.map((tab) => {
+              const active = pane === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setPane(tab.id)}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    background: active ? 'var(--surface)' : 'transparent',
+                    cursor: 'pointer',
+                    fontFamily: 'var(--font-ui)',
+                    fontSize: 12,
+                    fontWeight: active ? 600 : 500,
+                    color: active ? 'var(--text)' : 'var(--text-muted)',
+                    boxShadow: active ? 'var(--shadow-sm)' : undefined
+                  }}
+                >
+                  {tab.label}
+                </button>
+              )
+            })}
+          </div>
+
+          <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+            {pane === 'patterns' && <PatternsPane refreshTick={importTick} />}
+            {pane === 'insights' && <InsightsPane refreshTick={importTick} />}
+            {pane === 'inbox' && <InboxPane refreshTick={importTick} />}
+          </div>
+        </>
+      )}
     </div>
   )
+}
+
+function weekLabel(ts: number): string {
+  const start = startOfWeek(ts, { weekStartsOn: 1 })
+  const now = Date.now()
+  const thisWeek = startOfWeek(now, { weekStartsOn: 1 }).getTime()
+  if (start.getTime() === thisWeek) return 'This week'
+  const lastWeek = startOfWeek(now - 7 * 24 * 60 * 60 * 1000, { weekStartsOn: 1 }).getTime()
+  if (start.getTime() === lastWeek) return 'Last week'
+  return format(start, 'MMM d, yyyy')
 }
 
 function InsightsPane({ refreshTick }: { refreshTick: number }): React.JSX.Element {
@@ -201,7 +336,9 @@ function InsightsPane({ refreshTick }: { refreshTick: number }): React.JSX.Eleme
   const [insights, setInsights] = useState<CorpusInsight[]>([])
   const [sessions, setSessions] = useState<WorkSession[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'all' | 'manual' | 'meeting'>('all')
+  const [lifecycle, setLifecycle] = useState<InsightLifecycle | 'all'>('fresh')
+  const [originFilter, setOriginFilter] = useState<'all' | 'manual' | 'meeting'>('all')
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [text, setText] = useState('')
   const [soWhat, setSoWhat] = useState('')
@@ -229,7 +366,7 @@ function InsightsPane({ refreshTick }: { refreshTick: number }): React.JSX.Eleme
   }, [createView, load])
 
   useEffect(() => {
-    if (corpusFocusSessionId) setFilter('meeting')
+    if (corpusFocusSessionId) setOriginFilter('meeting')
   }, [corpusFocusSessionId])
 
   const sessionTitle = useMemo(() => {
@@ -243,11 +380,37 @@ function InsightsPane({ refreshTick }: { refreshTick: number }): React.JSX.Eleme
   const visible = useMemo(() => {
     return insights.filter((insight) => {
       if (corpusFocusSessionId && insight.sessionId !== corpusFocusSessionId) return false
-      if (filter === 'manual') return insight.origin === 'manual'
-      if (filter === 'meeting') return isMeetingInsightOrigin(insight.origin)
+      if (lifecycle !== 'all' && insight.lifecycle !== lifecycle) return false
+      if (originFilter === 'manual') return insight.origin === 'manual'
+      if (originFilter === 'meeting') return isMeetingInsightOrigin(insight.origin)
       return true
     })
-  }, [insights, filter, corpusFocusSessionId])
+  }, [insights, lifecycle, originFilter, corpusFocusSessionId])
+
+  const grouped = useMemo(() => {
+    const groups: { label: string; items: CorpusInsight[] }[] = []
+    for (const insight of visible) {
+      const label = weekLabel(insight.createdAt)
+      const last = groups[groups.length - 1]
+      if (last && last.label === label) last.items.push(insight)
+      else groups.push({ label, items: [insight] })
+    }
+    return groups
+  }, [visible])
+
+  const setInsightLifecycle = async (
+    insight: CorpusInsight,
+    next: InsightLifecycle
+  ): Promise<void> => {
+    const previous = insights
+    setInsights((prev) => prev.map((row) => (row.id === insight.id ? { ...row, lifecycle: next } : row)))
+    try {
+      const updated = await window.mycel.setInsightLifecycle(insight.id, next)
+      setInsights((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))
+    } catch {
+      setInsights(previous)
+    }
+  }
 
   const resetForm = (): void => {
     setText('')
@@ -286,22 +449,21 @@ function InsightsPane({ refreshTick }: { refreshTick: number }): React.JSX.Eleme
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 6 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {([
-            { id: 'all', label: 'All' },
-            { id: 'manual', label: 'Manual' },
-            { id: 'meeting', label: 'From meetings' }
+            { id: 'fresh', label: 'Fresh' },
+            { id: 'threaded', label: 'Threaded' },
+            { id: 'used', label: 'Used' },
+            { id: 'parked', label: 'Parked' },
+            { id: 'all', label: 'All' }
           ] as const).map((tab) => {
-            const active = filter === tab.id
+            const active = lifecycle === tab.id
             return (
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => {
-                  setFilter(tab.id)
-                  if (tab.id !== 'meeting') setCorpusFocusSessionId(null)
-                }}
+                onClick={() => setLifecycle(tab.id)}
                 style={{
                   padding: '4px 10px',
                   borderRadius: 8,
@@ -330,6 +492,38 @@ function InsightsPane({ refreshTick }: { refreshTick: number }): React.JSX.Eleme
           <Plus size={13} />
           Add insight
         </button>
+      </div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+        {([
+          { id: 'all', label: 'Any source' },
+          { id: 'manual', label: 'Manual' },
+          { id: 'meeting', label: 'From meetings' }
+        ] as const).map((tab) => {
+          const active = originFilter === tab.id
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => {
+                setOriginFilter(tab.id)
+                if (tab.id !== 'meeting') setCorpusFocusSessionId(null)
+              }}
+              style={{
+                padding: '3px 8px',
+                borderRadius: 6,
+                border: 'none',
+                background: active ? 'var(--border)' : 'transparent',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-ui)',
+                fontSize: 11,
+                fontWeight: active ? 600 : 500,
+                color: active ? 'var(--text)' : 'var(--text-muted)'
+              }}
+            >
+              {tab.label}
+            </button>
+          )
+        })}
       </div>
 
       {formOpen && (
@@ -407,66 +601,146 @@ function InsightsPane({ refreshTick }: { refreshTick: number }): React.JSX.Eleme
         <EmptyLine>Loading…</EmptyLine>
       ) : visible.length === 0 ? (
         <EmptyLine>
-          {filter === 'meeting'
-            ? 'No meeting-sourced insights yet. Import a transcript above.'
-            : 'No insights yet. Add one by hand or import a transcript.'}
+          {lifecycle === 'fresh'
+            ? 'No fresh insights. Import a transcript, add one, or wait for Mycel’s work scan.'
+            : 'Nothing in this shelf yet.'}
         </EmptyLine>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {visible.map((insight) => (
-            <article
-              key={insight.id}
-              style={{
-                padding: '12px 14px',
-                borderRadius: 8,
-                border: '1px solid var(--border)',
-                background: 'var(--surface)'
-              }}
-            >
-              <p
-                style={{
-                  margin: 0,
-                  fontFamily: 'var(--font-ui)',
-                  fontSize: 13,
-                  lineHeight: 1.5,
-                  color: 'var(--text)'
-                }}
-              >
-                {insight.text}
-              </p>
-              {insight.soWhat && (
-                <p
-                  style={{
-                    margin: '6px 0 0',
-                    fontFamily: 'var(--font-ui)',
-                    fontSize: 12,
-                    color: 'var(--text-muted)',
-                    lineHeight: 1.4
-                  }}
-                >
-                  {insight.soWhat}
-                </p>
-              )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {grouped.map((group) => (
+            <div key={group.label}>
               <div
                 style={{
-                  display: 'flex',
-                  gap: 10,
-                  marginTop: 8,
                   fontFamily: 'var(--font-ui)',
                   fontSize: 11,
+                  fontWeight: 600,
                   color: 'var(--text-muted)',
-                  flexWrap: 'wrap'
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  marginBottom: 8
                 }}
               >
-                <span>{originLabel(insight.origin)}</span>
-                {insight.sessionId && sessionTitle.get(insight.sessionId) && (
-                  <span>{sessionTitle.get(insight.sessionId)}</span>
-                )}
-                {insight.source && insight.source !== 'meeting' && <span>{insight.source}</span>}
-                {insight.pillar && <span>{insight.pillar}</span>}
-                <span>{format(insight.createdAt, 'MMM d')}</span>
+                {group.label}
               </div>
-            </article>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {group.items.map((insight) => {
+                  const open = expandedId === insight.id
+                  return (
+                    <article
+                      key={insight.id}
+                      style={{
+                        padding: open ? '10px 12px' : '8px 12px',
+                        borderRadius: 8,
+                        border: '1px solid var(--border)',
+                        background: 'var(--surface)'
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setExpandedId(open ? null : insight.id)}
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontFamily: 'var(--font-ui)',
+                            fontSize: 13,
+                            color: 'var(--text)',
+                            lineHeight: 1.4,
+                            overflow: open ? 'visible' : 'hidden',
+                            textOverflow: open ? undefined : 'ellipsis',
+                            whiteSpace: open ? 'normal' : 'nowrap'
+                          }}
+                        >
+                          {insight.text}
+                        </div>
+                        {!open && (
+                          <div
+                            style={{
+                              marginTop: 3,
+                              fontFamily: 'var(--font-ui)',
+                              fontSize: 11,
+                              color: 'var(--text-muted)'
+                            }}
+                          >
+                            {originLabel(insight.origin)}
+                            {insight.source ? ` · ${insight.source}` : ''}
+                            {` · ${format(insight.createdAt, 'MMM d')}`}
+                          </div>
+                        )}
+                      </button>
+                      {open && (
+                        <>
+                          {insight.soWhat && (
+                            <p
+                              style={{
+                                margin: '8px 0 0',
+                                fontFamily: 'var(--font-ui)',
+                                fontSize: 12,
+                                color: 'var(--text-muted)',
+                                lineHeight: 1.4
+                              }}
+                            >
+                              {insight.soWhat}
+                            </p>
+                          )}
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 10,
+                              marginTop: 8,
+                              fontFamily: 'var(--font-ui)',
+                              fontSize: 11,
+                              color: 'var(--text-muted)',
+                              flexWrap: 'wrap'
+                            }}
+                          >
+                            <span>{originLabel(insight.origin)}</span>
+                            {insight.sessionId && sessionTitle.get(insight.sessionId) && (
+                              <span>{sessionTitle.get(insight.sessionId)}</span>
+                            )}
+                            {insight.source && insight.source !== 'meeting' && <span>{insight.source}</span>}
+                            {insight.pillar && <span>{insight.pillar}</span>}
+                            <span>{format(insight.createdAt, 'MMM d')}</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                            {(
+                              [
+                                ['fresh', 'Fresh'],
+                                ['threaded', 'Threaded'],
+                                ['used', 'Used'],
+                                ['parked', 'Park']
+                              ] as const
+                            ).map(([id, label]) => (
+                              <button
+                                key={id}
+                                type="button"
+                                disabled={insight.lifecycle === id}
+                                onClick={() => void setInsightLifecycle(insight, id)}
+                                style={{
+                                  ...ghostBtn,
+                                  minHeight: 28,
+                                  padding: '0 8px',
+                                  opacity: insight.lifecycle === id ? 0.5 : 1
+                                }}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </article>
+                  )
+                })}
+              </div>
+            </div>
           ))}
         </div>
       )}

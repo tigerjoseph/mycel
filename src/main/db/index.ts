@@ -200,6 +200,25 @@ export async function initDb(): Promise<void> {
   }
 
   try {
+    await db.execute(
+      "ALTER TABLE corpus_insights ADD COLUMN lifecycle TEXT NOT NULL DEFAULT 'fresh'"
+    )
+  } catch {
+    // column already exists
+  }
+
+  try {
+    await db.execute(
+      `UPDATE corpus_insights
+       SET lifecycle = 'threaded'
+       WHERE (lifecycle IS NULL OR lifecycle = '' OR lifecycle = 'fresh')
+         AND thread_id IS NOT NULL AND thread_id != ''`
+    )
+  } catch {
+    // ignore backfill failures
+  }
+
+  try {
     await db.execute('ALTER TABLE corpus_threads ADD COLUMN titled_once INTEGER NOT NULL DEFAULT 0')
   } catch {
     // column already exists
