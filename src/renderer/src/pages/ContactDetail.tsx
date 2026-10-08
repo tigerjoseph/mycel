@@ -51,6 +51,11 @@ export function ContactDetail(): React.JSX.Element {
 
   const [touchpoints, setTouchpoints] = useState<Touchpoint[]>([])
   const [projects, setProjects] = useState<Project[]>([])
+  const [upcoming, setUpcoming] = useState<{
+    title: string
+    start: string
+    allDay: boolean
+  } | null>(null)
   const [editingName, setEditingName] = useState(false)
   const [nameValue, setNameValue] = useState(contact?.name ?? '')
   const nameInputRef = useRef<HTMLInputElement>(null)
@@ -63,6 +68,13 @@ export function ContactDetail(): React.JSX.Element {
     if (!activeContactId) return
     window.mycel.getTouchpoints(activeContactId).then(setTouchpoints).catch(() => {})
     window.mycel.getProjects(activeContactId).then(setProjects).catch(() => {})
+    setUpcoming(null)
+    window.mycel
+      .gcalGetUpcoming(activeContactId)
+      .then((ev) => {
+        if (ev) setUpcoming({ title: ev.title, start: ev.start, allDay: ev.allDay })
+      })
+      .catch(() => {})
   }, [activeContactId])
 
   useEffect(() => {
@@ -256,6 +268,31 @@ export function ContactDetail(): React.JSX.Element {
           }}
         />
       </div>
+
+      {upcoming && (
+        <div
+          style={{
+            marginBottom: 24,
+            padding: '10px 12px',
+            borderRadius: 8,
+            border: '1px solid var(--border)',
+            background: 'var(--surface)',
+            fontFamily: 'var(--font-ui)',
+            fontSize: 13,
+            color: 'var(--text)'
+          }}
+        >
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, letterSpacing: '0.03em', textTransform: 'uppercase' }}>
+            Next on calendar
+          </div>
+          <div style={{ fontWeight: 500 }}>{upcoming.title}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+            {upcoming.allDay
+              ? format(new Date(upcoming.start), 'MMM d, yyyy')
+              : format(new Date(upcoming.start), 'MMM d · h:mm a')}
+          </div>
+        </div>
+      )}
 
       <section style={{ marginBottom: 28 }}>
         {projects.map((project) => {

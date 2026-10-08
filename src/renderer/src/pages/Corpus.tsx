@@ -54,9 +54,14 @@ export function Corpus(): React.JSX.Element {
       style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '4px 20px 24px', position: 'relative' }}
       onDragOver={(e) => {
         e.preventDefault()
+        e.dataTransfer.dropEffect = 'copy'
         setDragOver(true)
       }}
-      onDragLeave={() => setDragOver(false)}
+      onDragLeave={(e) => {
+        // Ignore leave events that stay inside the drop surface (child nodes)
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return
+        setDragOver(false)
+      }}
       onDrop={handleDrop}
     >
       {dragOver && (

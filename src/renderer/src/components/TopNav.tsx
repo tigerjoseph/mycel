@@ -1,6 +1,7 @@
 import { motion } from 'motion/react'
 import { Search, Settings } from 'lucide-react'
 import { CaptureStatusDot } from './CaptureStatusDot'
+import { DelayedTooltip } from './DelayedTooltip'
 import { useUIStore } from '../store/ui'
 import type { PageId } from '@shared/types'
 import {
@@ -131,32 +132,40 @@ export default function TopNav(): React.JSX.Element {
           }}
         >
           <CaptureStatusDot />
-          <button
-            onClick={() => setCommandPaletteOpen(true)}
-            style={iconBtnStyle}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'var(--text)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--text-muted)'
-            }}
-            aria-label="Search"
-          >
-            <Search size={15} />
-          </button>
-          <button
-            onClick={() => setSettingsOpen(true)}
-            style={iconBtnStyle}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'var(--text)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--text-muted)'
-            }}
-            aria-label="Settings"
-          >
-            <Settings size={15} />
-          </button>
+          <DelayedTooltip label="Search (⌘K)">
+            <button
+              type="button"
+              className="mycel-hit"
+              onClick={() => setCommandPaletteOpen(true)}
+              style={iconBtnStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--text)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--text-muted)'
+              }}
+              aria-label="Search"
+            >
+              <Search size={15} />
+            </button>
+          </DelayedTooltip>
+          <DelayedTooltip label="Settings">
+            <button
+              type="button"
+              className="mycel-hit"
+              onClick={() => setSettingsOpen(true)}
+              style={iconBtnStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--text)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--text-muted)'
+              }}
+              aria-label="Settings"
+            >
+              <Settings size={15} />
+            </button>
+          </DelayedTooltip>
         </div>
       </div>
 
@@ -214,12 +223,14 @@ const iconBtnStyle: React.CSSProperties = {
   WebkitAppRegion: 'no-drag',
   background: 'none',
   border: 'none',
-  padding: 4,
+  padding: 0,
+  minWidth: 32,
+  minHeight: 32,
   cursor: 'pointer',
   color: 'var(--text-muted)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  borderRadius: 4,
-  transition: 'color 150ms ease'
+  borderRadius: 6,
+  transition: 'color 150ms ease, background 120ms ease'
 }

@@ -10,9 +10,22 @@ export interface CalendarAttendee {
   eventStart: string
 }
 
+export interface CalendarEvent {
+  id: string
+  title: string
+  start: string
+  end: string
+  allDay: boolean
+  htmlLink?: string
+  attendees: { email: string; name: string; self?: boolean }[]
+}
+
 interface GoogleEvent {
+  id?: string
   summary?: string
+  htmlLink?: string
   start?: { dateTime?: string; date?: string }
+  end?: { dateTime?: string; date?: string }
   attendees?: { email?: string; displayName?: string; self?: boolean; resource?: boolean }[]
 }
 
@@ -37,24 +50,44 @@ async function findContactByEmail(email: string): Promise<ReturnType<typeof pars
 }
 
 async function getUserEmail(client: Awaited<ReturnType<typeof getAuthorizedClient>>): Promise<string | null> {
-  const res = await client.request<{ email?: string }>({
+  const res = await client.request<{ id?: string }>({
     url: 'https://www.googleapis.com/calendar/v3/calendars/primary'
   })
-  const data = res.data as { id?: string }
-  return typeof data.id === 'string' && data.id.includes('@') ? data.id : null
+  return typeof res.data.id === 'string' && res.data.id.includes('@') ? res.data.id : null
 }
 
-export async function fetchUpcomingAttendees(): Promise<CalendarAttendee[]> {
-  const client = await getAuthorizedClient()
-  const settings = await getAppSettings()
-  const userEmail =
-    ((settings.gcalUserEmail as string) || '').toLowerCase() ||
-    (await getUserEmail(client))?.toLowerCase() ||
-    ''
+function mapGoogleEvent(event: GoogleEvent): CalendarEvent | null {
+  const start = event.start?.dateTime || event.start?.date
+  if (!start) return null
+  const end = event.end?.dateTime || event.end?.date || start
+  const allDay = Boolean(event.start?.date && !event.start?.dateTime)
 
+  return {
+    id: event.id || `${start}-${event.summary || 'event'}`,
+    title: event.summary?.trim() || 'Meeting',
+    start,
+    end,
+    allDay,
+    htmlLink: event.htmlLink,
+    attendees: (event.attendees ?? [])
+      .filter((a) => a.email && !a.resource)
+      .map((a) => ({
+        email: a.email!.trim().toLowerCase(),
+        name: a.displayName?.trim() || a.email!.split('@')[0] || a.email!,
+        self: Boolean(a.self)
+      }))
+  }
+}
+
+export async function fetchCalendarEvents(opts?: {
+  timeMin?: Date
+  timeMax?: Date
+  maxResults?: number
+}): Promise<CalendarEvent[]> {
+  const client = await getAuthorizedClient()
   const now = new Date()
-  const timeMin = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
-  const timeMax = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000).toISOString()
+  const timeMin = (opts?.timeMin ?? new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)).toISOString()
+  const timeMax = (opts?.timeMax ?? new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000)).toISOString()
 
   const res = await client.request<{ items?: GoogleEvent[] }>({
     url: 'https://www.googleapis.com/calendar/v3/calendars/primary/events',
@@ -63,34 +96,87 @@ export async function fetchUpcomingAttendees(): Promise<CalendarAttendee[]> {
       orderBy: 'startTime',
       timeMin,
       timeMax,
-      maxResults: 250
+      maxResults: opts?.maxResults ?? 250
     }
   })
 
+  return (res.data.items ?? [])
+    .map(mapGoogleEvent)
+    .filter((e): e is CalendarEvent => e !== null)
+}
+
+export async function fetchUpcomingAttendees(): Promise<CalendarAttendee[]> {
+  const settings = await getAppSettings()
+  const client = await getAuthorizedClient()
+  const userEmail =
+    ((settings.gcalUserEmail as string) || '').toLowerCase() ||
+    (await getUserEmail(client))?.toLowerCase() ||
+    ''
+
+  const events = await fetchCalendarEvents()
   const seen = new Set<string>()
   const attendees: CalendarAttendee[] = []
 
-  for (const event of res.data.items ?? []) {
-    const eventTitle = event.summary?.trim() || 'Meeting'
-    const eventStart = event.start?.dateTime || event.start?.date || ''
-
-    for (const attendee of event.attendees ?? []) {
-      const email = attendee.email?.trim().toLowerCase()
-      if (!email || attendee.self || attendee.resource) continue
-      if (userEmail && email === userEmail) continue
-      if (seen.has(email)) continue
-      seen.add(email)
+  for (const event of events) {
+    for (const attendee of event.attendees) {
+      if (!attendee.email || attendee.self) continue
+      if (userEmail && attendee.email === userEmail) continue
+      if (seen.has(attendee.email)) continue
+      seen.add(attendee.email)
 
       attendees.push({
-        email,
-        name: attendee.displayName?.trim() || email.split('@')[0] || email,
-        eventTitle,
-        eventStart
+        email: attendee.email,
+        name: attendee.name,
+        eventTitle: event.title,
+        eventStart: event.start
       })
     }
   }
 
   return attendees
+}
+
+export async function getUpcomingForContact(contactId: string): Promise<CalendarEvent | null> {
+  const db = getDb()
+  const contact = await db.execute({ sql: 'SELECT * FROM contacts WHERE id = ?', args: [contactId] })
+  if (contact.rows.length === 0) return null
+
+  const meta = JSON.parse((contact.rows[0].metadata as string) || '{}') as Record<string, string>
+  const email = meta.email?.toLowerCase()
+  if (!email) return null
+
+  const now = Date.now()
+  const events = await fetchCalendarEvents({
+    timeMin: new Date(now - 60 * 60 * 1000),
+    timeMax: new Date(now + 60 * 24 * 60 * 60 * 1000)
+  })
+
+  for (const event of events) {
+    if (event.attendees.some((a) => a.email === email)) return event
+  }
+  return null
+}
+
+function eventStartMs(start: string, allDay: boolean): number {
+  if (allDay) {
+    // Google all-day dates are YYYY-MM-DD (date-only); treat as local midnight.
+    const [y, m, d] = start.split('-').map(Number)
+    if (y && m && d) return new Date(y, m - 1, d).getTime()
+  }
+  return new Date(start).getTime()
+}
+
+export async function fetchTodaysEvents(): Promise<CalendarEvent[]> {
+  const start = new Date()
+  start.setHours(0, 0, 0, 0)
+  const end = new Date(start)
+  end.setDate(end.getDate() + 1)
+
+  const events = await fetchCalendarEvents({ timeMin: start, timeMax: end, maxResults: 50 })
+  return events.filter((e) => {
+    const t = eventStartMs(e.start, e.allDay)
+    return t >= start.getTime() && t < end.getTime()
+  })
 }
 
 export async function syncCalendarContacts(): Promise<{

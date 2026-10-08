@@ -5,6 +5,8 @@ import { GOOGLE_OAUTH_CONFIG } from '@shared/google-oauth-config'
 import { getGcalTokens, setGcalTokens, setAppSettings } from '../settingsStore'
 import { exchangeAuthCode, refreshAuthTokens } from './tokenExchange'
 
+let connectInFlight: Promise<void> | null = null
+
 function buildAuthUrl(redirectUri: string): string {
   const params = new URLSearchParams({
     access_type: 'offline',
@@ -17,15 +19,22 @@ function buildAuthUrl(redirectUri: string): string {
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
 }
 
-async function ensureFreshTokens(tokens: Record<string, unknown>): Promise<Record<string, unknown>> {
+function isExpired(tokens: Record<string, unknown>): boolean {
   const expiry = tokens.expiry_date as number | undefined
-  if (expiry && Date.now() < expiry - 60_000) return tokens
+  if (typeof expiry !== 'number') return false
+  return Date.now() >= expiry - 60_000
+}
+
+async function ensureFreshTokens(tokens: Record<string, unknown>): Promise<Record<string, unknown>> {
+  if (tokens.access_token && !isExpired(tokens)) return tokens
 
   const refreshToken = tokens.refresh_token as string | undefined
-  if (!refreshToken) return tokens
+  if (!refreshToken) {
+    throw new Error('Google Calendar session expired. Reconnect in Settings.')
+  }
 
   const fresh = await refreshAuthTokens(refreshToken)
-  const merged = { ...tokens, ...fresh }
+  const merged = { ...tokens, ...fresh, refresh_token: refreshToken }
   await setGcalTokens(merged)
   return merged
 }
@@ -37,18 +46,28 @@ function runOAuthLoopback(): Promise<{ code: string; redirectUri: string }> {
     let currentPort = authPortStart
     let server: Server | null = null
     let settled = false
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
 
     const finish = (fn: () => void): void => {
       if (settled) return
       settled = true
-      if (server) server.close()
+      if (timeoutId) clearTimeout(timeoutId)
+      if (server) {
+        server.close()
+        server = null
+      }
       fn()
     }
+
+    timeoutId = setTimeout(() => {
+      finish(() => reject(new Error('Google sign-in timed out')))
+    }, 180_000)
 
     const tryListen = (): void => {
       server = createServer((req, res) => {
         if (!req.url?.startsWith(callbackPath)) return
 
+        // Must match the redirect_uri registered in Google Cloud Console (localhost, not 127.0.0.1).
         const redirectUri = `http://localhost:${currentPort}${callbackPath}`
         const url = new URL(req.url, redirectUri)
         const authCode = url.searchParams.get('code')
@@ -74,14 +93,11 @@ function runOAuthLoopback(): Promise<{ code: string; redirectUri: string }> {
         finish(() => reject(e))
       })
 
-      server.listen(currentPort, () => {
+      // Loopback-only bind; redirect_uri still uses localhost to match Google Console.
+      server.listen(currentPort, '127.0.0.1', () => {
         const redirectUri = `http://localhost:${currentPort}${callbackPath}`
         void shell.openExternal(buildAuthUrl(redirectUri))
       })
-
-      setTimeout(() => {
-        finish(() => reject(new Error('Google sign-in timed out')))
-      }, 180_000)
     }
 
     tryListen()
@@ -94,22 +110,32 @@ export async function isGcalConnected(): Promise<boolean> {
 }
 
 export async function connectGoogleCalendar(): Promise<void> {
-  const { code, redirectUri } = await runOAuthLoopback()
-  const tokens = await exchangeAuthCode(code, redirectUri)
-  await setGcalTokens(tokens)
+  if (connectInFlight) return connectInFlight
+
+  connectInFlight = (async () => {
+    const { code, redirectUri } = await runOAuthLoopback()
+    const tokens = await exchangeAuthCode(code, redirectUri)
+    await setGcalTokens(tokens)
+
+    try {
+      const oauth2 = new OAuth2Client(GOOGLE_OAUTH_CONFIG.clientId)
+      oauth2.setCredentials(tokens)
+      const res = await oauth2.request<{ id?: string }>({
+        url: 'https://www.googleapis.com/calendar/v3/calendars/primary'
+      })
+      const email = res.data.id
+      if (typeof email === 'string' && email.includes('@')) {
+        await setAppSettings({ gcalUserEmail: email })
+      }
+    } catch {
+      // Email is optional; tokens are what matter for persistence
+    }
+  })()
 
   try {
-    const oauth2 = new OAuth2Client(GOOGLE_OAUTH_CONFIG.clientId)
-    oauth2.setCredentials(tokens)
-    const res = await oauth2.request<{ id?: string }>({
-      url: 'https://www.googleapis.com/calendar/v3/calendars/primary'
-    })
-    const email = res.data.id
-    if (typeof email === 'string' && email.includes('@')) {
-      await setAppSettings({ gcalUserEmail: email })
-    }
-  } catch {
-    // Email is optional; tokens are what matter for persistence
+    await connectInFlight
+  } finally {
+    connectInFlight = null
   }
 }
 
@@ -120,9 +146,15 @@ export async function disconnectGoogleCalendar(): Promise<void> {
 
 export async function getAuthorizedClient(): Promise<OAuth2Client> {
   const stored = await getGcalTokens()
-  if (!stored?.access_token) throw new Error('Google Calendar not connected')
+  if (!stored?.refresh_token && !stored?.access_token) {
+    throw new Error('Google Calendar not connected')
+  }
 
   const tokens = await ensureFreshTokens(stored)
+  if (!tokens.access_token) {
+    throw new Error('Google Calendar session expired. Reconnect in Settings.')
+  }
+
   const oauth2 = new OAuth2Client(GOOGLE_OAUTH_CONFIG.clientId)
   oauth2.setCredentials(tokens)
   return oauth2

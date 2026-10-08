@@ -18,8 +18,7 @@ import { setupContextMenu } from './contextMenu'
 import { initDb } from './db'
 import { registerHandlers } from './handlers'
 import { setupAutoUpdater } from './updater'
-import { isGcalConnected } from './gcal/auth'
-import { syncCalendarContacts } from './gcal/sync'
+import { startGcalBackgroundSync, stopGcalBackgroundSync } from './gcal/backgroundSync'
 import { startTelegramPolling, stopTelegramPolling } from './telegram/poller'
 import { startDaytimePrompts, stopDaytimePrompts } from './telegram/daytime'
 import { startCaptureObserver, stopCaptureObserver } from './observe/poller'
@@ -85,9 +84,7 @@ app.whenReady().then(async () => {
   setupLibraryMediaProtocol()
   registerHandlers()
   await startLibraryServer()
-  if (await isGcalConnected()) {
-    void syncCalendarContacts().catch(() => {})
-  }
+  startGcalBackgroundSync()
   createWindow()
   setupAutoUpdater()
   startTelegramPolling()
@@ -108,6 +105,7 @@ app.on('window-all-closed', () => {
 
 app.on('will-quit', () => {
   stopLibraryServer()
+  stopGcalBackgroundSync()
   void stopTelegramPolling()
   stopDaytimePrompts()
   void stopCaptureObserver({ endSession: true })

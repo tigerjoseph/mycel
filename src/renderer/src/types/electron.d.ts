@@ -81,9 +81,38 @@ declare global {
       }>
       gcalDisconnect(): Promise<void>
       gcalSyncContacts(): Promise<{ created: number; skipped: number }>
-      gcalFetchEvents(): Promise<unknown[]>
+      gcalFetchEvents(): Promise<
+        {
+          id: string
+          title: string
+          start: string
+          end: string
+          allDay: boolean
+          htmlLink?: string
+          attendees: { email: string; name: string; self?: boolean }[]
+        }[]
+      >
+      gcalFetchToday(): Promise<
+        {
+          id: string
+          title: string
+          start: string
+          end: string
+          allDay: boolean
+          htmlLink?: string
+          attendees: { email: string; name: string; self?: boolean }[]
+        }[]
+      >
       gcalConfirmImport(imports: unknown): Promise<{ created: number; skipped: number }>
-      gcalGetUpcoming(contactId: string): Promise<unknown>
+      gcalGetUpcoming(contactId: string): Promise<{
+        id: string
+        title: string
+        start: string
+        end: string
+        allDay: boolean
+        htmlLink?: string
+        attendees: { email: string; name: string; self?: boolean }[]
+      } | null>
 
       // Stripe
       stripeConnect(): Promise<void>

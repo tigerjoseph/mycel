@@ -9,6 +9,7 @@ import { TagFilter } from '../components/TagFilter'
 import { MonthFilter } from '../components/MonthFilter'
 import { TagPicker, getTagColor } from '../components/TagPicker'
 import { NoteLightbox } from '../components/NoteLightbox'
+import { TodayCalendarStrip } from '../components/TodayCalendarStrip'
 import { noteBodyPlainToHtml, noteBodyHasContent } from '../utils/noteBody'
 import type { Note } from '@shared/types'
 
@@ -312,6 +313,9 @@ export function Notes(): React.JSX.Element {
             display: 'flex', flexDirection: 'column', alignItems: 'center',
             justifyContent: 'center', minHeight: 400, gap: 16
           }}>
+            <div style={{ width: '100%' }}>
+              <TodayCalendarStrip />
+            </div>
             <span style={{ fontFamily: 'var(--font-heading)', fontSize: 18, color: 'var(--text-muted)' }}>
               Nothing here yet
             </span>
@@ -319,6 +323,8 @@ export function Notes(): React.JSX.Element {
           </div>
         ) : (
           <>
+            <TodayCalendarStrip />
+
             <div style={{ marginBottom: 24 }}>
               <NoteComposer onSave={fetchNotes} />
             </div>
