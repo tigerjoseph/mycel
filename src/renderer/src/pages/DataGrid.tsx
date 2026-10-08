@@ -2,7 +2,6 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { motion } from 'motion/react'
 import { Plus, Trash2 } from 'lucide-react'
 import { useUIStore } from '../store/ui'
-import { useDocsStore } from '../store/docs'
 import { DocumentBreadcrumbs } from '../components/DocumentBreadcrumbs'
 import { useFlushOnLeave } from '../hooks/useFlushOnLeave'
 import type { Doc } from '@shared/types'
@@ -30,10 +29,10 @@ function serializeGridData(data: GridData): string {
 
 export function DataGrid(): React.JSX.Element {
   const activeDocId = useUIStore((s) => s.activeDocId)
+  const setActiveDocId = useUIStore((s) => s.setActiveDocId)
   const setDocsView = useUIStore((s) => s.setDocsView)
-  const setActiveFolderId = useUIStore((s) => s.setActiveFolderId)
-  const folders = useDocsStore((s) => s.folders)
-  const activeFolderId = useUIStore((s) => s.activeFolderId)
+  const breadcrumbs = useUIStore((s) => s.breadcrumbs)
+  const popBreadcrumb = useUIStore((s) => s.popBreadcrumb)
   const [doc, setDoc] = useState<Doc | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [title, setTitle] = useState('')
@@ -58,8 +57,6 @@ export function DataGrid(): React.JSX.Element {
   gridRef.current = grid
   const pendingUpdatesRef = useRef<Partial<Doc>>({})
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve())
-
-  const folder = folders.find((f) => f.id === (doc?.folderId ?? activeFolderId))
 
   // Load doc on mount — always fetch full body; list rows omit body.
   useEffect(() => {
@@ -326,6 +323,19 @@ export function DataGrid(): React.JSX.Element {
     color: 'var(--text-muted)'
   }
 
+  const handleBack = useCallback(async () => {
+    await flushSave()
+    setActiveDocId(null)
+    if (breadcrumbs.length > 0) {
+      popBreadcrumb()
+      return
+    }
+    setDocsView('home')
+  }, [flushSave, breadcrumbs.length, popBreadcrumb, setActiveDocId, setDocsView])
+
+  const backLabel =
+    breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1].label : 'Docs'
+
   return (
     <div
       style={{
@@ -343,18 +353,7 @@ export function DataGrid(): React.JSX.Element {
       ) : (
       <>
       <DocumentBreadcrumbs
-        items={[
-          { label: 'Docs', onClick: () => setDocsView('home') },
-          ...(folder
-            ? [{
-                label: folder.name,
-                onClick: () => {
-                  setActiveFolderId(folder.id)
-                  setDocsView('list')
-                }
-              }]
-            : [])
-        ]}
+        items={[{ label: backLabel, onClick: () => { void handleBack() } }]}
       />
 
       {/* Saved indicator */}
