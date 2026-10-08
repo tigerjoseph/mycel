@@ -142,8 +142,8 @@ function DraggableCard({
           onClick={openMenuFromButton}
           style={{
             flexShrink: 0,
-            width: 28,
-            height: 28,
+            width: 32,
+            height: 32,
             margin: '-6px -4px -6px 0',
             padding: 0,
             display: 'flex',
@@ -220,9 +220,13 @@ function DroppableColumn({
         display: 'flex',
         flexDirection: 'column',
         gap: 6,
-        transition: 'background 150ms ease, box-shadow 150ms ease',
-        boxShadow: isOver ? 'var(--shadow-md)' : 'var(--shadow-sm)'
+        transition: 'background 150ms ease, box-shadow 150ms ease, transform 120ms ease',
+        boxShadow: isOver ? 'var(--shadow-md)' : 'var(--shadow-sm)',
+        transform: isOver ? 'scale(1.01)' : 'scale(1)',
+        outline: isOver ? '2px solid var(--accent)' : undefined,
+        outlineOffset: -2
       }}
+      data-drop-active={isOver ? 'true' : undefined}
     >
       <div
         style={{

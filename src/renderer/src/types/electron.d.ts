@@ -81,9 +81,38 @@ declare global {
       }>
       gcalDisconnect(): Promise<void>
       gcalSyncContacts(): Promise<{ created: number; skipped: number }>
-      gcalFetchEvents(): Promise<unknown[]>
+      gcalFetchEvents(): Promise<
+        {
+          id: string
+          title: string
+          start: string
+          end: string
+          allDay: boolean
+          htmlLink?: string
+          attendees: { email: string; name: string; self?: boolean }[]
+        }[]
+      >
+      gcalFetchToday(): Promise<
+        {
+          id: string
+          title: string
+          start: string
+          end: string
+          allDay: boolean
+          htmlLink?: string
+          attendees: { email: string; name: string; self?: boolean }[]
+        }[]
+      >
       gcalConfirmImport(imports: unknown): Promise<{ created: number; skipped: number }>
-      gcalGetUpcoming(contactId: string): Promise<unknown>
+      gcalGetUpcoming(contactId: string): Promise<{
+        id: string
+        title: string
+        start: string
+        end: string
+        allDay: boolean
+        htmlLink?: string
+        attendees: { email: string; name: string; self?: boolean }[]
+      } | null>
 
       // Stripe
       stripeConnect(): Promise<void>
@@ -140,6 +169,14 @@ declare global {
       getMeeting(id: string): Promise<import('@shared/types').Meeting | null>
       getAtoms(meetingId?: string): Promise<import('@shared/types').Atom[]>
       importTranscript(payload: { text: string; title?: string }): Promise<{
+        meeting: import('@shared/types').Meeting
+        atoms: import('@shared/types').Atom[]
+      }>
+      importRecording(payload: {
+        data: ArrayBuffer
+        title?: string
+        mimeType?: string
+      }): Promise<{
         meeting: import('@shared/types').Meeting
         atoms: import('@shared/types').Atom[]
       }>

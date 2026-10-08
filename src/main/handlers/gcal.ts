@@ -4,7 +4,12 @@ import {
   disconnectGoogleCalendar,
   isGcalConnected
 } from '../gcal/auth'
-import { fetchUpcomingAttendees, syncCalendarContacts } from '../gcal/sync'
+import {
+  fetchCalendarEvents,
+  fetchTodaysEvents,
+  getUpcomingForContact,
+  syncCalendarContacts
+} from '../gcal/sync'
 
 export function registerGcalHandlers(): void {
   ipcMain.handle('gcal:getStatus', async () => {
@@ -27,8 +32,11 @@ export function registerGcalHandlers(): void {
   })
 
   ipcMain.handle('gcal:fetchEvents', async () => {
-    const attendees = await fetchUpcomingAttendees()
-    return attendees
+    return fetchCalendarEvents()
+  })
+
+  ipcMain.handle('gcal:fetchToday', async () => {
+    return fetchTodaysEvents()
   })
 
   ipcMain.handle('gcal:syncContacts', async () => {
@@ -40,14 +48,6 @@ export function registerGcalHandlers(): void {
   })
 
   ipcMain.handle('gcal:getUpcoming', async (_e, contactId: string) => {
-    const attendees = await fetchUpcomingAttendees()
-    const { getDb } = await import('../db')
-    const db = getDb()
-    const contact = await db.execute({ sql: 'SELECT * FROM contacts WHERE id = ?', args: [contactId] })
-    if (contact.rows.length === 0) return null
-    const meta = JSON.parse((contact.rows[0].metadata as string) || '{}') as Record<string, string>
-    const email = meta.email?.toLowerCase()
-    if (!email) return null
-    return attendees.find((a) => a.email === email) ?? null
+    return getUpcomingForContact(contactId)
   })
 }

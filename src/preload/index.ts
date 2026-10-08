@@ -72,10 +72,15 @@ const mycelAPI = {
   deleteTodo: (id: string): Promise<void> => ipcRenderer.invoke('todos:delete', id),
 
   // Google Calendar
-  gcalConnect: (): Promise<{ created: number; skipped: number }> => ipcRenderer.invoke('gcal:connect'),
+  gcalConnect: (): Promise<{
+    ok: true
+    sync: { created: number; skipped: number }
+    syncWarning?: string
+  }> => ipcRenderer.invoke('gcal:connect'),
   gcalDisconnect: (): Promise<void> => ipcRenderer.invoke('gcal:disconnect'),
   gcalGetStatus: (): Promise<{ connected: boolean }> => ipcRenderer.invoke('gcal:getStatus'),
   gcalFetchEvents: (): Promise<unknown[]> => ipcRenderer.invoke('gcal:fetchEvents'),
+  gcalFetchToday: (): Promise<unknown[]> => ipcRenderer.invoke('gcal:fetchToday'),
   gcalSyncContacts: (): Promise<{ created: number; skipped: number }> =>
     ipcRenderer.invoke('gcal:syncContacts'),
   gcalConfirmImport: (imports: unknown): Promise<{ created: number; skipped: number }> =>
@@ -160,6 +165,11 @@ const mycelAPI = {
   getAtoms: (meetingId?: string): Promise<unknown[]> => ipcRenderer.invoke('corpus:getAtoms', meetingId),
   importTranscript: (payload: { text: string; title?: string }): Promise<unknown> =>
     ipcRenderer.invoke('corpus:importTranscript', payload),
+  importRecording: (payload: {
+    data: ArrayBuffer
+    title?: string
+    mimeType?: string
+  }): Promise<unknown> => ipcRenderer.invoke('corpus:importRecording', payload),
   importPaths: (paths: string[]): Promise<unknown[]> => ipcRenderer.invoke('corpus:importPaths', paths),
   pickAndImport: (): Promise<unknown[]> => ipcRenderer.invoke('corpus:pickAndImport'),
   pickAndImportToDoc: (docId: string): Promise<{

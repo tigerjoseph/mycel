@@ -6,6 +6,10 @@ export function useKeyboard(): void {
   const popBreadcrumb = useUIStore((s) => s.popBreadcrumb)
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen)
   const closeAllOverlays = useUIStore((s) => s.closeAllOverlays)
+  const commandPaletteOpen = useUIStore((s) => s.commandPaletteOpen)
+  const contactSwitcherOpen = useUIStore((s) => s.contactSwitcherOpen)
+  const logTouchpointOpen = useUIStore((s) => s.logTouchpointOpen)
+  const settingsOpen = useUIStore((s) => s.settingsOpen)
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent): void {
@@ -39,13 +43,27 @@ export function useKeyboard(): void {
         e.preventDefault()
         setCommandPaletteOpen(true)
       }
-      // Escape → Close overlays
+      // Escape → dismiss top overlay only when one is open (don't steal editor Esc)
       if (e.key === 'Escape') {
-        closeAllOverlays()
+        const overlayOpen =
+          commandPaletteOpen || contactSwitcherOpen || logTouchpointOpen || settingsOpen
+        if (overlayOpen) {
+          e.preventDefault()
+          closeAllOverlays()
+        }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [setPage, popBreadcrumb, setCommandPaletteOpen, closeAllOverlays])
+  }, [
+    setPage,
+    popBreadcrumb,
+    setCommandPaletteOpen,
+    closeAllOverlays,
+    commandPaletteOpen,
+    contactSwitcherOpen,
+    logTouchpointOpen,
+    settingsOpen
+  ])
 }

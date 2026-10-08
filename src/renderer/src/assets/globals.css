@@ -274,6 +274,44 @@ button:active:not(:disabled) {
   transform: scale(0.97);
 }
 
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Keyboard focus — visible only for keyboard / assistive nav */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Minimum trackpad-friendly hit target for icon-only controls */
+.mycel-hit {
+  min-width: 32px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Drag affordance helpers */
+.mycel-grab {
+  cursor: grab;
+}
+
+.mycel-grab:active,
+.mycel-grabbing {
+  cursor: grabbing;
+}
+
+[data-drop-active='true'] {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 /* Note previews */
 .note-body-preview p {
   margin: 0.25em 0;
