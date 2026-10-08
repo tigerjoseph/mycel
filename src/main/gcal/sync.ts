@@ -1,7 +1,9 @@
 import { nanoid } from 'nanoid'
 import { getDb } from '../db'
 import { getAuthorizedClient } from './auth'
-import { getAppSettings } from '../settingsStore'
+import { getAppSettings, setAppSettings } from '../settingsStore'
+
+const AUTO_WIN_STAGE = 'Active' // only promote Active deals — Leads stay untouched
 
 export interface CalendarAttendee {
   email: string
@@ -93,10 +95,125 @@ export async function fetchUpcomingAttendees(): Promise<CalendarAttendee[]> {
   return attendees
 }
 
+/**
+ * When Stripe is connected and a future Calendar meeting includes a CRM contact
+ * who has an Active deal, mark that deal Won (once per event+contact).
+ */
+export async function autoWinDealsFromCalendarMeetings(): Promise<number> {
+  const settings = await getAppSettings()
+  const stripeKey =
+    typeof settings.stripeApiKey === 'string' ? settings.stripeApiKey.trim() : ''
+  if (!stripeKey) return 0
+
+  const client = await getAuthorizedClient()
+  const userEmail =
+    ((settings.gcalUserEmail as string) || '').toLowerCase() ||
+    (await getUserEmail(client))?.toLowerCase() ||
+    ''
+
+  const now = Date.now()
+  const timeMin = new Date(now).toISOString()
+  const timeMax = new Date(now + 60 * 24 * 60 * 60 * 1000).toISOString()
+
+  const res = await client.request<{ items?: GoogleEvent[] }>({
+    url: 'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+    params: {
+      singleEvents: true,
+      orderBy: 'startTime',
+      timeMin,
+      timeMax,
+      maxResults: 100
+    }
+  })
+
+  const processedRaw = settings.gcalAutoWonKeys
+  const processed = new Set(
+    Array.isArray(processedRaw)
+      ? processedRaw.filter((k): k is string => typeof k === 'string')
+      : []
+  )
+
+  const db = getDb()
+  let wonCount = 0
+
+  for (const event of res.data.items ?? []) {
+    const eventTitle = event.summary?.trim() || 'Meeting'
+    const eventStart = event.start?.dateTime || event.start?.date || ''
+    if (!eventStart) continue
+
+    for (const attendee of event.attendees ?? []) {
+      const email = attendee.email?.trim().toLowerCase()
+      if (!email || attendee.self || attendee.resource) continue
+      if (userEmail && email === userEmail) continue
+
+      const key = `${email}|${eventStart}|${eventTitle}`
+      if (processed.has(key)) continue
+
+      const contact = await findContactByEmail(email)
+      if (!contact) continue
+
+      const projects = await db.execute({
+        sql: `SELECT * FROM projects
+              WHERE contact_id = ? AND stage = ?
+              ORDER BY updated_at DESC`,
+        args: [contact.id, AUTO_WIN_STAGE]
+      })
+      if (projects.rows.length === 0) continue
+
+      // Ambiguous: multiple Active deals for one contact — skip
+      if (projects.rows.length > 1) continue
+
+      const project = projects.rows[0] as Record<string, unknown>
+      const projectId = project.id as string
+      const closedPrior = project.closed_at
+      const closedAt =
+        typeof closedPrior === 'number' && Number.isFinite(closedPrior)
+          ? closedPrior
+          : now
+
+      await db.execute({
+        sql: `UPDATE projects
+              SET stage = 'Won', closed_at = ?, stage_changed_at = ?, updated_at = ?
+              WHERE id = ? AND stage = ?`,
+        args: [closedAt, now, now, projectId, AUTO_WIN_STAGE]
+      })
+
+      // Leave a trail on the contact timeline
+      try {
+        await db.execute({
+          sql: `INSERT INTO touchpoints (id, contact_id, medium, note, created_at)
+                VALUES (?, ?, ?, ?, ?)`,
+          args: [
+            nanoid(),
+            contact.id,
+            'meet',
+            `Auto-won from Calendar: ${eventTitle}`,
+            now
+          ]
+        })
+      } catch {
+        // Deal win still counts if touchpoint insert fails
+      }
+
+      processed.add(key)
+      wonCount++
+    }
+  }
+
+  if (wonCount > 0) {
+    const trimmed = [...processed]
+    if (trimmed.length > 400) trimmed.splice(0, trimmed.length - 400)
+    await setAppSettings({ gcalAutoWonKeys: trimmed })
+  }
+
+  return wonCount
+}
+
 export async function syncCalendarContacts(): Promise<{
   created: number
   skipped: number
   attendees: CalendarAttendee[]
+  autoWon?: number
 }> {
   const db = getDb()
   const pending = await fetchUpcomingAttendees()
@@ -127,5 +244,12 @@ export async function syncCalendarContacts(): Promise<{
     created++
   }
 
-  return { created, skipped, attendees: pending }
+  let autoWon = 0
+  try {
+    autoWon = await autoWinDealsFromCalendarMeetings()
+  } catch (err) {
+    console.error('[gcal] auto-win from calendar failed:', err)
+  }
+
+  return { created, skipped, attendees: pending, autoWon }
 }

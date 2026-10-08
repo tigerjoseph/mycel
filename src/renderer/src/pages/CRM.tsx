@@ -4,14 +4,13 @@ import { useUIStore } from '../store/ui'
 import { useContactsStore } from '../store/contacts'
 import { ContactList } from './ContactList'
 import { ContactDetail } from './ContactDetail'
-import { ProjectDetail } from './ProjectDetail'
 import { BoardView } from './BoardView'
+import { ProjectLightbox } from '../components/ProjectLightbox'
 import { pageEnter } from '../styles/animation'
 
 export function CRM(): React.JSX.Element {
   const activeCRMView = useUIStore((s) => s.activeCRMView)
   const activeContactId = useUIStore((s) => s.activeContactId)
-  const activeProjectId = useUIStore((s) => s.activeProjectId)
 
   const fetchContacts = useContactsStore((s) => s.fetch)
 
@@ -19,11 +18,7 @@ export function CRM(): React.JSX.Element {
     fetchContacts()
   }, [fetchContacts])
 
-  const viewKey = activeProjectId
-    ? `project-${activeProjectId}`
-    : activeContactId
-      ? `contact-${activeContactId}`
-      : activeCRMView
+  const viewKey = activeContactId ? `contact-${activeContactId}` : activeCRMView
 
   return (
     <div
@@ -44,9 +39,7 @@ export function CRM(): React.JSX.Element {
           transition={pageEnter.transition}
           style={{ flex: 1, overflow: 'hidden' }}
         >
-          {activeProjectId ? (
-            <ProjectDetail />
-          ) : activeContactId ? (
+          {activeContactId ? (
             <ContactDetail />
           ) : activeCRMView === 'projects' ? (
             <BoardView />
@@ -55,6 +48,8 @@ export function CRM(): React.JSX.Element {
           )}
         </motion.div>
       </AnimatePresence>
+
+      <ProjectLightbox />
     </div>
   )
 }

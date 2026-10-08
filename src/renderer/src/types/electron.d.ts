@@ -76,11 +76,11 @@ declare global {
       gcalGetStatus(): Promise<{ connected: boolean }>
       gcalConnect(): Promise<{
         ok: true
-        sync: { created: number; skipped: number }
+        sync: { created: number; skipped: number; autoWon?: number }
         syncWarning?: string
       }>
       gcalDisconnect(): Promise<void>
-      gcalSyncContacts(): Promise<{ created: number; skipped: number }>
+      gcalSyncContacts(): Promise<{ created: number; skipped: number; autoWon?: number }>
       gcalFetchEvents(): Promise<unknown[]>
       gcalConfirmImport(imports: unknown): Promise<{ created: number; skipped: number }>
       gcalGetUpcoming(contactId: string): Promise<unknown>
