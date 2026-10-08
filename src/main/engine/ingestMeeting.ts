@@ -58,6 +58,15 @@ export function parseSessionRow(row: Record<string, unknown>): WorkSession {
   }
 }
 
+function resolveLifecycle(row: Record<string, unknown>): import('@shared/types').InsightLifecycle {
+  const stored = typeof row.lifecycle === 'string' ? row.lifecycle : ''
+  if (stored === 'parked' || stored === 'used') return stored
+  const threadId = (row.thread_id as string | null) ?? null
+  if (threadId) return 'threaded'
+  if (stored === 'threaded' || stored === 'fresh') return stored
+  return 'fresh'
+}
+
 export function parseInsightRow(row: Record<string, unknown>): CorpusInsight {
   const provenance = parseJsonObject(row.provenance) as InsightProvenance
   const sessionId = (row.session_id as string | null) ?? provenance.sessionId ?? null
@@ -68,6 +77,7 @@ export function parseInsightRow(row: Record<string, unknown>): CorpusInsight {
     source: (row.source as string | null) ?? null,
     pillar: (row.pillar as string | null) ?? null,
     origin: ((row.origin as string) || 'manual') as InsightOrigin,
+    lifecycle: resolveLifecycle(row),
     embedding: parseEmbedding(row.embedding),
     dumpId: (row.dump_id as string | null) ?? null,
     sessionId,
@@ -188,8 +198,8 @@ async function insertInsight(params: {
   const embedding = JSON.stringify(embeddingVec)
   await db.execute({
     sql: `INSERT INTO corpus_insights
-          (id, text, so_what, source, pillar, origin, embedding, dump_id, session_id, provenance, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)`,
+          (id, text, so_what, source, pillar, origin, lifecycle, embedding, dump_id, session_id, provenance, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, 'fresh', ?, NULL, ?, ?, ?, ?)`,
     args: [
       id,
       params.text,
@@ -211,6 +221,7 @@ async function insertInsight(params: {
     source: 'meeting',
     pillar: params.pillar,
     origin: params.origin,
+    lifecycle: 'fresh',
     embedding,
     dump_id: null,
     session_id: params.sessionId,

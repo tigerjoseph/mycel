@@ -220,6 +220,9 @@ export interface CreateDocFromAtomsInput {
 
 export type InsightOrigin = 'manual' | 'extract' | 'dump' | 'session' | 'auto' | 'hybrid'
 
+/** Insight shelf state — Fresh is the working inbox; Threaded/Used/Parked leave the default list. */
+export type InsightLifecycle = 'fresh' | 'threaded' | 'used' | 'parked'
+
 export interface InsightProvenance {
   sessionId?: string
   meetingId?: string
@@ -232,6 +235,7 @@ export interface CorpusInsight {
   source: string | null
   pillar: string | null
   origin: InsightOrigin
+  lifecycle: InsightLifecycle
   embedding: number[] | null
   dumpId: string | null
   sessionId: string | null
@@ -240,6 +244,17 @@ export interface CorpusInsight {
   provenance: InsightProvenance
   createdAt: number
   updatedAt: number
+}
+
+export type CorpusSearchHitKind = 'insight' | 'pattern'
+
+export interface CorpusSearchHit {
+  kind: CorpusSearchHitKind
+  id: string
+  title: string
+  snippet: string
+  score: number
+  meta?: string
 }
 
 export interface CreateInsightInput {

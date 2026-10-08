@@ -56,12 +56,13 @@ export async function saveCorpusInsight(input: SaveInsightInput): Promise<Corpus
 
   const id = nanoid()
   const embedding = JSON.stringify(embeddingVec)
+  const lifecycle = forcedThreadId ? 'threaded' : 'fresh'
   await db.execute({
     sql: `INSERT INTO corpus_insights
-          (id, text, so_what, source, pillar, origin, embedding, dump_id, session_id, thread_id, provenance, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          (id, text, so_what, source, pillar, origin, lifecycle, embedding, dump_id, session_id, thread_id, provenance, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
-      id, text, soWhat, source, pillar, origin, embedding, dumpId, sessionId, forcedThreadId,
+      id, text, soWhat, source, pillar, origin, lifecycle, embedding, dumpId, sessionId, forcedThreadId,
       JSON.stringify(provenance), now, now
     ]
   })

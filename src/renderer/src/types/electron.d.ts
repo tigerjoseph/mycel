@@ -167,6 +167,12 @@ declare global {
         id: string,
         patch: import('@shared/types').UpdateInsightInput
       ): Promise<import('@shared/types').CorpusInsight>
+      setInsightLifecycle(
+        id: string,
+        lifecycle: import('@shared/types').InsightLifecycle
+      ): Promise<import('@shared/types').CorpusInsight>
+      searchCorpus(query: string): Promise<import('@shared/types').CorpusSearchHit[]>
+      runMycelWorkScan(): Promise<{ scanned: boolean; created: number }>
       getCorpusThreads(): Promise<import('@shared/types').CorpusThread[]>
       setCorpusThreadStatus(
         id: string,

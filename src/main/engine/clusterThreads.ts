@@ -208,7 +208,13 @@ async function createSingleton(insight: CorpusInsight): Promise<string> {
     }), now, now]
   })
   await db.execute({
-    sql: 'UPDATE corpus_insights SET thread_id = ? WHERE id = ?',
+    sql: `UPDATE corpus_insights
+          SET thread_id = ?,
+              lifecycle = CASE
+                WHEN lifecycle IN ('used', 'parked') THEN lifecycle
+                ELSE 'threaded'
+              END
+          WHERE id = ?`,
     args: [id, insight.id]
   })
   return id
@@ -320,7 +326,13 @@ export async function attachInsightToThread(insightId: string): Promise<void> {
 
   if (best) {
     await db.execute({
-      sql: 'UPDATE corpus_insights SET thread_id = ? WHERE id = ?',
+      sql: `UPDATE corpus_insights
+            SET thread_id = ?,
+                lifecycle = CASE
+                  WHEN lifecycle IN ('used', 'parked') THEN lifecycle
+                  ELSE 'threaded'
+                END
+            WHERE id = ?`,
       args: [best.id, insight.id]
     })
     await recomputeThread(best.id)

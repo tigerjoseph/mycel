@@ -77,6 +77,9 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
   const [synthBusy, setSynthBusy] = useState(false)
   const [synthMessage, setSynthMessage] = useState<string | null>(null)
   const [synthEodEnabled, setSynthEodEnabled] = useState(false)
+  const [mycelScanEnabled, setMycelScanEnabled] = useState(true)
+  const [mycelScanBusy, setMycelScanBusy] = useState(false)
+  const [mycelScanMessage, setMycelScanMessage] = useState<string | null>(null)
   const [openAtLogin, setOpenAtLogin] = useState(true)
 
   const refreshGcalStatus = (): void => {
@@ -98,6 +101,7 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
       else if (typeof s.telegramUserId === 'number') setTelegramUserId(String(s.telegramUserId))
       setTelegramDaytimeEnabled(s.telegramDaytimeEnabled !== false)
       setSynthEodEnabled(s.synthesisEodEnabled !== false)
+      setMycelScanEnabled(s.mycelWorkScanEnabled !== false)
       setOpenAtLogin(s.openAtLogin !== false)
     })
     window.mycel.getTelegramStatus().then(setTelegramStatus).catch(() => {})
@@ -710,6 +714,61 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
             ))}
           </div>
         )}
+      </Section>
+
+      <Section title="Corpus work scan">
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
+          Every ~30 minutes Mycel scans recently edited docs and notes, extracts durable insights, and
+          adds them to Corpus (deduped into Patterns). Needs a Google API key. Off means only
+          imports / manual adds / allowlisted Capture feed the Corpus.
+        </p>
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 13,
+            color: 'var(--text)',
+            cursor: 'pointer',
+            marginBottom: 10
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={mycelScanEnabled}
+            onChange={(e) => {
+              const enabled = e.target.checked
+              setMycelScanEnabled(enabled)
+              void window.mycel.setSettings({ mycelWorkScanEnabled: enabled })
+            }}
+          />
+          Scan Mycel docs & notes into Corpus
+        </label>
+        <button
+          type="button"
+          disabled={mycelScanBusy || !mycelScanEnabled}
+          onClick={() => {
+            setMycelScanBusy(true)
+            setMycelScanMessage(null)
+            void window.mycel
+              .runMycelWorkScan()
+              .then((r) => {
+                setMycelScanMessage(
+                  r.created > 0
+                    ? `Added ${r.created} insight${r.created === 1 ? '' : 's'}`
+                    : 'Scan finished — nothing new'
+                )
+              })
+              .catch((err) => {
+                setMycelScanMessage(err instanceof Error ? err.message : 'Scan failed')
+              })
+              .finally(() => setMycelScanBusy(false))
+          }}
+          style={{ ...secondaryBtn, opacity: mycelScanBusy || !mycelScanEnabled ? 0.6 : 1 }}
+        >
+          {mycelScanBusy ? 'Scanning…' : 'Scan now'}
+        </button>
+        {mycelScanMessage && <StatusLine>{mycelScanMessage}</StatusLine>}
       </Section>
 
       <Section title="Synthesis">

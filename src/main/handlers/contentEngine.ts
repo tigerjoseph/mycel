@@ -14,6 +14,8 @@ import {
 } from '../engine/ingestMeeting'
 import { saveCorpusInsight } from '../engine/saveInsight'
 import { parseDumpRow } from '../engine/ingestDump'
+import { searchCorpusSemantic } from '../engine/semanticSearch'
+import { runMycelWorkScan } from '../engine/mycelWorkScan'
 import { insightTextError } from '@shared/contentEngine'
 import type {
   CorpusThreadStatus,
@@ -21,6 +23,7 @@ import type {
   CreateInsightInput,
   CreateSessionInput,
   DumpSource,
+  InsightLifecycle,
   InsightListFilter,
   SessionSource,
   UpdateInsightInput,
@@ -28,6 +31,7 @@ import type {
 } from '@shared/types'
 
 const THREAD_STATUSES = new Set<CorpusThreadStatus>(['emerging', 'active', 'pinned', 'muted'])
+const INSIGHT_LIFECYCLES = new Set<InsightLifecycle>(['fresh', 'threaded', 'used', 'parked'])
 
 function optionalText(value: unknown): string | null {
   if (value == null) return null
@@ -60,6 +64,35 @@ export function registerContentEngineHandlers(): void {
 
   ipcMain.handle('insights:create', async (_e, input: CreateInsightInput) => {
     return saveCorpusInsight(input)
+  })
+
+  ipcMain.handle(
+    'insights:setLifecycle',
+    async (_e, id: string, lifecycle: InsightLifecycle) => {
+      if (!id) throw new Error('Insight id is required')
+      if (!INSIGHT_LIFECYCLES.has(lifecycle)) throw new Error('Invalid lifecycle')
+      const db = getDb()
+      const existing = await db.execute({
+        sql: 'SELECT * FROM corpus_insights WHERE id = ?',
+        args: [id]
+      })
+      if (existing.rows.length === 0) throw new Error('Insight not found')
+      const now = Date.now()
+      await db.execute({
+        sql: 'UPDATE corpus_insights SET lifecycle = ?, updated_at = ? WHERE id = ?',
+        args: [lifecycle, now, id]
+      })
+      const saved = await db.execute({ sql: 'SELECT * FROM corpus_insights WHERE id = ?', args: [id] })
+      return parseInsightRow(saved.rows[0] as unknown as Record<string, unknown>)
+    }
+  )
+
+  ipcMain.handle('corpus:semanticSearch', async (_e, query: string) => {
+    return searchCorpusSemantic(typeof query === 'string' ? query : '')
+  })
+
+  ipcMain.handle('corpus:runMycelWorkScan', async () => {
+    return runMycelWorkScan()
   })
 
   ipcMain.handle('insights:update', async (_e, id: string, patch: UpdateInsightInput) => {

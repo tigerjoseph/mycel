@@ -231,6 +231,7 @@ CREATE TABLE IF NOT EXISTS corpus_insights (
   source TEXT,
   pillar TEXT,
   origin TEXT NOT NULL DEFAULT 'manual',
+  lifecycle TEXT NOT NULL DEFAULT 'fresh',
   embedding TEXT,
   dump_id TEXT,
   session_id TEXT,

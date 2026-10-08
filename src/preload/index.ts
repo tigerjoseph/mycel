@@ -181,6 +181,12 @@ const mycelAPI = {
   createInsight: (input: unknown): Promise<unknown> => ipcRenderer.invoke('insights:create', input),
   updateInsight: (id: string, patch: unknown): Promise<unknown> =>
     ipcRenderer.invoke('insights:update', id, patch),
+  setInsightLifecycle: (id: string, lifecycle: string): Promise<unknown> =>
+    ipcRenderer.invoke('insights:setLifecycle', id, lifecycle),
+  searchCorpus: (query: string): Promise<unknown[]> =>
+    ipcRenderer.invoke('corpus:semanticSearch', query),
+  runMycelWorkScan: (): Promise<{ scanned: boolean; created: number }> =>
+    ipcRenderer.invoke('corpus:runMycelWorkScan'),
   getCorpusThreads: (): Promise<unknown[]> => ipcRenderer.invoke('threads:getAll'),
   setCorpusThreadStatus: (id: string, status: string): Promise<unknown> =>
     ipcRenderer.invoke('threads:setStatus', id, status),
