@@ -327,6 +327,26 @@ button:active:not(:disabled) {
   line-height: 1.75;
 }
 
+/* Empty / blank paragraphs (Enter Enter) — keep a small gap, not a full double line */
+.tiptap p:empty,
+.tiptap p:has(> br.ProseMirror-trailingBreak:only-child) {
+  margin: 0.1em 0;
+  min-height: 0.9em;
+}
+
+/* Tighten blank lines sitting next to bullet / numbered / task lists */
+.tiptap p:empty + ul,
+.tiptap p:empty + ol,
+.tiptap p:has(> br.ProseMirror-trailingBreak:only-child) + ul,
+.tiptap p:has(> br.ProseMirror-trailingBreak:only-child) + ol,
+.tiptap ul + p:empty,
+.tiptap ol + p:empty,
+.tiptap ul + p:has(> br.ProseMirror-trailingBreak:only-child),
+.tiptap ol + p:has(> br.ProseMirror-trailingBreak:only-child) {
+  margin-top: 0.1em;
+  margin-bottom: 0.1em;
+}
+
 /* Tailwind preflight strips list markers; restore them inside editors */
 .tiptap ul:not([data-type="taskList"]) {
   list-style-type: disc;
@@ -355,12 +375,12 @@ button:active:not(:disabled) {
 
 .tiptap li {
   margin: 0;
-  padding: 0.2em 0;
+  padding: 0.15em 0;
 }
 
 .tiptap li > ul,
 .tiptap li > ol {
-  margin: 0.2em 0;
+  margin: 0.15em 0;
 }
 
 .tiptap li > p {
@@ -419,34 +439,43 @@ button:active:not(:disabled) {
   cursor: pointer;
 }
 
-/* Task lists */
+/* Task lists — checkbox + text on one row */
 .tiptap ul[data-type="taskList"] {
   list-style: none;
   padding-left: 0;
+  margin: 0.5em 0;
 }
 
-.tiptap ul[data-type="taskList"] li {
+.tiptap ul[data-type="taskList"] li,
+.tiptap li[data-type="taskItem"] {
   display: flex;
+  flex-direction: row;
   align-items: flex-start;
   gap: 8px;
 }
 
-.tiptap ul[data-type="taskList"] li > div {
+.tiptap ul[data-type="taskList"] li > div,
+.tiptap li[data-type="taskItem"] > div {
   flex: 1 1 auto;
   min-width: 0;
 }
 
 .tiptap ul[data-type="taskList"] ul[data-type="taskList"] {
-  margin: 0.2em 0;
+  margin: 0.15em 0;
   padding-left: 1.5em;
 }
 
-.tiptap ul[data-type="taskList"] li > label {
-  flex-shrink: 0;
-  margin-top: 3px;
+.tiptap ul[data-type="taskList"] li > label,
+.tiptap li[data-type="taskItem"] > label {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-top: 4px;
+  user-select: none;
 }
 
-.tiptap ul[data-type="taskList"] li > label input[type="checkbox"] {
+.tiptap ul[data-type="taskList"] li > label input[type="checkbox"],
+.tiptap li[data-type="taskItem"] > label input[type="checkbox"] {
   appearance: none;
   width: 16px;
   height: 16px;
@@ -454,14 +483,18 @@ button:active:not(:disabled) {
   border-radius: 3px;
   cursor: pointer;
   position: relative;
+  margin: 0;
+  flex-shrink: 0;
 }
 
-.tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
+.tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked,
+.tiptap li[data-type="taskItem"] > label input[type="checkbox"]:checked {
   background: var(--accent);
   border-color: var(--accent);
 }
 
-.tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked::after {
+.tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked::after,
+.tiptap li[data-type="taskItem"] > label input[type="checkbox"]:checked::after {
   content: '✓';
   position: absolute;
   top: -1px;
@@ -470,7 +503,8 @@ button:active:not(:disabled) {
   font-size: 11px;
 }
 
-.tiptap ul[data-type="taskList"] li[data-checked="true"] > div > p {
+.tiptap ul[data-type="taskList"] li[data-checked="true"] > div > p,
+.tiptap li[data-type="taskItem"][data-checked="true"] > div > p {
   text-decoration: line-through;
   color: var(--text-muted);
 }

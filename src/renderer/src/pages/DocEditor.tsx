@@ -334,6 +334,7 @@ function DocEditorSurface({
       },
       editorProps: {
         attributes: {
+          class: 'tiptap',
           spellcheck: 'true',
           style: [
             'outline: none',
