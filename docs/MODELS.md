@@ -15,15 +15,16 @@ Atom extraction, meeting frame, title, authority tip + writing **prompts** (not 
 
 Newsletter draft, outline fill, doc section expand — only when user opts in.
 
-## Telegram Coach (opt-in inbox mode)
+## Telegram Coach (opt-in inbox mode) — conversational
 
-Short chat replies: **`gemma-3-12b-it`** first (same free-tier path as extract), then
-`gemini-3.5-flash-lite` if Gemma fails. Not Gemini 2.5 / prose-draft models.
+**Chat models** (`COACH_MODELS`): `gemma-3-12b-it` → `gemini-3.5-flash-lite`.
+Back-and-forth. Not the same list as background jobs.
 
-## Telegram YT cadence (daily 8:00)
+## Telegram YT cadence (daily 8:00) — NOT a chat
 
-Same model stack as Coach. Grounds questions in recent Capture sessions / dumps / corpus.
-Yap reply → talking points + spoken script + AI-editor brief. Long-form YouTube only.
+**One-shot interview** (`YT_CADENCE_MODELS`): `gemini-3.5-flash-lite` → `gemma-3-12b-it`.
+Morning brief → one yap reply → film pack (talking points + script + editor brief).
+Separate model list from Coach on purpose.
 
 ## Not v1
 

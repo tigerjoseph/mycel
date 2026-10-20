@@ -7,11 +7,16 @@ export function isTelegramInboxMode(value: unknown): value is TelegramInboxMode 
 }
 
 /**
- * Coach chat is short turns — same cheap path as extract: Gemma first.
- * Avoid Gemini 2.5 (access-limited / weak for new traffic). Modern flash-lite
- * only if Gemma fails.
+ * Coach chat (Telegram back-and-forth) — cheapest capable first.
+ * Background jobs (YT film pack, extracts) use their own lists; do not couple them.
  */
 export const COACH_MODELS = ['gemma-3-12b-it', 'gemini-3.5-flash-lite'] as const
+
+/**
+ * Once-a-day YT brief + film pack — can be a stronger/cheaper-different model than chat.
+ * Still avoid Gemini 2.5.
+ */
+export const YT_CADENCE_MODELS = ['gemini-3.5-flash-lite', 'gemma-3-12b-it'] as const
 
 /** Soft cap on Personal context loaded into the system prompt. */
 export const COACH_CONTEXT_CHAR_BUDGET = 36_000

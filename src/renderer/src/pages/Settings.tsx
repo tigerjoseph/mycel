@@ -696,9 +696,9 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
           Long-form YT cadence (daily 8:00 local)
         </label>
         <Hint>
-          Flow: Capture watches what you worked on → 8:00 brief with grounded yap questions → you
-          reply → talking points + say-this script + AI-editor brief for after you film. Turn Capture
-          on for better grounding. Needs Mycel running through 8am.
+          Not a chat — one morning brief, one yap reply, then a film pack (talking points + script +
+          editor brief). Coach inbox mode is the conversational lane. Capture on = better grounding.
+          Needs Mycel running through 8am.
         </Hint>
         {telegramStatus?.lastError && (
           <StatusLine>{telegramStatus.lastError}</StatusLine>
