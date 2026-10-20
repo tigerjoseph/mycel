@@ -92,6 +92,50 @@ export async function sendTelegramMessage(
   }
 }
 
+/** Split long coach replies under Telegram's 4096 limit. */
+export function chunkTelegramText(text: string, maxChars = 3900): string[] {
+  const trimmed = text.replace(/\r\n/g, '\n').trim()
+  if (!trimmed) return []
+  if (trimmed.length <= maxChars) return [trimmed]
+
+  const chunks: string[] = []
+  let rest = trimmed
+  while (rest.length > maxChars) {
+    let cut = rest.lastIndexOf('\n\n', maxChars)
+    if (cut < maxChars * 0.4) cut = rest.lastIndexOf('\n', maxChars)
+    if (cut < maxChars * 0.4) cut = rest.lastIndexOf(' ', maxChars)
+    if (cut < maxChars * 0.4) cut = maxChars
+    chunks.push(rest.slice(0, cut).trim())
+    rest = rest.slice(cut).trim()
+  }
+  if (rest) chunks.push(rest)
+  return chunks
+}
+
+export async function sendTelegramMessageChunks(
+  token: string,
+  chatId: string | number,
+  text: string,
+  signal?: AbortSignal
+): Promise<void> {
+  for (const chunk of chunkTelegramText(text)) {
+    await sendTelegramMessage(token, chatId, chunk, signal)
+  }
+}
+
+export async function sendTelegramChatAction(
+  token: string,
+  chatId: string | number,
+  action: 'typing' = 'typing',
+  signal?: AbortSignal
+): Promise<void> {
+  try {
+    await telegramCall(token, 'sendChatAction', { chat_id: chatId, action }, signal)
+  } catch {
+    // non-fatal
+  }
+}
+
 export async function downloadTelegramFile(
   token: string,
   fileId: string,

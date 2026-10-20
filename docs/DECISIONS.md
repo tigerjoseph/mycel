@@ -1,6 +1,6 @@
 # Mycel — Locked decisions
 
-**Updated:** 2026-06-05
+**Updated:** 2026-10-20
 
 If this contradicts other docs, **this file wins**.
 
@@ -18,7 +18,8 @@ If this contradicts other docs, **this file wins**.
 | Create | **Docs · Notes** only |
 | Posts (LinkedIn/X) | **Deferred** — no `posts` table, no Posts UI |
 | Draft chooser | **Option C** — dialog: new doc vs append to open doc |
-| Gemini | User checks **“Generate with Gemini”** — never auto |
+| Gemini | User checks **“Generate with Gemini”** — never auto for content |
+| Telegram Coach | Opt-in inbox mode **Coach** uses Gemini + Personal context path — explicit Settings toggle |
 | After meeting | Corpus atoms only — **no auto doc** |
 
 ### Doc tags

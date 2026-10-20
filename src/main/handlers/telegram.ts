@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import { nanoid } from 'nanoid'
 import { getTelegramBotToken, getTelegramUserId } from '../settingsStore'
+import { coachReady } from '../engine/coach'
 import { ingestDump } from '../engine/ingestDump'
 import { listPrompts } from '../engine/prompts'
 import { getTelegramRuntime, restartTelegramPolling } from '../telegram/poller'
@@ -19,6 +20,7 @@ export function registerTelegramHandlers(): void {
     const userId = await getTelegramUserId()
     const runtime = getTelegramRuntime()
     const pendingPromptCount = await getPendingPromptCount()
+    const coach = await coachReady()
     const tokenConfigured = Boolean(token)
     const userIdConfigured = Boolean(userId)
     return {
@@ -28,7 +30,12 @@ export function registerTelegramHandlers(): void {
       polling: runtime.polling && tokenConfigured && userIdConfigured,
       lastError: runtime.lastError,
       lastOkAt: runtime.lastOkAt,
-      pendingPromptCount
+      pendingPromptCount,
+      inboxMode: coach.mode,
+      coachReady: coach.hasApiKey && coach.contextOk,
+      coachHasApiKey: coach.hasApiKey,
+      coachContextPath: coach.contextPath,
+      coachContextOk: coach.contextOk
     }
   })
 
