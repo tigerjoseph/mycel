@@ -17,8 +17,8 @@ Newsletter draft, outline fill, doc section expand — only when user opts in.
 
 ## Telegram Coach (opt-in inbox mode)
 
-Short chat replies: **`gemini-2.5-flash-lite`** first, then `gemini-2.0-flash` if lite fails.
-Not prose-draft models — keep coach traffic cheap.
+Short chat replies: **`gemma-3-12b-it`** first (same free-tier path as extract), then
+`gemini-3.5-flash-lite` if Gemma fails. Not Gemini 2.5 / prose-draft models.
 
 ## Not v1
 

@@ -7,10 +7,11 @@ export function isTelegramInboxMode(value: unknown): value is TelegramInboxMode 
 }
 
 /**
- * Coach chat is short turns — prefer the cheapest capable model first.
- * flash-lite for routine coaching; full flash only if lite fails.
+ * Coach chat is short turns — same cheap path as extract: Gemma first.
+ * Avoid Gemini 2.5 (access-limited / weak for new traffic). Modern flash-lite
+ * only if Gemma fails.
  */
-export const COACH_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.0-flash'] as const
+export const COACH_MODELS = ['gemma-3-12b-it', 'gemini-3.5-flash-lite'] as const
 
 /** Soft cap on Personal context loaded into the system prompt. */
 export const COACH_CONTEXT_CHAR_BUDGET = 36_000
