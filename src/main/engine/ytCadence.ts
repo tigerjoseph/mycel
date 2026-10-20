@@ -1,8 +1,8 @@
 import { GoogleGenAI } from '@google/genai'
+import { COACH_MODELS } from '@shared/coach'
 import { YT_CADENCE_PROMPT_KIND } from '@shared/contentEngine'
 import { getDb } from '../db'
 import { getGoogleApiKey } from '../settingsStore'
-import { COACH_MODELS } from '@shared/coach'
 
 function clip(text: string, max = 120): string {
   const cleaned = text.replace(/\s+/g, ' ').trim()
@@ -10,72 +10,179 @@ function clip(text: string, max = 120): string {
   return `${cleaned.slice(0, max - 1)}…`
 }
 
-async function recentInsightSnippets(limit = 5): Promise<string[]> {
+function parseJsonObject(value: unknown): Record<string, unknown> {
+  if (value == null || value === '') return {}
+  if (typeof value === 'object' && !Array.isArray(value)) return value as Record<string, unknown>
+  if (typeof value !== 'string') return {}
+  try {
+    const parsed = JSON.parse(value) as unknown
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>
+    }
+  } catch {
+    // ignore
+  }
+  return {}
+}
+
+async function recentWorkContext(): Promise<{
+  sessions: string[]
+  windowTitles: string[]
+  dumps: string[]
+  insights: string[]
+  summaryLines: string[]
+}> {
   const db = getDb()
-  const result = await db.execute(
+  const since = Date.now() - 36 * 60 * 60 * 1000
+
+  const sessionRows = await db.execute({
+    sql: `SELECT title, source, kind, started_at, ended_at FROM sessions
+          WHERE COALESCE(ended_at, started_at, created_at) >= ?
+          ORDER BY COALESCE(ended_at, started_at, created_at) DESC
+          LIMIT 12`,
+    args: [since]
+  })
+  const sessions: string[] = []
+  for (const row of sessionRows.rows as {
+    title?: string
+    source?: string
+    kind?: string
+    started_at?: number
+    ended_at?: number | null
+  }[]) {
+    const title = (row.title || '').replace(/\s+/g, ' ').trim()
+    if (!title) continue
+    const mins =
+      row.started_at && row.ended_at
+        ? Math.max(1, Math.round((Number(row.ended_at) - Number(row.started_at)) / 60_000))
+        : null
+    const src = (row.source || row.kind || '').trim()
+    sessions.push(
+      [title, src ? `(${src})` : '', mins != null ? `~${mins}m` : ''].filter(Boolean).join(' ')
+    )
+  }
+
+  const eventRows = await db.execute({
+    sql: `SELECT payload FROM activity_events
+          WHERE captured_at >= ?
+          ORDER BY captured_at DESC
+          LIMIT 40`,
+    args: [since]
+  })
+  const windowTitles: string[] = []
+  for (const row of eventRows.rows) {
+    const payload = parseJsonObject(row.payload)
+    const title = typeof payload.title === 'string' ? payload.title.trim() : ''
+    if (title && !windowTitles.includes(title)) windowTitles.push(title)
+    if (windowTitles.length >= 10) break
+  }
+
+  const dumpRows = await db.execute({
+    sql: `SELECT payload FROM dumps
+          WHERE created_at >= ?
+          ORDER BY created_at DESC
+          LIMIT 6`,
+    args: [since]
+  })
+  const dumps: string[] = []
+  for (const row of dumpRows.rows as { payload?: string }[]) {
+    const text = (row.payload || '').replace(/\s+/g, ' ').trim()
+    if (text) dumps.push(clip(text, 220))
+  }
+
+  const insightRows = await db.execute(
     `SELECT text, so_what FROM corpus_insights
      WHERE (duplicate_of IS NULL OR duplicate_of = '')
      ORDER BY created_at DESC
-     LIMIT ?`
+     LIMIT 5`
   )
-  const out: string[] = []
-  for (const row of result.rows as { text?: string; so_what?: string | null }[]) {
+  const insights: string[] = []
+  for (const row of insightRows.rows as { text?: string; so_what?: string | null }[]) {
     const text = (row.text || '').replace(/\s+/g, ' ').trim()
     if (!text) continue
     const soWhat = (row.so_what || '').replace(/\s+/g, ' ').trim()
-    out.push(soWhat ? `${clip(text, 100)} — ${clip(soWhat, 80)}` : clip(text, 140))
-    if (out.length >= limit) break
+    insights.push(soWhat ? `${clip(text, 100)} — ${clip(soWhat, 80)}` : clip(text, 140))
   }
-  return out
+
+  const summaryLines: string[] = []
+  if (sessions.length) {
+    summaryLines.push('Recent work sessions:')
+    for (const s of sessions.slice(0, 6)) summaryLines.push(`- ${s}`)
+  }
+  if (windowTitles.length) {
+    summaryLines.push('Recent window titles:')
+    for (const t of windowTitles.slice(0, 6)) summaryLines.push(`- ${clip(t, 100)}`)
+  }
+  if (dumps.length) {
+    summaryLines.push('Recent voice/text dumps:')
+    for (const d of dumps.slice(0, 3)) summaryLines.push(`- ${d}`)
+  }
+  if (insights.length) {
+    summaryLines.push('Corpus signals:')
+    for (const i of insights.slice(0, 3)) summaryLines.push(`- ${i}`)
+  }
+  if (summaryLines.length === 0) {
+    summaryLines.push('(no recent capture/corpus — ask from first principles: AI video, lived work)')
+  }
+
+  return { sessions, windowTitles, dumps, insights, summaryLines }
 }
 
-function heuristicYtPrompt(insights: string[]): { text: string; relatedInsightId: string | null } {
-  const seed = insights[0]
+function heuristicYtPrompt(ctx: Awaited<ReturnType<typeof recentWorkContext>>): {
+  text: string
+  relatedInsightId: string | null
+} {
+  const seed = ctx.sessions[0] || ctx.windowTitles[0] || ctx.insights[0] || ctx.dumps[0]
   const angle = seed
     ? clip(seed, 90)
-    : 'one tension you’ve been sitting with that a stranger on YouTube would stay for'
+    : 'one tension from what you were actually building that a stranger would stay for'
+  const seen = clip(ctx.sessions[0] || ctx.windowTitles[0] || 'what you had open yesterday', 70)
   const text = [
     'Long-form YT — today',
     '',
+    `I saw you in: ${seen}`,
     `Working angle: ${angle}`,
     '',
     'Yap these (voice note fine — reply to this message):',
-    '1. What is the real problem the viewer thinks they have?',
-    '2. What have you seen that breaks their current story?',
-    '3. What should they do / see differently by the end of the video?',
+    '1. What were you actually trying to make work in that session?',
+    '2. What broke / surprised you that the viewer still believes?',
+    '3. If this were one YouTube video, what’s the one shift by the end?',
     '',
-    'I’ll turn your yap into a long-form outline (hook → spine → close). No brand kit yet — raw is fine.'
+    'Reply with the yap. You’ll get talking points + a say-this script + an AI-editor brief for after you film.'
   ].join('\n')
   return { text, relatedInsightId: null }
 }
 
-async function llmYtPrompt(insights: string[], apiKey: string): Promise<string | null> {
+async function llmYtPrompt(
+  ctx: Awaited<ReturnType<typeof recentWorkContext>>,
+  apiKey: string
+): Promise<string | null> {
   const ai = new GoogleGenAI({ apiKey })
-  const evidence =
-    insights.length > 0
-      ? insights.map((line, i) => `${i + 1}. ${line}`).join('\n')
-      : '(no recent corpus — invent from first principles for Tiger: AI video, quiet operators, lived cash)'
+  const evidence = ctx.summaryLines.join('\n')
 
-  const prompt = `You write a short Telegram morning brief for Tiger Joseph.
-Goal: one long-form YouTube video today — not LinkedIn, not carousels, not reels.
+  const prompt = `You write Tiger Joseph's morning Telegram brief.
+He only cares about ONE long-form YouTube video today.
 
-From the evidence, pick ONE working angle and write EXACTLY this shape (plain text, no markdown fences):
+Ground the angle and questions in what he was ACTUALLY working on (sessions, window titles, dumps). Do not invent apps or projects not in the evidence. If evidence is thin, say so and ask from the thinnest real signal.
+
+Write EXACTLY this shape (plain text, no markdown fences):
 
 Long-form YT — today
 
-Working angle: <one line>
+I saw you in: <one short line from real work>
+Working angle: <one filmable line>
 
 Yap these (voice note fine — reply to this message):
-1. <question>
-2. <question>
-3. <question>
+1. <question about the real work>
+2. <question that breaks a false story>
+3. <question that locks the end-state for the viewer>
 
-I’ll turn your yap into a long-form outline (hook → spine → close). No brand kit yet — raw is fine.
+Reply with the yap. You’ll get talking points + a say-this script + an AI-editor brief for after you film.
 
 Rules:
-- Questions pull a voice dump he can answer walking.
-- Angle must be specific enough to film, not a category.
-- Under 900 characters total.
+- Questions he can answer walking, specific to the work signal.
+- Under 1000 characters.
+- No LinkedIn / carousel / reel pitches.
 
 Evidence:
 ${evidence}`
@@ -93,53 +200,81 @@ ${evidence}`
 }
 
 export async function buildYtCadencePrompt(): Promise<{ text: string; relatedInsightId: string | null }> {
-  const insights = await recentInsightSnippets(5)
+  const ctx = await recentWorkContext()
   const apiKey = await getGoogleApiKey()
   if (apiKey) {
-    const llm = await llmYtPrompt(insights, apiKey)
+    const llm = await llmYtPrompt(ctx, apiKey)
     if (llm) return { text: llm, relatedInsightId: null }
   }
-  return heuristicYtPrompt(insights)
+  return heuristicYtPrompt(ctx)
+}
+
+function heuristicPack(yap: string): string {
+  return [
+    'Talking points',
+    '1. Open on the tension in your yap',
+    '2. What you were building / saw break',
+    '3. The false story the viewer still holds',
+    '4. The shift — one clear reframe',
+    '5. Close with one concrete move',
+    '',
+    'Script (say this)',
+    `Hook: "${clip(yap, 160)}"`,
+    'Then walk problem → break → new frame → close.',
+    '',
+    'AI editor brief (after you film)',
+    '- Keep cold open tight (first 20–30s)',
+    '- Cut throat-clears, false starts, long pauses',
+    '- Hold on face for the reframe line; b-roll only on process/proof',
+    '- End card: one CTA he actually said',
+    '',
+    `Yap kept: ${clip(yap, 400)}`
+  ].join('\n')
 }
 
 export async function buildYtOutlineFromYap(yap: string): Promise<string> {
   const trimmed = yap.replace(/\s+/g, ' ').trim()
   if (!trimmed) {
-    return 'Empty yap — send another voice note with the three answers.'
+    return 'Empty yap — send another voice note answering the three questions.'
   }
 
   const apiKey = await getGoogleApiKey()
-  if (!apiKey) {
-    return [
-      'YT outline (no Google key — raw scaffold):',
-      '',
-      'Hook: open on the tension in your yap',
-      'Spine: problem → break → new frame',
-      'Close: one concrete move for the viewer',
-      '',
-      `Your yap (kept): ${clip(trimmed, 400)}`
-    ].join('\n')
-  }
+  if (!apiKey) return heuristicPack(trimmed)
 
   const ai = new GoogleGenAI({ apiKey })
-  const prompt = `Turn this voice-dump into a long-form YouTube outline for Tiger Joseph.
-Plain text only. No markdown fences. Under 1200 characters.
+  const prompt = `Tiger Joseph answered morning YT questions with a voice/text yap.
+Produce a FILM PACK he can sit down and record from, then hand to an AI editor.
 
-Shape:
-YT outline — <working title>
+Plain text only. No markdown fences. Under 1800 characters.
 
-Hook (first 30s): …
-Spine:
-- …
-- …
-- …
-Close: …
-B-roll / proof notes: … (optional, short)
+Exact shape:
+
+Talking points — <working title>
+1. …
+2. …
+3. …
+4. …
+5. … (max 6)
+
+Script (say this)
+Hook: "…"
+Beat 1: "…"
+Beat 2: "…"
+Beat 3: "…"
+Close: "…"
+
+AI editor brief (after you film)
+- Keep: …
+- Cut: …
+- On-screen / b-roll cues: …
+- Energy / pacing: …
+- End card / CTA: …
 
 Rules:
-- Stay faithful to his words. Do not invent client stories or metrics.
-- Long-form YT only — not a short or carousel.
-- Tight, filmable.
+- Faithful to his words — no invented clients, metrics, or stories.
+- Long-form YouTube only.
+- Script lines are spoken English he can read on camera.
+- Editor brief assumes Cap / AI edit next — no upload instructions beyond what to keep/cut.
 
 Yap:
 ---
@@ -150,21 +285,19 @@ ${trimmed.slice(0, 12_000)}
     try {
       const response = await ai.models.generateContent({ model, contents: prompt })
       const text = (response.text || '').trim()
-      if (text.length > 40) return text
+      if (
+        text.length > 80 &&
+        /talking points/i.test(text) &&
+        (/script/i.test(text) || /editor brief/i.test(text))
+      ) {
+        return text
+      }
     } catch (err) {
-      console.error('YT outline LLM failed:', err)
+      console.error('YT film pack LLM failed:', err)
     }
   }
 
-  return [
-    'YT outline (model blanked — scaffold):',
-    '',
-    'Hook: name the tension in the first line of your yap',
-    'Spine: problem → break → new frame',
-    'Close: one move',
-    '',
-    clip(trimmed, 500)
-  ].join('\n')
+  return heuristicPack(trimmed)
 }
 
 export { YT_CADENCE_PROMPT_KIND }

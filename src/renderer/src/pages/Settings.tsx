@@ -696,9 +696,9 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
           Long-form YT cadence (daily 8:00 local)
         </label>
         <Hint>
-          Morning brief: one working angle + 3 yap questions. Your reply lands in Corpus, then Mycel
-          texts back a long-form outline (hook → spine → close). Brand kit / scheduling / analytics
-          later. Needs Mycel running through 8am.
+          Flow: Capture watches what you worked on → 8:00 brief with grounded yap questions → you
+          reply → talking points + say-this script + AI-editor brief for after you film. Turn Capture
+          on for better grounding. Needs Mycel running through 8am.
         </Hint>
         {telegramStatus?.lastError && (
           <StatusLine>{telegramStatus.lastError}</StatusLine>

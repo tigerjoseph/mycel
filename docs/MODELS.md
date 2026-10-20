@@ -22,7 +22,8 @@ Short chat replies: **`gemma-3-12b-it`** first (same free-tier path as extract),
 
 ## Telegram YT cadence (daily 8:00)
 
-Same model stack as Coach. Morning brief + outline-from-yap. Long-form YouTube only.
+Same model stack as Coach. Grounds questions in recent Capture sessions / dumps / corpus.
+Yap reply → talking points + spoken script + AI-editor brief. Long-form YouTube only.
 
 ## Not v1
 
