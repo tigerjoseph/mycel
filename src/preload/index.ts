@@ -199,6 +199,8 @@ const mycelAPI = {
   getTelegramPrompts: (): Promise<unknown[]> => ipcRenderer.invoke('telegram:getPrompts'),
   sendTelegramTestNotification: (): Promise<unknown> =>
     ipcRenderer.invoke('telegram:sendTestNotification'),
+  sendTelegramYtCadenceTestPing: (): Promise<unknown> =>
+    ipcRenderer.invoke('telegram:sendYtCadenceTestPing'),
   notifyTelegramPromptReady: (promptId: string): Promise<unknown> =>
     ipcRenderer.invoke('telegram:notifyPromptReady', promptId),
   notifyTelegramDraftReady: (input: unknown): Promise<unknown> =>

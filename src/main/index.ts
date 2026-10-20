@@ -22,6 +22,7 @@ import { isGcalConnected } from './gcal/auth'
 import { syncCalendarContacts } from './gcal/sync'
 import { startTelegramPolling, stopTelegramPolling } from './telegram/poller'
 import { startDaytimePrompts, stopDaytimePrompts } from './telegram/daytime'
+import { startYtCadence, stopYtCadence } from './telegram/ytCadence'
 import { startCaptureObserver, stopCaptureObserver } from './observe/poller'
 import { startSynthesisScheduler, stopSynthesisScheduler } from './engine/synthesis'
 import { applyOpenAtLogin } from './openAtLogin'
@@ -92,6 +93,7 @@ app.whenReady().then(async () => {
   setupAutoUpdater()
   startTelegramPolling()
   startDaytimePrompts()
+  startYtCadence()
   startCaptureObserver()
   startSynthesisScheduler()
 
@@ -110,6 +112,7 @@ app.on('will-quit', () => {
   stopLibraryServer()
   void stopTelegramPolling()
   stopDaytimePrompts()
+  stopYtCadence()
   void stopCaptureObserver({ endSession: true })
   stopSynthesisScheduler()
 })

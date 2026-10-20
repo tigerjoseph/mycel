@@ -60,6 +60,11 @@ export const DAYTIME_CHECK_MS = 15 * 60 * 1000
 export const DAYTIME_START_HOUR = 10
 export const DAYTIME_END_HOUR = 18
 
+/** Morning long-form YouTube cadence (yap questions → outline). */
+export const YT_CADENCE_PROMPT_KIND = 'yt_cadence'
+export const YT_CADENCE_HOUR = 8
+export const YT_CADENCE_CHECK_MS = 60 * 1000
+
 const DAY_MS = 24 * 60 * 60 * 1000
 const WEEK_MS = 7 * DAY_MS
 const MONTH_MS = 30 * DAY_MS

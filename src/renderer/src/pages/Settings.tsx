@@ -70,6 +70,10 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
   const [telegramBusy, setTelegramBusy] = useState(false)
   const [telegramMessage, setTelegramMessage] = useState<string | null>(null)
   const [telegramDaytimeEnabled, setTelegramDaytimeEnabled] = useState(true)
+  const [telegramYtCadenceEnabled, setTelegramYtCadenceEnabled] = useState(true)
+  const [telegramInboxMode, setTelegramInboxMode] =
+    useState<import('@shared/types').TelegramInboxMode>('dump')
+  const [coachContextPath, setCoachContextPath] = useState('')
   const [testDumpText, setTestDumpText] = useState('')
   const [captureStatus, setCaptureStatus] = useState<CaptureStatus | null>(null)
   const [captureBusy, setCaptureBusy] = useState(false)
@@ -97,10 +101,19 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
       if (typeof s.telegramUserId === 'string') setTelegramUserId(s.telegramUserId)
       else if (typeof s.telegramUserId === 'number') setTelegramUserId(String(s.telegramUserId))
       setTelegramDaytimeEnabled(s.telegramDaytimeEnabled !== false)
+      setTelegramYtCadenceEnabled(s.telegramYtCadenceEnabled !== false)
+      if (s.telegramInboxMode === 'coach' || s.telegramInboxMode === 'dump') {
+        setTelegramInboxMode(s.telegramInboxMode)
+      }
+      if (typeof s.coachContextPath === 'string') setCoachContextPath(s.coachContextPath)
       setSynthEodEnabled(s.synthesisEodEnabled !== false)
       setOpenAtLogin(s.openAtLogin !== false)
     })
-    window.mycel.getTelegramStatus().then(setTelegramStatus).catch(() => {})
+    window.mycel.getTelegramStatus().then((status) => {
+      setTelegramStatus(status)
+      if (status.inboxMode) setTelegramInboxMode(status.inboxMode)
+      if (status.coachContextPath) setCoachContextPath(status.coachContextPath)
+    }).catch(() => {})
     window.mycel.getCaptureStatus().then(setCaptureStatus).catch(() => {})
     window.mycel
       .getSynthesisStatus()
@@ -239,8 +252,16 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
   const saveTelegramSettings = (): void => {
     window.mycel.setSettings({
       telegramBotToken: telegramBotToken.trim(),
-      telegramUserId: telegramUserId.trim()
+      telegramUserId: telegramUserId.trim(),
+      telegramInboxMode,
+      coachContextPath: coachContextPath.trim() || undefined
     })
+    window.setTimeout(refreshTelegramStatus, 400)
+  }
+
+  const saveTelegramInboxMode = (mode: import('@shared/types').TelegramInboxMode): void => {
+    setTelegramInboxMode(mode)
+    window.mycel.setSettings({ telegramInboxMode: mode })
     window.setTimeout(refreshTelegramStatus, 400)
   }
 
@@ -320,6 +341,25 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
   const saveTelegramDaytime = (enabled: boolean): void => {
     setTelegramDaytimeEnabled(enabled)
     window.mycel.setSettings({ telegramDaytimeEnabled: enabled })
+  }
+
+  const saveTelegramYtCadence = (enabled: boolean): void => {
+    setTelegramYtCadenceEnabled(enabled)
+    window.mycel.setSettings({ telegramYtCadenceEnabled: enabled })
+  }
+
+  const handleYtCadenceTestPing = async (): Promise<void> => {
+    setTelegramBusy(true)
+    setTelegramMessage(null)
+    try {
+      await window.mycel.sendTelegramYtCadenceTestPing()
+      setTelegramMessage('YT cadence sent. Check Telegram — reply with a yap to get an outline.')
+    } catch (err) {
+      setTelegramMessage(err instanceof Error ? err.message : 'Could not send YT cadence ping')
+    } finally {
+      setTelegramBusy(false)
+      refreshTelegramStatus()
+    }
   }
 
   const saveCapture = async (patch: {
@@ -505,9 +545,10 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
 
       <Section title="Telegram">
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 12px', lineHeight: 1.5 }}>
-          Pocket channel while Mycel is running. One-way dumps get a <strong>Saved.</strong> reply.
-          Prompts are specific (thin days, narrative, so-what) — not “what did you do today?”
-          Works only when a bot token and your user id are set. The app boots fine disconnected.
+          Pocket channel while Mycel is running. <strong>Dump</strong> mode saves to Corpus with a Saved.
+          reply. <strong>Coach</strong> mode replies via Gemini using your Personal context folder
+          (chart, keepers, open decisions). Synthesis prompts still win when one is waiting.
+          Needs bot token + user id. App boots fine disconnected.
         </p>
         <div style={{ marginBottom: 12 }}>
           <IntegrationRow
@@ -557,6 +598,61 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
           Token stays in local settings on this Mac — never commit it. Polling is local <code style={{ fontSize: 11 }}>getUpdates</code>
           (catch-up on launch). No cloud inbox.
         </Hint>
+        <div style={{ marginTop: 14, marginBottom: 8 }}>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '0 0 8px' }}>Inbox mode</p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {(
+              [
+                ['dump', 'Dump → Corpus'],
+                ['coach', 'Coach (Gemini)']
+              ] as const
+            ).map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => saveTelegramInboxMode(mode)}
+                style={{
+                  ...secondaryBtn,
+                  opacity: 1,
+                  borderColor: telegramInboxMode === mode ? 'var(--accent)' : 'var(--border)',
+                  background: telegramInboxMode === mode ? 'var(--surface)' : 'transparent'
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {telegramInboxMode === 'coach' && (
+          <div style={{ marginBottom: 10 }}>
+            <input
+              type="text"
+              placeholder="Coach context path (e.g. ~/Personal/context)"
+              value={coachContextPath}
+              onChange={(e) => setCoachContextPath(e.target.value)}
+              onBlur={saveTelegramSettings}
+              style={{ ...inputStyle, width: '100%', marginBottom: 6 }}
+            />
+            <Hint>
+              Defaults to <code style={{ fontSize: 11 }}>~/Personal/context</code>. Needs Google AI key
+              above. In chat: plain text = coach; <code style={{ fontSize: 11 }}>/dump …</code> saves to
+              Corpus; <code style={{ fontSize: 11 }}>/clear</code> resets thread;{' '}
+              <code style={{ fontSize: 11 }}>/help</code>.
+              {telegramStatus && !telegramStatus.coachReady && (
+                <>
+                  {' '}
+                  <strong style={{ color: 'var(--text)' }}>
+                    {!telegramStatus.coachHasApiKey
+                      ? 'Add Google AI key first.'
+                      : !telegramStatus.coachContextOk
+                        ? 'Context folder not found.'
+                        : ''}
+                  </strong>
+                </>
+              )}
+            </Hint>
+          </div>
+        )}
         <label
           style={{
             display: 'flex',
@@ -580,10 +676,42 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
           Specific questions, not a recap. Replies land in Corpus; a 1–3 sentence answer also becomes a
           Calendar draft. Needs Mycel running. Uncheck to pause.
         </Hint>
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 13,
+            color: 'var(--text)',
+            cursor: 'pointer',
+            marginTop: 14
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={telegramYtCadenceEnabled}
+            onChange={(e) => saveTelegramYtCadence(e.target.checked)}
+            disabled={!telegramStatus?.configured}
+          />
+          Long-form YT cadence (daily 8:00 local)
+        </label>
+        <Hint>
+          Morning brief: one working angle + 3 yap questions. Your reply lands in Corpus, then Mycel
+          texts back a long-form outline (hook → spine → close). Brand kit / scheduling / analytics
+          later. Needs Mycel running through 8am.
+        </Hint>
         {telegramStatus?.lastError && (
           <StatusLine>{telegramStatus.lastError}</StatusLine>
         )}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+          <button
+            type="button"
+            onClick={() => void handleYtCadenceTestPing()}
+            disabled={telegramBusy || !telegramStatus?.configured}
+            style={{ ...secondaryBtn, opacity: telegramBusy || !telegramStatus?.configured ? 0.6 : 1 }}
+          >
+            Test YT ping now
+          </button>
           <button
             type="button"
             onClick={() => void handleTelegramTest()}

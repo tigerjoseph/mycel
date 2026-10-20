@@ -350,6 +350,8 @@ export interface TelegramPrompt {
   answeredAt: number | null
 }
 
+export type { TelegramInboxMode } from './coach'
+
 export interface TelegramStatus {
   configured: boolean
   tokenConfigured: boolean
@@ -358,6 +360,11 @@ export interface TelegramStatus {
   lastError: string | null
   lastOkAt: number | null
   pendingPromptCount: number
+  inboxMode: import('./coach').TelegramInboxMode
+  coachReady: boolean
+  coachHasApiKey: boolean
+  coachContextPath: string
+  coachContextOk: boolean
 }
 
 export interface NotifyDraftReadyInput {

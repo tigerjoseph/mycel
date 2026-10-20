@@ -3,14 +3,17 @@ import {
   TELEGRAM_POLL_FOCUSED_SEC,
   TELEGRAM_POLL_IDLE_SEC,
   TELEGRAM_SAVED_REPLY,
-  TELEGRAM_VOICE_PLACEHOLDER
+  TELEGRAM_VOICE_PLACEHOLDER,
+  YT_CADENCE_PROMPT_KIND
 } from '@shared/contentEngine'
+import { buildYtOutlineFromYap } from '../engine/ytCadence'
 import {
   getTelegramBotToken,
   getTelegramUserId,
   getTelegramUpdateOffset,
   setTelegramUpdateOffset
 } from '../settingsStore'
+import { getTelegramInboxMode, runCoachTurn } from '../engine/coach'
 import { readTranscriptFromFile } from '../engine/readImportFile'
 import { ingestDump, removeTempFile, writeTempVoiceFile } from '../engine/ingestDump'
 import { answerPrompt, getLatestSentPrompt } from '../engine/prompts'
@@ -21,7 +24,9 @@ import {
   messageFromAllowlistedUser,
   messageText,
   messageVoiceId,
+  sendTelegramChatAction,
   sendTelegramMessage,
+  sendTelegramMessageChunks,
   type TelegramMessage
 } from './api'
 import { broadcastTelegramEvent } from './notify'
@@ -78,6 +83,34 @@ async function transcribeMessage(token: string, message: TelegramMessage): Promi
   }
 }
 
+async function saveDump(
+  token: string,
+  userId: string,
+  payload: string,
+  telegramMessageId: string,
+  hasVoice: boolean,
+  sttFailed: boolean,
+  chatId: number
+): Promise<void> {
+  const result = await ingestDump({
+    payload,
+    source: 'telegram',
+    telegramMessageId,
+    metadata: {
+      chatId,
+      kind: hasVoice ? 'voice' : 'text',
+      sttFailed
+    }
+  })
+  if (result.duplicate) return
+  try {
+    await sendTelegramMessage(token, userId, TELEGRAM_SAVED_REPLY)
+  } catch {
+    // dump already saved
+  }
+  broadcastTelegramEvent('telegram:dumpReceived', result.dump)
+}
+
 async function processMessage(token: string, userId: string, message: TelegramMessage): Promise<void> {
   if (!messageFromAllowlistedUser(message, userId)) return
 
@@ -96,26 +129,53 @@ async function processMessage(token: string, userId: string, message: TelegramMe
         console.error('Content Engine synthesis after prompt failed:', err)
       })
     }
+    if (answered.prompt.kind === YT_CADENCE_PROMPT_KIND) {
+      void (async () => {
+        try {
+          await sendTelegramChatAction(token, userId, 'typing')
+          const outline = await buildYtOutlineFromYap(payload)
+          await sendTelegramMessageChunks(token, userId, outline)
+        } catch (err) {
+          console.error('YT cadence outline reply failed:', err)
+        }
+      })()
+    }
     return
   }
 
-  const result = await ingestDump({
-    payload,
-    source: 'telegram',
-    telegramMessageId,
-    metadata: {
-      chatId: message.chat.id,
-      kind: hasVoice ? 'voice' : 'text',
-      sttFailed: transcribed.sttFailed
+  const inboxMode = await getTelegramInboxMode()
+  if (inboxMode === 'coach') {
+    await sendTelegramChatAction(token, userId, 'typing')
+    const result = await runCoachTurn(payload)
+    if (result.kind === 'dump') {
+      await saveDump(
+        token,
+        userId,
+        result.text,
+        telegramMessageId,
+        hasVoice,
+        transcribed.sttFailed,
+        message.chat.id
+      )
+      return
     }
-  })
-  if (result.duplicate) return
-  try {
-    await sendTelegramMessage(token, userId, TELEGRAM_SAVED_REPLY)
-  } catch {
-    // dump already saved
+    try {
+      await sendTelegramMessageChunks(token, userId, result.text)
+    } catch (err) {
+      console.error('Coach Telegram reply failed:', err)
+    }
+    return
   }
-  broadcastTelegramEvent('telegram:dumpReceived', result.dump)
+
+  await saveDump(
+    token,
+    userId,
+    payload,
+    telegramMessageId,
+    hasVoice,
+    transcribed.sttFailed,
+    message.chat.id
+  )
 }
 
 async function runLoop(): Promise<void> {
