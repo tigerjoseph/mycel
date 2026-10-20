@@ -696,8 +696,8 @@ export function Settings({ isOpen = true }: { isOpen?: boolean }): React.JSX.Ele
           Long-form YT cadence (daily 8:00 local)
         </label>
         <Hint>
-          Not a chat — one morning brief, one yap reply, then a film pack (talking points + script +
-          editor brief). Coach inbox mode is the conversational lane. Capture on = better grounding.
+          Editorial ping (not a chat): “Make today…” from work + docs/posts pipeline, then weighty
+          yap questions for that video → film pack. Coach mode = conversation. Capture on helps.
           Needs Mycel running through 8am.
         </Hint>
         {telegramStatus?.lastError && (

@@ -22,9 +22,9 @@ Back-and-forth. Not the same list as background jobs.
 
 ## Telegram YT cadence (daily 8:00) — NOT a chat
 
-**One-shot interview** (`YT_CADENCE_MODELS`): `gemini-3.5-flash-lite` → `gemma-3-12b-it`.
-Morning brief → one yap reply → film pack (talking points + script + editor brief).
-Separate model list from Coach on purpose.
+**Editorial one-shot** (`YT_CADENCE_MODELS`): `gemini-3.5-flash-lite` → `gemma-3-12b-it`.
+Picks “Make today…” from work + Mycel docs/posts pipeline, asks weighty questions for that video,
+then film pack. Separate model list from Coach on purpose.
 
 ## Not v1
 
