@@ -6,8 +6,11 @@ export function isTelegramInboxMode(value: unknown): value is TelegramInboxMode 
   return typeof value === 'string' && (TELEGRAM_INBOX_MODES as readonly string[]).includes(value)
 }
 
-/** Models for coach replies — conversational, not extraction. */
-export const COACH_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'] as const
+/**
+ * Coach chat is short turns — prefer the cheapest capable model first.
+ * flash-lite for routine coaching; full flash only if lite fails.
+ */
+export const COACH_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.0-flash'] as const
 
 /** Soft cap on Personal context loaded into the system prompt. */
 export const COACH_CONTEXT_CHAR_BUDGET = 36_000
