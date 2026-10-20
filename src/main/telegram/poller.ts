@@ -3,8 +3,10 @@ import {
   TELEGRAM_POLL_FOCUSED_SEC,
   TELEGRAM_POLL_IDLE_SEC,
   TELEGRAM_SAVED_REPLY,
-  TELEGRAM_VOICE_PLACEHOLDER
+  TELEGRAM_VOICE_PLACEHOLDER,
+  YT_CADENCE_PROMPT_KIND
 } from '@shared/contentEngine'
+import { buildYtOutlineFromYap } from '../engine/ytCadence'
 import {
   getTelegramBotToken,
   getTelegramUserId,
@@ -126,6 +128,17 @@ async function processMessage(token: string, userId: string, message: TelegramMe
       void runSynthesis().catch((err) => {
         console.error('Content Engine synthesis after prompt failed:', err)
       })
+    }
+    if (answered.prompt.kind === YT_CADENCE_PROMPT_KIND) {
+      void (async () => {
+        try {
+          await sendTelegramChatAction(token, userId, 'typing')
+          const outline = await buildYtOutlineFromYap(payload)
+          await sendTelegramMessageChunks(token, userId, outline)
+        } catch (err) {
+          console.error('YT cadence outline reply failed:', err)
+        }
+      })()
     }
     return
   }

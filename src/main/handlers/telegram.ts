@@ -12,6 +12,7 @@ import {
   requestContextPrompt,
   sendTestNotification
 } from '../telegram/notify'
+import { sendYtCadenceTestPing } from '../telegram/ytCadence'
 import type { IngestTestDumpInput, NotifyDraftReadyInput, RequestContextInput } from '@shared/types'
 
 export function registerTelegramHandlers(): void {
@@ -50,6 +51,8 @@ export function registerTelegramHandlers(): void {
     await sendTestNotification()
     return { ok: true }
   })
+
+  ipcMain.handle('telegram:sendYtCadenceTestPing', async () => sendYtCadenceTestPing())
 
   ipcMain.handle('telegram:notifyPromptReady', async (_e, promptId: string) => {
     if (!promptId) throw new Error('Prompt id is required')

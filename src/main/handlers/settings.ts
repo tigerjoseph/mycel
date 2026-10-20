@@ -12,6 +12,7 @@ import {
 } from '../settingsStore'
 import { restartTelegramPolling } from '../telegram/poller'
 import { restartDaytimePrompts } from '../telegram/daytime'
+import { restartYtCadence } from '../telegram/ytCadence'
 import { restartCaptureObserver } from '../observe/poller'
 import { applyOpenAtLogin } from '../openAtLogin'
 
@@ -26,6 +27,9 @@ export function registerSettingsHandlers(): void {
     }
     if ('telegramDaytimeEnabled' in (newSettings || {})) {
       void restartDaytimePrompts()
+    }
+    if ('telegramYtCadenceEnabled' in (newSettings || {})) {
+      void restartYtCadence()
     }
     if ('captureEnabled' in (newSettings || {}) || 'captureAllowlist' in (newSettings || {})) {
       void restartCaptureObserver()

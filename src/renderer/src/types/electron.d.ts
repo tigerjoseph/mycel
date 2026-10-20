@@ -188,6 +188,7 @@ declare global {
       getTelegramStatus(): Promise<import('@shared/types').TelegramStatus>
       getTelegramPrompts(): Promise<import('@shared/types').TelegramPrompt[]>
       sendTelegramTestNotification(): Promise<{ ok: true }>
+      sendTelegramYtCadenceTestPing(): Promise<{ ok: true; promptId: string }>
       notifyTelegramPromptReady(promptId: string): Promise<import('@shared/types').TelegramPrompt>
       notifyTelegramDraftReady(
         input: import('@shared/types').NotifyDraftReadyInput

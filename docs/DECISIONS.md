@@ -19,7 +19,8 @@ If this contradicts other docs, **this file wins**.
 | Posts (LinkedIn/X) | **Deferred** — no `posts` table, no Posts UI |
 | Draft chooser | **Option C** — dialog: new doc vs append to open doc |
 | Gemini | User checks **“Generate with Gemini”** — never auto for content |
-| Telegram Coach | Opt-in inbox mode **Coach** uses Gemini + Personal context path — explicit Settings toggle |
+| Telegram Coach | Opt-in inbox mode **Coach** uses Gemma (+ flash-lite fallback) + Personal context path |
+| Telegram YT cadence | Daily **8:00 local** long-form YouTube yap brief → reply → outline. On by default; test ping in Settings |
 | After meeting | Corpus atoms only — **no auto doc** |
 
 ### Doc tags
