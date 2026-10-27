@@ -327,11 +327,19 @@ button:active:not(:disabled) {
   line-height: 1.75;
 }
 
-/* Empty / blank paragraphs (Enter Enter) — keep a small gap, not a full double line */
+/* Empty / blank paragraphs (Enter Enter) — collapse the full line-box so
+   blank lines next to bullets / dashes / task lists aren't double-spaced */
 .tiptap p:empty,
 .tiptap p:has(> br.ProseMirror-trailingBreak:only-child) {
-  margin: 0.1em 0;
-  min-height: 0.9em;
+  margin: 0.05em 0;
+  min-height: 0;
+  line-height: 0.65;
+  font-size: 15px;
+}
+
+.tiptap p:empty br,
+.tiptap p:has(> br.ProseMirror-trailingBreak:only-child) > br.ProseMirror-trailingBreak {
+  line-height: 0.65;
 }
 
 /* Tighten blank lines sitting next to bullet / numbered / task lists */
@@ -343,8 +351,8 @@ button:active:not(:disabled) {
 .tiptap ol + p:empty,
 .tiptap ul + p:has(> br.ProseMirror-trailingBreak:only-child),
 .tiptap ol + p:has(> br.ProseMirror-trailingBreak:only-child) {
-  margin-top: 0.1em;
-  margin-bottom: 0.1em;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 /* Tailwind preflight strips list markers; restore them inside editors */
@@ -447,9 +455,10 @@ button:active:not(:disabled) {
 }
 
 .tiptap ul[data-type="taskList"] li,
-.tiptap li[data-type="taskItem"] {
-  display: flex;
-  flex-direction: row;
+.tiptap li[data-type="taskItem"],
+ul[data-type="taskList"] > li {
+  display: flex !important;
+  flex-direction: row !important;
   align-items: flex-start;
   gap: 8px;
 }
