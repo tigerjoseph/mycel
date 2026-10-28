@@ -1,5 +1,6 @@
 import { nanoid } from 'nanoid'
 import { getDb } from '../db'
+import { ensureContentCalendarFolderId } from '../contentCalendarFolder'
 import { saveCorpusInsight } from './saveInsight'
 import { ingestDump, parseDumpRow } from './ingestDump'
 import { DAYTIME_PROMPT_KIND, insightTextError } from '@shared/contentEngine'
@@ -296,11 +297,12 @@ async function persistStandalonePost(text: string): Promise<void> {
     channel: 'linkedin',
     source: 'telegram'
   }
+  const folderId = await ensureContentCalendarFolderId(db)
   await db.execute({
     sql: `INSERT INTO docs
           (id, title, body, type, folder_id, icon, cover_image, is_template,
            is_favorite, favorite_order, tags, post_meta, created_at, updated_at)
-          VALUES (?, ?, ?, 'post', NULL, NULL, NULL, 0, 0, NULL, '[]', ?, ?, ?)`,
-    args: [id, title, html, JSON.stringify(postMeta), now, now]
+          VALUES (?, ?, ?, 'post', ?, NULL, NULL, 0, 0, NULL, '[]', ?, ?, ?)`,
+    args: [id, title, html, folderId, JSON.stringify(postMeta), now, now]
   })
 }

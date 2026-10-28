@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
 import { nanoid } from 'nanoid'
 import { getDb } from '../db'
+import { ensureContentCalendarFolderId } from '../contentCalendarFolder'
 import type { PostMeta } from '@shared/types'
 
 function parsePostMeta(value: unknown): PostMeta {
@@ -108,7 +109,7 @@ export function registerDocHandlers(): void {
     const title = (doc.title as string) || ''
     const bodyProvided = Object.prototype.hasOwnProperty.call(doc, 'body')
     const type = (doc.type as string) || 'doc'
-    const folderId = (doc.folderId ?? doc.folder_id ?? null) as string | null
+    let folderId = (doc.folderId ?? doc.folder_id ?? null) as string | null
     const icon = (doc.icon as string) ?? null
     const coverImage = (doc.coverImage ?? doc.cover_image ?? null) as string | null
     const isTemplate = (doc.isTemplate ?? doc.is_template) ? 1 : 0
@@ -154,6 +155,10 @@ export function registerDocHandlers(): void {
         Number(existing.updated_at) !== Number(expectedUpdatedAt)
       ) {
         throw new Error('DOC_SAVE_CONFLICT')
+      }
+
+      if (!existing && type === 'post' && !folderId) {
+        folderId = await ensureContentCalendarFolderId(tx)
       }
 
       if (existing) {

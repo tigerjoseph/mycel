@@ -1,5 +1,6 @@
 import { nanoid } from 'nanoid'
 import { getDb } from '../db'
+import { ensureContentCalendarFolderId } from '../contentCalendarFolder'
 import { getGoogleApiKey, getAppSettings, setAppSettings } from '../settingsStore'
 import { listDecoratedThreads } from './clusterThreads'
 import { parseInsightRow } from './ingestMeeting'
@@ -198,12 +199,13 @@ async function persistReviewPost(input: {
     insightIds: input.insightIds,
     intent: input.intent ?? undefined
   }
+  const folderId = await ensureContentCalendarFolderId(db)
   await db.execute({
     sql: `INSERT INTO docs
           (id, title, body, type, folder_id, icon, cover_image, is_template,
            is_favorite, favorite_order, tags, post_meta, created_at, updated_at)
-          VALUES (?, ?, ?, 'post', NULL, NULL, NULL, 0, 0, NULL, '[]', ?, ?, ?)`,
-    args: [id, input.title, input.html, JSON.stringify(postMeta), now, now]
+          VALUES (?, ?, ?, 'post', ?, NULL, NULL, 0, 0, NULL, '[]', ?, ?, ?)`,
+    args: [id, input.title, input.html, folderId, JSON.stringify(postMeta), now, now]
   })
   return { id, title: input.title }
 }

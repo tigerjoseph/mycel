@@ -1,22 +1,35 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { FileText, GripVertical, Plus } from 'lucide-react'
+import { FileText, Plus } from 'lucide-react'
 import { nanoid } from 'nanoid'
 import { format } from 'date-fns'
 import {
   DndContext,
-  closestCenter,
+  DragOverlay,
+  MeasuringStrategy,
   PointerSensor,
+  closestCenter,
+  pointerWithin,
+  rectIntersection,
   useDraggable,
   useDroppable,
   useSensor,
   useSensors
 } from '@dnd-kit/core'
-import type { DragEndEvent } from '@dnd-kit/core'
+import type { CollisionDetection, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { POST_STATUSES, isPostStatus } from '@shared/contentEngine'
 import { formatSynthesisSummary } from '@shared/synthesis'
 import type { Doc, PostStatus } from '@shared/types'
 import { useUIStore } from '../store/ui'
-import { openDoc } from '../utils/openDoc'
+import { useDocsStore } from '../store/docs'
+import { PostLightbox } from '../components/PostLightbox'
+
+const kanbanCollision: CollisionDetection = (args) => {
+  const underPointer = pointerWithin(args)
+  if (underPointer.length > 0) return underPointer
+  const overlap = rectIntersection(args)
+  if (overlap.length > 0) return overlap
+  return closestCenter(args)
+}
 
 const STATUS_COLORS: Record<PostStatus, string> = {
   draft: '#9B9A97',
@@ -37,6 +50,65 @@ function postStatus(post: Doc): PostStatus {
   return status && isPostStatus(status) ? status : 'draft'
 }
 
+function statusFromId(id: string | number | undefined, posts: Doc[]): PostStatus | null {
+  if (id == null) return null
+  const key = String(id)
+  if (isPostStatus(key)) return key
+  const overPost = posts.find((post) => post.id === key)
+  return overPost ? postStatus(overPost) : null
+}
+
+const PostCardFace = memo(function PostCardFace({ post }: { post: Doc }): React.JSX.Element {
+  const channel = post.postMeta?.channel
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, minWidth: 0 }}>
+      <FileText size={13} style={{ flexShrink: 0, marginTop: 1, color: 'var(--text-muted)' }} />
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <span
+          style={{
+            fontFamily: 'var(--font-ui)',
+            fontSize: 12,
+            fontWeight: 500,
+            color: 'var(--text)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            lineHeight: 1.35,
+            letterSpacing: '-0.01em'
+          }}
+        >
+          {post.title || 'Untitled post'}
+        </span>
+        <div
+          style={{
+            marginTop: 4,
+            fontFamily: 'var(--font-ui)',
+            fontSize: 10,
+            color: 'var(--text-muted)'
+          }}
+        >
+          {channel ? `${channel} · ` : ''}
+          {format(post.updatedAt, 'MMM d')}
+        </div>
+      </div>
+    </div>
+  )
+})
+
+function cardShell(dragging: boolean): React.CSSProperties {
+  return {
+    padding: '8px 9px',
+    backgroundColor: 'var(--bg)',
+    borderRadius: 6,
+    border: '1px solid var(--border)',
+    boxShadow: dragging ? 'var(--shadow-md)' : undefined,
+    userSelect: 'none'
+  }
+}
+
 const DraggableCard = memo(function DraggableCard({
   post,
   onClick
@@ -44,86 +116,23 @@ const DraggableCard = memo(function DraggableCard({
   post: Doc
   onClick: (post: Doc) => void
 }): React.JSX.Element {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: post.id,
-    data: { postId: post.id }
-  })
-  const channel = post.postMeta?.channel
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: post.id })
 
   return (
     <div
       ref={setNodeRef}
       className="mycel-card"
-      style={{
-        padding: '8px 9px',
-        backgroundColor: 'var(--bg)',
-        borderRadius: 6,
-        border: '1px solid var(--border)',
-        cursor: 'pointer',
-        opacity: isDragging ? 0.55 : 1,
-        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-        transition: isDragging ? undefined : 'box-shadow 150ms ease',
-        boxShadow: isDragging ? 'var(--shadow-md)' : undefined,
-        zIndex: isDragging ? 10 : undefined,
-        position: isDragging ? 'relative' : undefined,
-        willChange: isDragging ? 'transform' : undefined
-      }}
+      {...listeners}
+      {...attributes}
       onClick={() => onClick(post)}
+      style={{
+        ...cardShell(false),
+        cursor: isDragging ? 'grabbing' : 'grab',
+        opacity: isDragging ? 0.35 : 1,
+        touchAction: 'none'
+      }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, minWidth: 0 }}>
-        <button
-          type="button"
-          aria-label="Drag to reorder"
-          {...listeners}
-          {...attributes}
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            flexShrink: 0,
-            marginTop: 1,
-            padding: 0,
-            border: 'none',
-            background: 'transparent',
-            cursor: isDragging ? 'grabbing' : 'grab',
-            color: 'var(--text-muted)',
-            display: 'flex',
-            alignItems: 'center',
-            touchAction: 'none'
-          }}
-        >
-          <GripVertical size={12} />
-        </button>
-        <FileText size={13} style={{ flexShrink: 0, marginTop: 1, color: 'var(--text-muted)' }} />
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <span
-            style={{
-              fontFamily: 'var(--font-ui)',
-              fontSize: 12,
-              fontWeight: 500,
-              color: 'var(--text)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              lineHeight: 1.35,
-              letterSpacing: '-0.01em'
-            }}
-          >
-            {post.title || 'Untitled post'}
-          </span>
-          <div
-            style={{
-              marginTop: 4,
-              fontFamily: 'var(--font-ui)',
-              fontSize: 10,
-              color: 'var(--text-muted)'
-            }}
-          >
-            {channel ? `${channel} · ` : ''}
-            {format(post.updatedAt, 'MMM d')}
-          </div>
-        </div>
-      </div>
+      <PostCardFace post={post} />
     </div>
   )
 })
@@ -131,34 +140,37 @@ const DraggableCard = memo(function DraggableCard({
 const DroppableColumn = memo(function DroppableColumn({
   status,
   posts,
+  hot,
   onCardClick,
   onNew
 }: {
   status: PostStatus
   posts: Doc[]
+  hot: boolean
   onCardClick: (post: Doc) => void
   onNew: (status: PostStatus) => void
 }): React.JSX.Element {
   const { setNodeRef, isOver } = useDroppable({ id: status })
   const columnColor = STATUS_COLORS[status]
+  const highlighted = hot || isOver
 
   return (
     <div
       ref={setNodeRef}
       style={{
         flex: '1 1 0',
-        minWidth: 0,
-        backgroundColor: isOver ? 'var(--bg)' : 'var(--surface)',
+        minWidth: 200,
+        backgroundColor: highlighted ? 'var(--bg)' : 'var(--surface)',
         borderRadius: 8,
         border: '1px solid var(--border)',
         borderTop: `2px solid ${columnColor}`,
         padding: 8,
-        minHeight: 200,
+        minHeight: 0,
         display: 'flex',
         flexDirection: 'column',
         gap: 6,
-        transition: 'background 150ms ease, box-shadow 150ms ease',
-        boxShadow: isOver ? 'var(--shadow-md)' : 'var(--shadow-sm)'
+        transition: 'background-color 120ms ease, box-shadow 120ms ease',
+        boxShadow: highlighted ? 'var(--shadow-md)' : 'var(--shadow-sm)'
       }}
     >
       <div
@@ -169,11 +181,11 @@ const DroppableColumn = memo(function DroppableColumn({
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
           color: columnColor,
-          marginBottom: 2,
           padding: '0 2px',
           display: 'flex',
           alignItems: 'center',
-          gap: 5
+          gap: 5,
+          flexShrink: 0
         }}
       >
         <span
@@ -189,15 +201,27 @@ const DroppableColumn = memo(function DroppableColumn({
         {posts.length > 0 && <span style={{ fontWeight: 500, opacity: 0.75 }}>{posts.length}</span>}
       </div>
 
-      {posts.map((post) => (
-        <DraggableCard key={post.id} post={post} onClick={onCardClick} />
-      ))}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          overscrollBehavior: 'contain',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6
+        }}
+      >
+        {posts.map((post) => (
+          <DraggableCard key={post.id} post={post} onClick={onCardClick} />
+        ))}
+      </div>
 
       <button
         type="button"
         onClick={() => onNew(status)}
         style={{
-          marginTop: 'auto',
+          flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
           gap: 5,
@@ -228,15 +252,21 @@ const DroppableColumn = memo(function DroppableColumn({
 })
 
 export function ContentCalendar(): React.JSX.Element {
-  const setCreateView = useUIStore((s) => s.setCreateView)
-  const setDocsView = useUIStore((s) => s.setDocsView)
+  const activePage = useUIStore((s) => s.activePage)
+  const createView = useUIStore((s) => s.createView)
+  const fetchFolders = useDocsStore((s) => s.fetchFolders)
   const [posts, setPosts] = useState<Doc[]>([])
   const [loading, setLoading] = useState(true)
   const [synthMessage, setSynthMessage] = useState<string | null>(null)
+  const [openPostId, setOpenPostId] = useState<string | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [overlayWidth, setOverlayWidth] = useState<number | null>(null)
+  const [overStatus, setOverStatus] = useState<PostStatus | null>(null)
   const postsRef = useRef(posts)
+  const ignoreClickRef = useRef(false)
   postsRef.current = posts
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const load = useCallback(async () => {
     const docs = await window.mycel.getDocs()
@@ -254,6 +284,10 @@ export function ContentCalendar(): React.JSX.Element {
       .catch(() => {})
   }, [load])
 
+  useEffect(() => {
+    if (activePage !== 'create' || createView !== 'calendar') setOpenPostId(null)
+  }, [activePage, createView])
+
   const postsByStatus = useMemo(() => {
     const grouped = Object.fromEntries(POST_STATUSES.map((status) => [status, [] as Doc[]])) as Record<
       PostStatus,
@@ -263,73 +297,92 @@ export function ContentCalendar(): React.JSX.Element {
     return grouped
   }, [posts])
 
-  const openPost = useCallback(
-    (doc: Doc) => {
-      setCreateView('docs')
-      openDoc(doc, {
-        label: 'Calendar',
-        action: () => {
-          setCreateView('calendar')
-          setDocsView('home')
-        }
-      })
-    },
-    [setCreateView, setDocsView]
-  )
-
-  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
-    const { active, over } = event
-    if (!over) return
-
-    let nextStatus = String(over.id)
-    if (!isPostStatus(nextStatus)) {
-      const overPost = postsRef.current.find((p) => p.id === nextStatus)
-      nextStatus = overPost ? postStatus(overPost) : ''
-    }
-    if (!isPostStatus(nextStatus)) return
-
-    const postId = String(active.id)
-    const post = postsRef.current.find((p) => p.id === postId)
-    if (!post || postStatus(post) === nextStatus) return
-
-    const previous = post
-    const updated: Doc = {
-      ...post,
-      postMeta: { ...post.postMeta, status: nextStatus, channel: post.postMeta?.channel ?? 'linkedin' },
-      updatedAt: Date.now()
-    }
-    setPosts((prev) => prev.map((row) => (row.id === postId ? updated : row)))
-    try {
-      await window.mycel.upsertDoc(updated)
-    } catch {
-      setPosts((prev) => prev.map((row) => (row.id === postId ? previous : row)))
-    }
+  const openPost = useCallback((doc: Doc) => {
+    if (ignoreClickRef.current) return
+    setOpenPostId(doc.id)
   }, [])
 
-  const handleNew = useCallback(
-    async (status: PostStatus = 'draft') => {
-      const now = Date.now()
-      const created = await window.mycel.upsertDoc({
-        id: nanoid(),
-        title: '',
-        body: '',
-        type: 'post',
-        folderId: null,
-        icon: null,
-        coverImage: null,
-        isTemplate: false,
-        isFavorite: false,
-        favoriteOrder: null,
-        tags: [],
-        postMeta: { status, channel: 'linkedin' },
-        createdAt: now,
-        updatedAt: now
-      })
-      setPosts((prev) => [created, ...prev])
-      openPost(created)
+  const clearDrag = useCallback(() => {
+    setActiveId(null)
+    setOverlayWidth(null)
+    setOverStatus(null)
+    requestAnimationFrame(() => {
+      ignoreClickRef.current = false
+    })
+  }, [])
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    ignoreClickRef.current = true
+    setActiveId(String(event.active.id))
+    setOverlayWidth(event.active.rect.current.initial?.width ?? null)
+  }, [])
+
+  const handleDragOver = useCallback((event: { over: { id: string | number } | null }) => {
+    const next = statusFromId(event.over?.id, postsRef.current)
+    setOverStatus((prev) => (prev === next ? prev : next))
+  }, [])
+
+  const handleDragEnd = useCallback(
+    async (event: DragEndEvent) => {
+      const nextStatus = statusFromId(event.over?.id, postsRef.current)
+      const postId = String(event.active.id)
+      clearDrag()
+      if (!nextStatus) return
+
+      const post = postsRef.current.find((p) => p.id === postId)
+      if (!post || postStatus(post) === nextStatus) return
+
+      const previous = post
+      const updated: Doc = {
+        ...post,
+        postMeta: { ...post.postMeta, status: nextStatus, channel: post.postMeta?.channel ?? 'linkedin' },
+        updatedAt: Date.now()
+      }
+      setPosts((prev) => prev.map((row) => (row.id === postId ? updated : row)))
+      try {
+        await window.mycel.upsertDoc(updated)
+      } catch {
+        setPosts((prev) => prev.map((row) => (row.id === postId ? previous : row)))
+      }
     },
-    [openPost]
+    [clearDrag]
   )
+
+  const handleNew = useCallback(async (status: PostStatus = 'draft') => {
+    const now = Date.now()
+    const created = await window.mycel.upsertDoc({
+      id: nanoid(),
+      title: '',
+      body: '',
+      type: 'post',
+      folderId: null,
+      icon: null,
+      coverImage: null,
+      isTemplate: false,
+      isFavorite: false,
+      favoriteOrder: null,
+      tags: [],
+      postMeta: { status, channel: 'linkedin' },
+      createdAt: now,
+      updatedAt: now
+    })
+    setPosts((prev) => [created, ...prev])
+    setOpenPostId(created.id)
+    void fetchFolders()
+  }, [fetchFolders])
+
+  const openPostDoc = useMemo(
+    () => (openPostId ? posts.find((post) => post.id === openPostId) ?? null : null),
+    [openPostId, posts]
+  )
+  const activePost = useMemo(
+    () => (activeId ? posts.find((post) => post.id === activeId) ?? null : null),
+    [activeId, posts]
+  )
+
+  const handleSaved = useCallback((saved: Doc) => {
+    setPosts((prev) => prev.map((row) => (row.id === saved.id ? { ...row, ...saved } : row)))
+  }, [])
 
   if (loading) {
     return (
@@ -340,8 +393,8 @@ export function ContentCalendar(): React.JSX.Element {
   }
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '4px 20px 24px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '4px 20px 16px', minHeight: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexShrink: 0 }}>
         <div>
           <h2
             style={{
@@ -368,6 +421,7 @@ export function ContentCalendar(): React.JSX.Element {
         <p
           style={{
             margin: '0 0 12px',
+            flexShrink: 0,
             fontFamily: 'var(--font-ui)',
             fontSize: 12,
             color: 'var(--text-muted)',
@@ -378,19 +432,40 @@ export function ContentCalendar(): React.JSX.Element {
         </p>
       )}
 
-      <div style={{ display: 'flex', gap: 8, flex: 1, minHeight: 0, overflowX: 'auto', paddingBottom: 8 }}>
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => void handleDragEnd(e)}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={kanbanCollision}
+        measuring={{ droppable: { strategy: MeasuringStrategy.BeforeDragging } }}
+        autoScroll={{ threshold: { x: 0.12, y: 0.15 }, acceleration: 8 }}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragCancel={clearDrag}
+        onDragEnd={(event) => void handleDragEnd(event)}
+      >
+        <div style={{ display: 'flex', gap: 8, flex: 1, minHeight: 0, overflowX: 'auto', overflowY: 'hidden', paddingBottom: 4 }}>
           {POST_STATUSES.map((status) => (
             <DroppableColumn
               key={status}
               status={status}
               posts={postsByStatus[status]}
+              hot={overStatus === status}
               onCardClick={openPost}
               onNew={handleNew}
             />
           ))}
-        </DndContext>
-      </div>
+        </div>
+        <DragOverlay dropAnimation={{ duration: 160, easing: 'cubic-bezier(0.2, 0, 0, 1)' }}>
+            {activePost ? (
+              <div style={{ ...cardShell(true), cursor: 'grabbing', width: overlayWidth ?? undefined }}>
+                <PostCardFace post={activePost} />
+              </div>
+            ) : null}
+          </DragOverlay>
+      </DndContext>
+
+      {openPostDoc && (
+        <PostLightbox key={openPostDoc.id} post={openPostDoc} onClose={() => setOpenPostId(null)} onSaved={handleSaved} />
+      )}
     </div>
   )
 }
